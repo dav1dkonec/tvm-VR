@@ -20,6 +20,8 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     public bool useUnifiedPrototypeOnCommit;
     public float editorPreviewDistance = 1.5f;
     public int offlineSequentialCommitCount = 3;
+    public RuntimeBaselinePreset selectedBaselinePreset = RuntimeBaselinePreset.HandstandSingle;
+    public int baselineSequenceIndex = 0;
 
     [Header("Offline Comparison Test")]
     public int offlineTestCenterIndex;
@@ -33,6 +35,8 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     private RuntimeTestRunner runtimeTestRunner;
     private bool isSequenceLoading;
     private bool pendingEditorCommit;
+    private bool pendingBaselineWorkflow;
+    private RuntimeBaselinePreset pendingBaselinePreset;
     private bool configuredUnifiedPrototype;
     private Frame[] loadedFramesSnapshot;
     private UnityEngine.Vector3 initialLocalPosition;
@@ -238,6 +242,13 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             {
                 pendingEditorCommit = false;
                 RunEditorCommitUsingOfflineTestParameters();
+            }
+
+            if (pendingBaselineWorkflow)
+            {
+                var preset = pendingBaselinePreset;
+                pendingBaselineWorkflow = false;
+                ExecuteBaselineWorkflow(preset);
             }
 
         }
@@ -641,6 +652,198 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         centerPool.SetPositions(frames[currentFrame].centers);
         RedrawMesh();
         Debug.Log(result.ToLogMessage());
+    }
+
+    [ContextMenu("Apply Selected Baseline Preset")]
+    public void ApplySelectedBaselinePreset()
+    {
+        ApplyBaselinePreset(selectedBaselinePreset);
+    }
+
+    [ContextMenu("Run Selected Baseline Workflow")]
+    public void RunSelectedBaselineWorkflow()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogError("Baseline workflow can be used only in Play Mode.");
+            return;
+        }
+
+        var baseline = GetBaselineDefinition(selectedBaselinePreset);
+        ApplyBaselinePreset(selectedBaselinePreset);
+
+        if (!TryResolveSequencePathByIndex(baselineSequenceIndex, out var sequencePath, out var sequenceName))
+        {
+            Debug.LogError($"Baseline workflow failed: sequence index {baselineSequenceIndex} could not be resolved.");
+            return;
+        }
+
+        if (session?.Sequence == null || !string.Equals(loadedName, sequenceName, System.StringComparison.Ordinal))
+        {
+            pendingBaselineWorkflow = true;
+            pendingBaselinePreset = selectedBaselinePreset;
+            Load(sequencePath, sequenceName);
+            Debug.Log($"Baseline workflow queued: loading sequence index {baselineSequenceIndex} ('{sequenceName}').");
+            return;
+        }
+
+        ExecuteBaselineWorkflow(selectedBaselinePreset);
+    }
+
+    private void ApplyBaselinePreset(RuntimeBaselinePreset preset)
+    {
+        switch (preset)
+        {
+            case RuntimeBaselinePreset.HandstandSingle:
+                offlineTestCenterIndex = 0;
+                offlineTestTranslation = new UnityEngine.Vector3(0.15f, 0f, 0f);
+                offlineSequentialCommitCount = 1;
+                offlineMultiCenterIndices = new[] { 0, 1, 2 };
+                offlineMultiCenterTranslations = new[]
+                {
+                    new UnityEngine.Vector3(0.15f, 0f, 0f),
+                    new UnityEngine.Vector3(-0.10f, 0f, 0f),
+                    new UnityEngine.Vector3(0.05f, 0f, 0f)
+                };
+                break;
+
+            case RuntimeBaselinePreset.HandstandMulti:
+                offlineTestCenterIndex = 0;
+                offlineTestTranslation = new UnityEngine.Vector3(0.15f, 0f, 0f);
+                offlineSequentialCommitCount = 1;
+                offlineMultiCenterIndices = new[] { 0, 1, 2 };
+                offlineMultiCenterTranslations = new[]
+                {
+                    new UnityEngine.Vector3(0.15f, 0f, 0f),
+                    new UnityEngine.Vector3(-0.10f, 0f, 0f),
+                    new UnityEngine.Vector3(0.05f, 0f, 0f)
+                };
+                break;
+
+            case RuntimeBaselinePreset.SquatSingle:
+                offlineTestCenterIndex = 0;
+                offlineTestTranslation = new UnityEngine.Vector3(0.25f, 0f, 0f);
+                offlineSequentialCommitCount = 1;
+                offlineMultiCenterIndices = new[] { 0, 1, 2 };
+                offlineMultiCenterTranslations = new[]
+                {
+                    new UnityEngine.Vector3(0.20f, 0f, 0f),
+                    new UnityEngine.Vector3(-0.10f, 0f, 0f),
+                    new UnityEngine.Vector3(0.05f, 0f, 0f)
+                };
+                break;
+
+            case RuntimeBaselinePreset.SquatSequential:
+                offlineTestCenterIndex = 0;
+                offlineTestTranslation = new UnityEngine.Vector3(0.25f, 0f, 0f);
+                offlineSequentialCommitCount = 3;
+                offlineMultiCenterIndices = new[] { 0, 1, 2 };
+                offlineMultiCenterTranslations = new[]
+                {
+                    new UnityEngine.Vector3(0.20f, 0f, 0f),
+                    new UnityEngine.Vector3(-0.10f, 0f, 0f),
+                    new UnityEngine.Vector3(0.05f, 0f, 0f)
+                };
+                break;
+
+            case RuntimeBaselinePreset.SquatMulti:
+                offlineTestCenterIndex = 0;
+                offlineTestTranslation = new UnityEngine.Vector3(0.25f, 0f, 0f);
+                offlineSequentialCommitCount = 3;
+                offlineMultiCenterIndices = new[] { 0, 1, 2 };
+                offlineMultiCenterTranslations = new[]
+                {
+                    new UnityEngine.Vector3(0.20f, 0f, 0f),
+                    new UnityEngine.Vector3(-0.10f, 0f, 0f),
+                    new UnityEngine.Vector3(0.05f, 0f, 0f)
+                };
+                break;
+
+            default:
+                Debug.LogError($"Unknown baseline preset: {preset}");
+                return;
+        }
+
+        Debug.Log($"Applied baseline preset: {preset}");
+    }
+
+    private void ExecuteBaselineWorkflow(RuntimeBaselinePreset preset)
+    {
+        var baseline = GetBaselineDefinition(preset);
+        ApplyBaselinePreset(preset);
+        var sequenceLabel = loadedName ?? $"index {baselineSequenceIndex}";
+
+        Debug.Log($"Running baseline workflow '{preset}' on sequence '{sequenceLabel}' (index {baselineSequenceIndex}).");
+
+        var originalMode = useUnifiedPrototypeOnCommit;
+
+        RestoreLoadedSequenceSnapshot();
+        useUnifiedPrototypeOnCommit = false;
+        EnsureEditingPipelineConfiguration();
+        RunBaselineByKind(baseline.kind);
+
+        RestoreLoadedSequenceSnapshot();
+        useUnifiedPrototypeOnCommit = true;
+        EnsureEditingPipelineConfiguration();
+        RunBaselineByKind(baseline.kind);
+
+        useUnifiedPrototypeOnCommit = originalMode;
+        EnsureEditingPipelineConfiguration();
+    }
+
+    private void RunBaselineByKind(RuntimeTestKind kind)
+    {
+        switch (kind)
+        {
+            case RuntimeTestKind.SingleCenter:
+                if (offlineSequentialCommitCount > 1)
+                    RunSequentialEditorCommitsUsingOfflineTestParameters();
+                else
+                    RunEditorCommitUsingOfflineTestParameters();
+                break;
+
+            case RuntimeTestKind.MultiCenter:
+                RunMultiCenterEditorCommitUsingOfflineTestParameters();
+                break;
+
+            default:
+                Debug.LogError($"Unsupported baseline kind: {kind}");
+                break;
+        }
+    }
+
+    private RuntimeTestKind GetBaselineDefinition(RuntimeBaselinePreset preset)
+    {
+        return preset switch
+        {
+            RuntimeBaselinePreset.HandstandSingle => RuntimeTestKind.SingleCenter,
+            RuntimeBaselinePreset.HandstandMulti => RuntimeTestKind.MultiCenter,
+            RuntimeBaselinePreset.SquatSingle => RuntimeTestKind.SingleCenter,
+            RuntimeBaselinePreset.SquatSequential => RuntimeTestKind.SingleCenter,
+            RuntimeBaselinePreset.SquatMulti => RuntimeTestKind.MultiCenter,
+            _ => RuntimeTestKind.SingleCenter
+        };
+    }
+
+    private bool TryResolveSequencePathByIndex(int sequenceIndex, out string sequencePath, out string sequenceName)
+    {
+        sequencePath = null;
+        sequenceName = null;
+
+        var controller = FindFirstObjectByType<Controller>();
+        var dataPath = controller?.settings?.dataPath;
+        if (string.IsNullOrWhiteSpace(dataPath) || !Directory.Exists(dataPath))
+            return false;
+
+        var directories = Directory.GetDirectories(dataPath);
+        Array.Sort(directories, StringComparer.Ordinal);
+
+        if (sequenceIndex < 0 || sequenceIndex >= directories.Length)
+            return false;
+
+        sequencePath = directories[sequenceIndex];
+        sequenceName = Path.GetFileName(sequencePath);
+        return true;
     }
 
     [ContextMenu("Place Sequence In Front Of Main Camera")]

@@ -27,8 +27,11 @@ Thumbs.db
 
 # Unity cache / generated files
 Assets/AssetStoreTools*
+Assets/AssetStoreTools*.meta
 Assets/TextMesh Pro Examples & Extras/
+Assets/TextMesh Pro Examples & Extras.meta
 Assets/_Recovery/
+Assets/_Recovery.meta
 
 # Local runtime/config files
 settings.xml

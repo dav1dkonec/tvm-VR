@@ -20,10 +20,10 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     public bool useUnifiedPrototypeOnCommit;
     public float editorPreviewDistance = 1.5f;
     public int offlineSequentialCommitCount = 3;
-    public RuntimeBaselinePreset selectedBaselinePreset = RuntimeBaselinePreset.HandstandSingle;
+    public RuntimeBaselinePreset selectedBaselinePreset = RuntimeBaselinePreset.Single;
     public int baselineSequenceIndex = 0;
 
-    [Header("Offline Comparison Test")]
+    [Header("Baseline Test Parameters")]
     public int offlineTestCenterIndex;
     public UnityEngine.Vector3 offlineTestTranslation = new UnityEngine.Vector3(0.05f, 0f, 0f);
     public int[] offlineMultiCenterIndices = new int[0];
@@ -31,10 +31,8 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
 
     private EditingCoreAdapter coreAdapter;
     private SequenceEditingService editingService;
-    private PipelineComparisonHarness comparisonHarness;
     private RuntimeTestRunner runtimeTestRunner;
     private bool isSequenceLoading;
-    private bool pendingEditorCommit;
     private bool pendingBaselineWorkflow;
     private RuntimeBaselinePreset pendingBaselinePreset;
     private bool configuredUnifiedPrototype;
@@ -135,7 +133,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     {
         CenterUI.RegisterListener(this);
         RebuildEditingPipeline();
-        comparisonHarness = new PipelineComparisonHarness();
         runtimeTestRunner = new RuntimeTestRunner();
         initialLocalPosition = transform.localPosition;
         initialLocalRotation = transform.localRotation;
@@ -237,12 +234,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             saveButton.interactable = true;
 
             isSequenceLoading = false;
-
-            if (pendingEditorCommit)
-            {
-                pendingEditorCommit = false;
-                RunEditorCommitUsingOfflineTestParameters();
-            }
 
             if (pendingBaselineWorkflow)
             {
@@ -404,81 +395,13 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         if (pl) Play();
     }
 
-    [ContextMenu("Run Offline Prototype Comparison")]
-    public void RunOfflinePrototypeComparison()
-    {
-        if (session?.Sequence == null)
-        {
-            Debug.LogError("Offline comparison failed: sequence is not loaded.");
-            return;
-        }
-
-        if (frames == null || frames.Length == 0)
-        {
-            Debug.LogError("Offline comparison failed: legacy frames are not available.");
-            return;
-        }
-
-        if (currentFrame < 0 || currentFrame >= frames.Length)
-        {
-            Debug.LogError("Offline comparison failed: current frame index is out of range.");
-            return;
-        }
-
-        if (offlineTestCenterIndex < 0 || offlineTestCenterIndex >= frames[currentFrame].centers.Length)
-        {
-            Debug.LogError("Offline comparison failed: offlineTestCenterIndex is out of range.");
-            return;
-        }
-
-        var preEditSequence = SequenceDataSnapshot.Clone(session.Sequence);
-        var currentCenter = frames[currentFrame].centers[offlineTestCenterIndex];
-        var targetPosition = new System.Numerics.Vector3(
-            currentCenter.X + offlineTestTranslation.x,
-            currentCenter.Y + offlineTestTranslation.y,
-            currentCenter.Z + offlineTestTranslation.z);
-
-        var request = new EditRequest
-        {
-            FrameIndex = currentFrame,
-            CenterIndices = new[] { offlineTestCenterIndex },
-            NewCenterPositions = new[] { targetPosition }
-        };
-
-        var legacyHarness = new LegacyPipelineHarness(activeBrush);
-        var legacyResult = legacyHarness.RunSingleEdit(frames, settings, loadedPath, loadedName, request);
-        var report = comparisonHarness.CompareSingleEdit(
-            preEditSequence,
-            legacyResult.Sequence,
-            request,
-            editingOptions,
-            legacyResult.AffectedFrames);
-
-        report.LegacyRuntimeMilliseconds = legacyResult.Profiling.TotalMilliseconds;
-        report.LegacyCenterMilliseconds = legacyResult.Profiling.CenterMilliseconds;
-        report.LegacyPropagationMilliseconds = legacyResult.Profiling.PropagationMilliseconds;
-        report.LegacySurfaceMilliseconds = legacyResult.Profiling.SurfaceMilliseconds;
-
-        Debug.Log(
-            $"Offline comparison finished for sequence '{report.SequenceName}', frame {report.FrameIndex}, center {offlineTestCenterIndex}. " +
-            $"Center delta mean/max: {report.MeanCenterDelta:F6}/{report.MaxCenterDelta:F6}. " +
-            $"Vertex delta mean/max: {report.MeanVertexDelta:F6}/{report.MaxVertexDelta:F6}. " +
-            $"Compared frames/centers/vertices: {report.ComparedFrameCount}/{report.ComparedCenterCount}/{report.ComparedVertexCount}. " +
-            $"Legacy affected count/range: {report.LegacyAffectedFrameCount}/{report.LegacyAffectedFrameMin}-{report.LegacyAffectedFrameMax}. " +
-            $"Unified affected count/range: {report.UnifiedAffectedFrameCount}/{report.UnifiedAffectedFrameMin}-{report.UnifiedAffectedFrameMax}. " +
-            $"Legacy total/center/propagation/surface: {report.LegacyRuntimeMilliseconds:F3}/{report.LegacyCenterMilliseconds:F3}/{report.LegacyPropagationMilliseconds:F3}/{report.LegacySurfaceMilliseconds:F3} ms. " +
-            $"Unified total/affinity/center/propagation/surface: {report.UnifiedRuntimeMilliseconds:F3}/{report.UnifiedAffinityMilliseconds:F3}/{report.UnifiedCenterMilliseconds:F3}/{report.UnifiedPropagationMilliseconds:F3}/{report.UnifiedSurfaceMilliseconds:F3} ms.");
-    }
-
-    [ContextMenu("Run Editor Commit Using Offline Test Parameters")]
-    public void RunEditorCommitUsingOfflineTestParameters()
+    private void RunSingleBaselineCommit()
     {
         EnsureEditingPipelineConfiguration();
 
         if (isSequenceLoading)
         {
-            pendingEditorCommit = true;
-            Debug.Log("Editor commit queued until sequence loading finishes.");
+            Debug.LogError("Editor commit failed: sequence is still loading.");
             return;
         }
 
@@ -532,8 +455,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         Debug.Log(result.ToLogMessage());
     }
 
-    [ContextMenu("Run Sequential Editor Commits Using Offline Test Parameters")]
-    public void RunSequentialEditorCommitsUsingOfflineTestParameters()
+    private void RunSequentialBaselineCommits()
     {
         if (offlineSequentialCommitCount < 1)
         {
@@ -576,15 +498,13 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         RedrawMesh();
     }
 
-    [ContextMenu("Run Multi-Center Editor Commit Using Offline Test Parameters")]
-    public void RunMultiCenterEditorCommitUsingOfflineTestParameters()
+    private void RunMultiCenterBaselineCommit()
     {
         EnsureEditingPipelineConfiguration();
 
         if (isSequenceLoading)
         {
-            pendingEditorCommit = true;
-            Debug.Log("Multi-center editor commit queued until sequence loading finishes.");
+            Debug.LogError("Multi-center editor commit failed: sequence is still loading.");
             return;
         }
 
@@ -654,12 +574,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         Debug.Log(result.ToLogMessage());
     }
 
-    [ContextMenu("Apply Selected Baseline Preset")]
-    public void ApplySelectedBaselinePreset()
-    {
-        ApplyBaselinePreset(selectedBaselinePreset);
-    }
-
     [ContextMenu("Run Selected Baseline Workflow")]
     public void RunSelectedBaselineWorkflow()
     {
@@ -694,33 +608,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     {
         switch (preset)
         {
-            case RuntimeBaselinePreset.HandstandSingle:
-                offlineTestCenterIndex = 0;
-                offlineTestTranslation = new UnityEngine.Vector3(0.15f, 0f, 0f);
-                offlineSequentialCommitCount = 1;
-                offlineMultiCenterIndices = new[] { 0, 1, 2 };
-                offlineMultiCenterTranslations = new[]
-                {
-                    new UnityEngine.Vector3(0.15f, 0f, 0f),
-                    new UnityEngine.Vector3(-0.10f, 0f, 0f),
-                    new UnityEngine.Vector3(0.05f, 0f, 0f)
-                };
-                break;
-
-            case RuntimeBaselinePreset.HandstandMulti:
-                offlineTestCenterIndex = 0;
-                offlineTestTranslation = new UnityEngine.Vector3(0.15f, 0f, 0f);
-                offlineSequentialCommitCount = 1;
-                offlineMultiCenterIndices = new[] { 0, 1, 2 };
-                offlineMultiCenterTranslations = new[]
-                {
-                    new UnityEngine.Vector3(0.15f, 0f, 0f),
-                    new UnityEngine.Vector3(-0.10f, 0f, 0f),
-                    new UnityEngine.Vector3(0.05f, 0f, 0f)
-                };
-                break;
-
-            case RuntimeBaselinePreset.SquatSingle:
+            case RuntimeBaselinePreset.Single:
                 offlineTestCenterIndex = 0;
                 offlineTestTranslation = new UnityEngine.Vector3(0.25f, 0f, 0f);
                 offlineSequentialCommitCount = 1;
@@ -733,7 +621,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
                 };
                 break;
 
-            case RuntimeBaselinePreset.SquatSequential:
+            case RuntimeBaselinePreset.Sequential:
                 offlineTestCenterIndex = 0;
                 offlineTestTranslation = new UnityEngine.Vector3(0.25f, 0f, 0f);
                 offlineSequentialCommitCount = 3;
@@ -746,7 +634,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
                 };
                 break;
 
-            case RuntimeBaselinePreset.SquatMulti:
+            case RuntimeBaselinePreset.MultiCenter:
                 offlineTestCenterIndex = 0;
                 offlineTestTranslation = new UnityEngine.Vector3(0.25f, 0f, 0f);
                 offlineSequentialCommitCount = 3;
@@ -780,12 +668,12 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         RestoreLoadedSequenceSnapshot();
         useUnifiedPrototypeOnCommit = false;
         EnsureEditingPipelineConfiguration();
-        RunBaselineByKind(baseline.kind);
+        RunBaselineByKind(baseline);
 
         RestoreLoadedSequenceSnapshot();
         useUnifiedPrototypeOnCommit = true;
         EnsureEditingPipelineConfiguration();
-        RunBaselineByKind(baseline.kind);
+        RunBaselineByKind(baseline);
 
         useUnifiedPrototypeOnCommit = originalMode;
         EnsureEditingPipelineConfiguration();
@@ -797,13 +685,13 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         {
             case RuntimeTestKind.SingleCenter:
                 if (offlineSequentialCommitCount > 1)
-                    RunSequentialEditorCommitsUsingOfflineTestParameters();
+                    RunSequentialBaselineCommits();
                 else
-                    RunEditorCommitUsingOfflineTestParameters();
+                    RunSingleBaselineCommit();
                 break;
 
             case RuntimeTestKind.MultiCenter:
-                RunMultiCenterEditorCommitUsingOfflineTestParameters();
+                RunMultiCenterBaselineCommit();
                 break;
 
             default:
@@ -816,11 +704,9 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     {
         return preset switch
         {
-            RuntimeBaselinePreset.HandstandSingle => RuntimeTestKind.SingleCenter,
-            RuntimeBaselinePreset.HandstandMulti => RuntimeTestKind.MultiCenter,
-            RuntimeBaselinePreset.SquatSingle => RuntimeTestKind.SingleCenter,
-            RuntimeBaselinePreset.SquatSequential => RuntimeTestKind.SingleCenter,
-            RuntimeBaselinePreset.SquatMulti => RuntimeTestKind.MultiCenter,
+            RuntimeBaselinePreset.Single => RuntimeTestKind.SingleCenter,
+            RuntimeBaselinePreset.Sequential => RuntimeTestKind.SingleCenter,
+            RuntimeBaselinePreset.MultiCenter => RuntimeTestKind.MultiCenter,
             _ => RuntimeTestKind.SingleCenter
         };
     }

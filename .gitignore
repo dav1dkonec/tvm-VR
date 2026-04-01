@@ -37,9 +37,6 @@ Assets/TutorialInfo.meta
 Assets/Readme.asset
 Assets/Readme.asset.meta
 
-# Local runtime/config files
-settings.xml
-
 # Crash dumps
 sysinfo.txt
 *.stackdump

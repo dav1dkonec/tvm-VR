@@ -102,6 +102,17 @@ public sealed class SequenceEditingService
         return committed;
     }
 
+    public bool CommitLegacyEdit(EditingSession session, Brush brush, Frame[] frames, SequenceSettings settings, string sourcePath, string sequenceName, int currentFrameIndex, int centerIndex, UnityEngine.Vector3 position)
+    {
+        var request = CreateSingleCenterEditRequest(session, currentFrameIndex, centerIndex, position);
+
+        StoreLastEditRequest(session, request);
+
+        var committed = brush.Commit(position, centerIndex, currentFrameIndex, frames);
+        SyncFromLegacyFrames(session, frames, settings, sourcePath, sequenceName, currentFrameIndex, true);
+        return committed;
+    }
+
     public bool CommitAllLegacyEdits(EditingSession session, Brush brush, Frame[] frames, SequenceSettings settings, string sourcePath, string sequenceName, int currentFrameIndex)
     {
         var committed = brush.CommitAll(frames);
@@ -116,6 +127,23 @@ public sealed class SequenceEditingService
 
         var position = center.transform.localPosition;
         var request = CreateSingleCenterEditRequest(session, currentFrameIndex, center.centerIndex, position);
+        var result = ApplyEdit(session, request);
+        if (result?.Sequence == null)
+            return false;
+
+        session.Sequence = result.Sequence;
+        session.CurrentFrameIndex = currentFrameIndex;
+        session.IsDirty = true;
+        SequenceAdapter.ApplyToLegacyFrames(result.Sequence, frames);
+        return true;
+    }
+
+    public bool CommitUnifiedEdit(EditingSession session, Frame[] frames, int currentFrameIndex, int centerIndex, UnityEngine.Vector3 position)
+    {
+        if (session == null)
+            return false;
+
+        var request = CreateSingleCenterEditRequest(session, currentFrameIndex, centerIndex, position);
         var result = ApplyEdit(session, request);
         if (result?.Sequence == null)
             return false;

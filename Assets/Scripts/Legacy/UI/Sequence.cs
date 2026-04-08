@@ -328,6 +328,8 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         Pause();
         StartAsync();
         EnsureEditingPipelineConfiguration();
+        var centerIndex = center.centerIndex;
+        var position = center.transform.localPosition;
 
         await Task.Run(() =>
         {
@@ -337,7 +339,8 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
                     session,
                     frames,
                     currentFrame,
-                    center);
+                    centerIndex,
+                    position);
             }
 
             return editingService.CommitLegacyEdit(
@@ -348,7 +351,8 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
                 loadedPath,
                 loadedName,
                 currentFrame,
-                center);
+                centerIndex,
+                position);
         });
 
         centerPool.SetPositions(frames[currentFrame].centers);

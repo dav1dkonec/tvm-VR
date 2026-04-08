@@ -67,6 +67,13 @@ public class CenterPool : MonoBehaviour
             centers[i] = c.GetComponent<CenterUI>();
             centers[i].transform.localPosition = centers[i].transform.localPosition + MathUtils.RandomUnitVector3() * 0.5f;
             centers[i].centerIndex = i;
+
+            if (centers[i].TryGetComponent<Rigidbody>(out var rigidbody))
+            {
+                rigidbody.isKinematic = true;
+                rigidbody.linearVelocity = Vector3.zero;
+                rigidbody.angularVelocity = Vector3.zero;
+            }
         }
     }
 
@@ -88,6 +95,15 @@ public class CenterPool : MonoBehaviour
                 positions[i].X,
                 positions[i].Y,
                 positions[i].Z);
+
+            // Centers are controlled by the sequence data, not by scene physics.
+            if (centers[i].TryGetComponent<Rigidbody>(out var rigidbody))
+            {
+                rigidbody.isKinematic = true;
+                rigidbody.linearVelocity = Vector3.zero;
+                rigidbody.angularVelocity = Vector3.zero;
+                rigidbody.Sleep();
+            }
         }
     }
 }

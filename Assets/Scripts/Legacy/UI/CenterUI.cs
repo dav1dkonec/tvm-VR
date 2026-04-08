@@ -17,6 +17,15 @@ public class CenterUI : MonoBehaviour
     /// </summary>
     public static List<ICenterSelectionListener> selectionListeners = new List<ICenterSelectionListener>();
 
+    private static int activeSelectionCount;
+
+    public static bool HasActiveSelection => activeSelectionCount > 0;
+
+    public static void ClearActiveSelections()
+    {
+        activeSelectionCount = 0;
+    }
+
     /// <summary>
     /// Index of this center in the sequence
     /// </summary>
@@ -97,6 +106,7 @@ public class CenterUI : MonoBehaviour
     {
         if (Sequence.playing) return;
 
+        activeSelectionCount++;
         meshRenderer.material = selectedMaterial;
         foreach (var l in selectionListeners)
         {
@@ -112,6 +122,7 @@ public class CenterUI : MonoBehaviour
     {
         if (Sequence.playing) return;
 
+        activeSelectionCount = Mathf.Max(0, activeSelectionCount - 1);
         meshRenderer.material = normalMaterial;
         foreach (var l in selectionListeners)
         {

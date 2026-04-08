@@ -39,7 +39,7 @@ public class GrabToMove : MonoBehaviour
     void Update()
     {
         // Disabled during editing
-        if (Sequence.editing)
+        if (Sequence.editing || CenterUI.HasActiveSelection)
         {
             wasDownR = false;
             return;

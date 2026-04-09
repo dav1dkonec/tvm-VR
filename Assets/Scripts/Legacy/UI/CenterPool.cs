@@ -69,33 +69,6 @@ public class CenterPool : MonoBehaviour
             centers[i] = c.GetComponent<CenterUI>();
             centers[i].transform.localPosition = centers[i].transform.localPosition + MathUtils.RandomUnitVector3() * 0.5f;
             centers[i].centerIndex = i;
-
-            DisableRuntimeMotion(centers[i]);
-        }
-    }
-
-    private static void DisableRuntimeMotion(CenterUI center)
-    {
-        if (center.TryGetComponent<SphereWave>(out var sphereWave))
-        {
-            Destroy(sphereWave);
-        }
-
-        if (center.TryGetComponent<Rigidbody>(out var rigidbody))
-        {
-            if (!rigidbody.isKinematic)
-            {
-                rigidbody.linearVelocity = Vector3.zero;
-                rigidbody.angularVelocity = Vector3.zero;
-            }
-
-            rigidbody.isKinematic = true;
-            rigidbody.Sleep();
-        }
-
-        if (center.TryGetComponent<Collider>(out var collider))
-        {
-            collider.isTrigger = true;
         }
     }
 
@@ -117,9 +90,6 @@ public class CenterPool : MonoBehaviour
                 positions[i].X,
                 positions[i].Y,
                 positions[i].Z);
-
-            // Centers are controlled by the sequence data, not by scene physics or idle animation.
-            DisableRuntimeMotion(centers[i]);
         }
     }
 }

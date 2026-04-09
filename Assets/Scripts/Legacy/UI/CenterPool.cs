@@ -83,9 +83,13 @@ public class CenterPool : MonoBehaviour
 
         if (center.TryGetComponent<Rigidbody>(out var rigidbody))
         {
+            if (!rigidbody.isKinematic)
+            {
+                rigidbody.linearVelocity = Vector3.zero;
+                rigidbody.angularVelocity = Vector3.zero;
+            }
+
             rigidbody.isKinematic = true;
-            rigidbody.linearVelocity = Vector3.zero;
-            rigidbody.angularVelocity = Vector3.zero;
             rigidbody.Sleep();
         }
 

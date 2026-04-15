@@ -230,6 +230,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
 
         currentFrame = 0;
         centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
+        centerPool.SetInteractionEnabled(methodSettings == null || methodSettings.CurrentMethod == MethodKind.BasicTranslate);
         RedrawMesh();
         loadedPath = sequencePath;
         loadedName = sequenceName;

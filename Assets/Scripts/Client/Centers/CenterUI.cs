@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using TvmVr2.Api.Enums;
+using TvmVr2.Client.Sequence;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 
@@ -61,6 +63,8 @@ public class CenterUI : MonoBehaviour
     [ColorUsage(true, true)]
     public Color normalColor;
 
+    private EditingMethodRuntimeSettings methodSettings;
+
     /// <summary>
     /// Initialization
     /// </summary>
@@ -68,6 +72,8 @@ public class CenterUI : MonoBehaviour
     {
         meshRenderer.material = Instantiate(normalMaterialTemplate);
         normalMaterial = meshRenderer.material;
+        methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
+        ApplyNormalColor();
     }
 
     /// <summary>
@@ -76,7 +82,9 @@ public class CenterUI : MonoBehaviour
     /// <param name="e">Hover event</param>
     public void OnHoverEnter(HoverEnterEventArgs e)
     {
-        if (Sequence.playing) return;
+        if (Sequence.playing || !IsBasicTranslateActive()) return;
+
+        ApplyHighlightColor();
 
         foreach (var l in hoverListeners)
         {
@@ -90,7 +98,10 @@ public class CenterUI : MonoBehaviour
     /// <param name="e">Hover event</param>
     public void OnHoverExit(HoverExitEventArgs e)
     {
-        if (Sequence.playing) return;
+        if (Sequence.playing || !IsBasicTranslateActive()) return;
+
+        if (meshRenderer.material != selectedMaterial)
+            ApplyNormalColor();
 
         foreach (var l in hoverListeners)
         {
@@ -104,7 +115,7 @@ public class CenterUI : MonoBehaviour
     /// <param name="e">Selection event</param>
     public void OnSelectEnter(SelectEnterEventArgs e)
     {
-        if (Sequence.playing) return;
+        if (Sequence.playing || !IsBasicTranslateActive()) return;
 
         activeSelectionCount++;
         meshRenderer.material = selectedMaterial;
@@ -120,10 +131,11 @@ public class CenterUI : MonoBehaviour
     /// <param name="e">Selection event</param>
     public void OnSelectExit(SelectExitEventArgs e)
     {
-        if (Sequence.playing) return;
+        if (Sequence.playing || !IsBasicTranslateActive()) return;
 
         activeSelectionCount = Mathf.Max(0, activeSelectionCount - 1);
         meshRenderer.material = normalMaterial;
+        ApplyNormalColor();
         foreach (var l in selectionListeners)
         {
             l.Notify(this, false);
@@ -146,6 +158,36 @@ public class CenterUI : MonoBehaviour
     public static void RegisterListener(ICenterHoverListener l)
     {
         hoverListeners.Add(l);
+    }
+
+    private bool IsBasicTranslateActive()
+    {
+        if (methodSettings == null)
+            methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
+
+        return methodSettings == null || methodSettings.CurrentMethod == MethodKind.BasicTranslate;
+    }
+
+    private void ApplyHighlightColor()
+    {
+        if (normalMaterial == null)
+            return;
+
+        if (normalMaterial.HasProperty("_BaseColor"))
+            normalMaterial.SetColor("_BaseColor", highlightedColor);
+        else if (normalMaterial.HasProperty("_Color"))
+            normalMaterial.SetColor("_Color", highlightedColor);
+    }
+
+    private void ApplyNormalColor()
+    {
+        if (normalMaterial == null)
+            return;
+
+        if (normalMaterial.HasProperty("_BaseColor"))
+            normalMaterial.SetColor("_BaseColor", normalColor);
+        else if (normalMaterial.HasProperty("_Color"))
+            normalMaterial.SetColor("_Color", normalColor);
     }
 
 }

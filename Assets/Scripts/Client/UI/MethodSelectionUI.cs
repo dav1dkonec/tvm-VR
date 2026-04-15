@@ -10,6 +10,8 @@ public class MethodSelectionUI : MonoBehaviour
     private const string DropdownRootName = "MethodDropdownRoot";
     private const string BasicOptionName = "MethodBasicTranslateButton";
     private const string InflateOptionName = "MethodInflateDeflateButton";
+    private static readonly Color SelectedButtonColor = new(0.20f, 0.24f, 0.29f, 0.92f);
+    private static readonly Color UnselectedButtonColor = new(0.08f, 0.11f, 0.14f, 0.72f);
 
     private EditingMethodRuntimeSettings target;
     private InflateDeflateUI inflateDeflateUi;
@@ -19,6 +21,11 @@ public class MethodSelectionUI : MonoBehaviour
     private TMP_Text toggleButtonText;
     private GameObject dropdownRoot;
     private bool dropdownVisible;
+    private GameObject sigmaObject;
+    private GameObject kabschNeighborsObject;
+    private GameObject surfaceNeighborsObject;
+    private GameObject commitObject;
+    private CenterPool centerPool;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -38,7 +45,9 @@ public class MethodSelectionUI : MonoBehaviour
     {
         target = FindFirstObjectByType<EditingMethodRuntimeSettings>();
         inflateDeflateUi = GetComponent<InflateDeflateUI>();
+        centerPool = FindFirstObjectByType<CenterPool>();
         BuildUi();
+        CacheBasicTranslateObjects();
         ApplyMethodVisibility();
     }
 
@@ -73,10 +82,11 @@ public class MethodSelectionUI : MonoBehaviour
     {
         var isInflate = target != null && target.CurrentMethod == MethodKind.InflateDeflate;
 
-        SetNamedObjectActive("Sigma", !isInflate);
-        SetNamedObjectActive("Kabsch Neighbors", !isInflate);
-        SetNamedObjectActive("Surface Neighbors", !isInflate);
-        SetNamedObjectActive("Commit", !isInflate);
+        SetObjectActive(sigmaObject, !isInflate);
+        SetObjectActive(kabschNeighborsObject, !isInflate);
+        SetObjectActive(surfaceNeighborsObject, !isInflate);
+        SetObjectActive(commitObject, !isInflate);
+        centerPool?.SetInteractionEnabled(!isInflate);
 
         if (inflateDeflateUi != null)
             inflateDeflateUi.SetVisible(isInflate);
@@ -109,11 +119,22 @@ public class MethodSelectionUI : MonoBehaviour
         SetButtonVisualState(inflateDeflateButton, isInflate);
     }
 
-    private static void SetNamedObjectActive(string objectName, bool active)
+    private void CacheBasicTranslateObjects()
     {
-        var namedObject = GameObject.Find(objectName);
-        if (namedObject != null)
-            namedObject.SetActive(active);
+        var root = ResolveUiRoot();
+        if (root == null)
+            return;
+
+        sigmaObject = FindObjectRecursive(root, "Sigma");
+        kabschNeighborsObject = FindObjectRecursive(root, "Kabsch Neighbors");
+        surfaceNeighborsObject = FindObjectRecursive(root, "Surface Neighbors");
+        commitObject = FindObjectRecursive(root, "Commit");
+    }
+
+    private static void SetObjectActive(GameObject targetObject, bool active)
+    {
+        if (targetObject != null)
+            targetObject.SetActive(active);
     }
 
     private static void SetButtonVisualState(Selectable button, bool selected)
@@ -121,9 +142,7 @@ public class MethodSelectionUI : MonoBehaviour
         if (button == null || button.targetGraphic == null)
             return;
 
-        button.targetGraphic.color = selected
-            ? new Color(0.23f, 1f, 0.80f, 0.85f)
-            : new Color(1f, 1f, 1f, 0.35f);
+        button.targetGraphic.color = selected ? SelectedButtonColor : UnselectedButtonColor;
     }
 
     private void BuildUi()
@@ -140,20 +159,20 @@ public class MethodSelectionUI : MonoBehaviour
         inflateDeflateButton = FindButton(root, InflateOptionName);
 
         if (toggleButton == null)
-            toggleButton = CreateButton(root, ToggleButtonName, "Method", new Vector2(0f, 0.18f), new Vector2(0.3f, 0.1f), ToggleMethodDropdown);
+            toggleButton = CreateButton(root, ToggleButtonName, "Method", new Vector2(0f, 0.18f), new Vector2(0.34f, 0.065f), ToggleMethodDropdown);
 
         toggleButtonText = FindText(toggleButton.GetComponent<RectTransform>(), "MethodLabel");
         if (toggleButtonText == null)
             toggleButtonText = FindText(toggleButton.GetComponent<RectTransform>(), "MethodToggleButtonLabel");
 
         if (dropdownRoot == null)
-            dropdownRoot = CreateDropdownRoot(root, DropdownRootName, new Vector2(0f, 0.105f), new Vector2(0.3f, 0.12f)).gameObject;
+            dropdownRoot = CreateDropdownRoot(root, DropdownRootName, new Vector2(0f, 0.095f), new Vector2(0.34f, 0.15f)).gameObject;
 
         var dropdownRect = dropdownRoot.GetComponent<RectTransform>();
         if (basicTranslateButton == null)
-            basicTranslateButton = CreateButton(dropdownRect, BasicOptionName, "Basic Translate", new Vector2(0f, 0.025f), new Vector2(0.3f, 0.05f), SelectBasicTranslate);
+            basicTranslateButton = CreateButton(dropdownRect, BasicOptionName, "Basic Translate", new Vector2(0f, 0.035f), new Vector2(0.34f, 0.055f), SelectBasicTranslate);
         if (inflateDeflateButton == null)
-            inflateDeflateButton = CreateButton(dropdownRect, InflateOptionName, "Inflate/Deflate", new Vector2(0f, -0.03f), new Vector2(0.3f, 0.05f), SelectInflateDeflate);
+            inflateDeflateButton = CreateButton(dropdownRect, InflateOptionName, "Inflate/Deflate", new Vector2(0f, -0.03f), new Vector2(0.34f, 0.055f), SelectInflateDeflate);
 
         dropdownRoot.SetActive(false);
         dropdownVisible = false;
@@ -221,15 +240,21 @@ public class MethodSelectionUI : MonoBehaviour
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
         rect.sizeDelta = size;
-        rect.localScale = new Vector3(0.4f, 0.4f, 0.4f);
+        rect.localScale = new Vector3(0.6f, 0.6f, 0.6f);
 
         var image = buttonObject.GetComponent<Image>();
-        image.color = new Color(1f, 1f, 1f, 0.35f);
+        image.color = UnselectedButtonColor;
 
         var button = buttonObject.GetComponent<Button>();
         button.onClick.AddListener(onClick);
+        var colors = button.colors;
+        colors.normalColor = image.color;
+        colors.highlightedColor = new Color(0.35f, 0.40f, 0.46f, 0.95f);
+        colors.pressedColor = new Color(0.55f, 0.60f, 0.66f, 0.95f);
+        colors.selectedColor = colors.highlightedColor;
+        button.colors = colors;
 
-        CreateLabel(rect, text, Vector2.zero, 20f);
+        CreateLabel(rect, text, Vector2.zero, 15f);
         return button;
     }
 
@@ -249,5 +274,23 @@ public class MethodSelectionUI : MonoBehaviour
     {
         var child = parent.Find(name);
         return child != null ? child.gameObject : null;
+    }
+
+    private static GameObject FindObjectRecursive(Transform parent, string name)
+    {
+        if (parent == null)
+            return null;
+
+        if (parent.name == name)
+            return parent.gameObject;
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var found = FindObjectRecursive(parent.GetChild(i), name);
+            if (found != null)
+                return found;
+        }
+
+        return null;
     }
 }

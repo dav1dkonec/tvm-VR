@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 /// <summary>
 /// A pool of center objects to be used to display sequence frames
@@ -115,6 +116,29 @@ public class CenterPool : MonoBehaviour
                 positions[i].X,
                 positions[i].Y,
                 positions[i].Z);
+        }
+    }
+
+    public void SetInteractionEnabled(bool enabled)
+    {
+        if (centers == null)
+            return;
+
+        if (!enabled)
+            CenterUI.ClearActiveSelections();
+
+        for (int i = 0; i < centers.Length; i++)
+        {
+            if (centers[i] == null)
+                continue;
+
+            var collider = centers[i].GetComponent<Collider>();
+            if (collider != null)
+                collider.enabled = enabled;
+
+            var grabInteractable = centers[i].GetComponent<XRGrabInteractable>();
+            if (grabInteractable != null)
+                grabInteractable.enabled = enabled;
         }
     }
 }

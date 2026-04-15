@@ -25,6 +25,7 @@ public class ActivateTeleportationRay : MonoBehaviour
     private TeleportationProvider teleportationProvider;
     private Sequence sequence;
     private EditingMethodRuntimeSettings methodSettings;
+    private InflateDeflateUI inflateDeflateUi;
     private bool wasPressed;
     private bool inflateDeflatePickArmed;
 
@@ -39,6 +40,7 @@ public class ActivateTeleportationRay : MonoBehaviour
         teleportationProvider = FindFirstObjectByType<TeleportationProvider>();
         sequence = FindFirstObjectByType<Sequence>();
         methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
+        inflateDeflateUi = FindFirstObjectByType<InflateDeflateUI>();
     }
 
     /// <summary>
@@ -77,6 +79,8 @@ public class ActivateTeleportationRay : MonoBehaviour
 
         if (leftTeleportation != null)
             leftTeleportation.SetActive(false);
+
+        inflateDeflateUi?.ShowPickFailed("Selection cancelled.\nTeleport works normally again.");
     }
 
     private void TryTeleport()
@@ -115,12 +119,14 @@ public class ActivateTeleportationRay : MonoBehaviour
 
         if (!rayInteractor.TryGetCurrent3DRaycastHit(out var hit))
         {
+            inflateDeflateUi?.ShowPickFailed("No valid mesh point was hit.\nPress Apply again and aim at the sequence mesh.");
             Debug.LogWarning("InflateDeflate: Reference point was not selected.");
             return;
         }
 
         if (hit.collider == null)
         {
+            inflateDeflateUi?.ShowPickFailed("No collider was hit.\nAim at the sequence mesh and try again.");
             Debug.LogWarning("InflateDeflate: Raycast hit has no collider.");
             return;
         }
@@ -128,10 +134,12 @@ public class ActivateTeleportationRay : MonoBehaviour
         var hitSequence = hit.collider.GetComponentInParent<Sequence>();
         if (hitSequence != sequence)
         {
+            inflateDeflateUi?.ShowPickFailed("Aim at the loaded sequence mesh.\nTeleport surfaces cannot be used as reference points.");
             Debug.LogWarning("InflateDeflate: Aim at the sequence mesh to pick a reference point.");
             return;
         }
 
+        inflateDeflateUi?.ShowPickCompleted();
         sequence.CommitInflateDeflate(hit.point);
     }
 }

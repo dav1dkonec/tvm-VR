@@ -31,10 +31,23 @@ namespace TvmVr2.Core.Methods.BasicTranslate
                 input.CenterSigma,
                 input.SequenceNeighborCount);
 
+            if (!committed)
+            {
+                return new MethodExecutionResult
+                {
+                    Success = false,
+                    ErrorMessage = "BasicTranslate commit failed."
+                };
+            }
+
+            var surfaceRebuilt = _pipeline.RebuildSurface(
+                input.Frames,
+                input.SurfaceNeighborCount);
+
             return new MethodExecutionResult
             {
-                Success = committed,
-                ErrorMessage = committed ? string.Empty : "BasicTranslate commit failed."
+                Success = surfaceRebuilt,
+                ErrorMessage = surfaceRebuilt ? string.Empty : "BasicTranslate surface rebuild failed."
             };
         }
     }

@@ -7,6 +7,8 @@ using UnityEngine.UI;
 public class InflateDeflateUI : MonoBehaviour
 {
     private const string PanelName = "Inflate Deflate Panel";
+    private static readonly Color SelectedButtonColor = new(0.24f, 0.29f, 0.35f, 0.94f);
+    private static readonly Color UnselectedButtonColor = new(0.10f, 0.13f, 0.16f, 0.78f);
 
     private EditingMethodRuntimeSettings target;
     private ActivateTeleportationRay teleportRay;
@@ -33,6 +35,9 @@ public class InflateDeflateUI : MonoBehaviour
 
         if (!visible && teleportRay != null)
             teleportRay.CancelInflateDeflatePick();
+
+        if (visible)
+            SetStatus("1. Set mode and parameters\n2. Press Apply\n3. Aim at the mesh and release the teleport trigger");
     }
 
     public void SetInflateMode()
@@ -78,7 +83,7 @@ public class InflateDeflateUI : MonoBehaviour
 
         target.CurrentMethod = MethodKind.InflateDeflate;
         teleportRay.BeginInflateDeflatePick();
-        SetStatus("Aim at the mesh and release trigger.");
+        SetStatus("Pick is armed.\nHold the teleport trigger, aim at the mesh and release to choose the reference point.");
     }
 
     public void CancelPick()
@@ -86,7 +91,17 @@ public class InflateDeflateUI : MonoBehaviour
         if (teleportRay != null)
             teleportRay.CancelInflateDeflatePick();
 
-        SetStatus("Pick cancelled.");
+        SetStatus("Selection cancelled.\nTeleport works normally again.");
+    }
+
+    public void ShowPickFailed(string message)
+    {
+        SetStatus(message);
+    }
+
+    public void ShowPickCompleted()
+    {
+        SetStatus("Reference point selected.\nEdit was sent to the method pipeline.");
     }
 
     private void SyncValues()
@@ -94,7 +109,7 @@ public class InflateDeflateUI : MonoBehaviour
         UpdateRadiusText();
         UpdateStrengthText();
         UpdateModeButtons();
-        SetStatus("Set mode and parameters, then press Apply.");
+        SetStatus("1. Set mode and parameters\n2. Press Apply\n3. Aim at the mesh and release the teleport trigger");
     }
 
     private void UpdateRadiusText()
@@ -130,9 +145,7 @@ public class InflateDeflateUI : MonoBehaviour
         if (button == null || button.targetGraphic == null)
             return;
 
-        button.targetGraphic.color = selected
-            ? new Color(0.23f, 1f, 0.80f, 0.85f)
-            : new Color(1f, 1f, 1f, 0.35f);
+        button.targetGraphic.color = selected ? SelectedButtonColor : UnselectedButtonColor;
     }
 
     private void BuildUi()
@@ -145,22 +158,22 @@ public class InflateDeflateUI : MonoBehaviour
         RectTransform panel;
         if (panelObject == null)
         {
-            panel = CreatePanel(root, PanelName, new Vector2(0.155f, -0.07f), new Vector2(0.26f, 0.22f));
+            panel = CreatePanel(root, PanelName, new Vector2(0.17f, -0.08f), new Vector2(0.34f, 0.30f));
             panelObject = panel.gameObject;
 
-            CreateLabel(panel, "Inflate / Deflate", new Vector2(0f, 0.09f), 20f);
-            inflateButton = CreateButton(panel, "InflateModeButton", "Inflate", new Vector2(-0.055f, 0.055f), new Vector2(0.11f, 0.05f), SetInflateMode);
-            deflateButton = CreateButton(panel, "DeflateModeButton", "Deflate", new Vector2(0.055f, 0.055f), new Vector2(0.11f, 0.05f), SetDeflateMode);
+            CreateLabel(panel, "Inflate / Deflate", new Vector2(0f, 0.125f), 16f);
+            inflateButton = CreateButton(panel, "InflateModeButton", "Inflate", new Vector2(-0.075f, 0.085f), new Vector2(0.14f, 0.06f), SetInflateMode);
+            deflateButton = CreateButton(panel, "DeflateModeButton", "Deflate", new Vector2(0.075f, 0.085f), new Vector2(0.14f, 0.06f), SetDeflateMode);
 
-            radiusValueText = CreateLabel(panel, "Radius", new Vector2(0f, 0.012f), 18f);
-            var radiusSlider = CreateSlider(panel, "RadiusSlider", new Vector2(0f, -0.006f), 0.01f, 0.25f, target != null ? target.InflateRadius : 0.08f, OnRadiusChanged);
+            radiusValueText = CreateLabel(panel, "Radius", new Vector2(0f, 0.035f), 14f);
+            var radiusSlider = CreateSlider(panel, "RadiusSlider", new Vector2(0f, 0.007f), 0.01f, 0.25f, target != null ? target.InflateRadius : 0.08f, OnRadiusChanged);
 
-            strengthValueText = CreateLabel(panel, "Strength", new Vector2(0f, -0.052f), 18f);
-            var strengthSlider = CreateSlider(panel, "StrengthSlider", new Vector2(0f, -0.07f), 0.001f, 0.10f, target != null ? target.InflateStrength : 0.02f, OnStrengthChanged);
+            strengthValueText = CreateLabel(panel, "Strength", new Vector2(0f, -0.035f), 14f);
+            var strengthSlider = CreateSlider(panel, "StrengthSlider", new Vector2(0f, -0.063f), 0.001f, 0.10f, target != null ? target.InflateStrength : 0.02f, OnStrengthChanged);
 
-            CreateButton(panel, "InflateApplyButton", "Apply", new Vector2(-0.055f, -0.12f), new Vector2(0.11f, 0.05f), BeginPick);
-            CreateButton(panel, "InflateCancelButton", "Cancel", new Vector2(0.055f, -0.12f), new Vector2(0.11f, 0.05f), CancelPick);
-            statusText = CreateLabel(panel, "Status", new Vector2(0f, -0.17f), 14f);
+            CreateButton(panel, "InflateApplyButton", "Apply", new Vector2(-0.075f, -0.125f), new Vector2(0.14f, 0.06f), BeginPick);
+            CreateButton(panel, "InflateCancelButton", "Cancel", new Vector2(0.075f, -0.125f), new Vector2(0.14f, 0.06f), CancelPick);
+            statusText = CreateLabel(panel, "Status", new Vector2(0f, -0.205f), 10f);
 
             OnRadiusChanged(radiusSlider.value);
             OnStrengthChanged(strengthSlider.value);
@@ -197,7 +210,7 @@ public class InflateDeflateUI : MonoBehaviour
         panel.localScale = Vector3.one;
 
         var image = panelObject.GetComponent<Image>();
-        image.color = new Color(0f, 0f, 0f, 0.45f);
+        image.color = new Color(0.03f, 0.04f, 0.05f, 0.80f);
 
         return panel;
     }
@@ -211,7 +224,7 @@ public class InflateDeflateUI : MonoBehaviour
         rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = new Vector2(200f, 50f);
+        rect.sizeDelta = new Vector2(240f, 70f);
         rect.localScale = new Vector3(0.0025f, 0.0025f, 0.0025f);
 
         var tmp = labelObject.GetComponent<TextMeshProUGUI>();
@@ -219,6 +232,7 @@ public class InflateDeflateUI : MonoBehaviour
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.text = text;
         tmp.color = Color.white;
+        tmp.textWrappingMode = TextWrappingModes.Normal;
         if (TMP_Settings.defaultFontAsset != null)
             tmp.font = TMP_Settings.defaultFontAsset;
 
@@ -235,15 +249,21 @@ public class InflateDeflateUI : MonoBehaviour
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
         rect.sizeDelta = size;
-        rect.localScale = new Vector3(0.4f, 0.4f, 0.4f);
+        rect.localScale = new Vector3(0.7f, 0.7f, 0.7f);
 
         var image = buttonObject.GetComponent<Image>();
-        image.color = new Color(1f, 1f, 1f, 0.35f);
+        image.color = UnselectedButtonColor;
 
         var button = buttonObject.GetComponent<Button>();
         button.onClick.AddListener(onClick);
+        var colors = button.colors;
+        colors.normalColor = image.color;
+        colors.highlightedColor = new Color(0.34f, 0.39f, 0.45f, 0.95f);
+        colors.pressedColor = new Color(0.52f, 0.58f, 0.64f, 0.95f);
+        colors.selectedColor = colors.highlightedColor;
+        button.colors = colors;
 
-        CreateLabel(rect, text, Vector2.zero, 4.6f);
+        CreateLabel(rect, text, Vector2.zero, 13f);
         return button;
     }
 
@@ -256,8 +276,8 @@ public class InflateDeflateUI : MonoBehaviour
         rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = new Vector2(180f, 18f);
-        rect.localScale = new Vector3(0.001f, 0.001f, 0.001f);
+        rect.sizeDelta = new Vector2(220f, 24f);
+        rect.localScale = new Vector3(0.0018f, 0.0018f, 0.0018f);
 
         var backgroundObject = new GameObject("Background", typeof(RectTransform), typeof(Image));
         backgroundObject.transform.SetParent(sliderObject.transform, false);
@@ -283,7 +303,7 @@ public class InflateDeflateUI : MonoBehaviour
         fillRect.anchorMax = Vector2.one;
         fillRect.offsetMin = Vector2.zero;
         fillRect.offsetMax = Vector2.zero;
-        fillObject.GetComponent<Image>().color = new Color(0.23f, 1f, 0.80f, 0.85f);
+        fillObject.GetComponent<Image>().color = new Color(0.75f, 0.79f, 0.84f, 0.95f);
 
         var handleArea = new GameObject("Handle Slide Area", typeof(RectTransform));
         handleArea.transform.SetParent(sliderObject.transform, false);

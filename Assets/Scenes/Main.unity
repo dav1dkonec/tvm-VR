@@ -954,7 +954,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53b2dafe3c2888a4697eb0b89041634a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  target: {fileID: 1609377556}
+  target: {fileID: 1982043960}
   minus: {fileID: 1310231423}
   plus: {fileID: 1985461461}
   text: {fileID: 421916382}
@@ -19440,7 +19440,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 144af82caff6b364eb7354988fa99a34, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  target: {fileID: 1609377557}
+  target: {fileID: 1982043960}
   minus: {fileID: 721034221}
   plus: {fileID: 1887351715}
   text: {fileID: 1697884842}
@@ -28694,9 +28694,9 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1609377558}
-        m_TargetAssemblyTypeName: GaussianCenterDeformation, Assembly-CSharp
-        m_MethodName: SetSigma
+      - m_Target: {fileID: 1982043960}
+        m_TargetAssemblyTypeName: TvmVr2.Client.Sequence.EditingMethodRuntimeSettings, Assembly-CSharp
+        m_MethodName: SetCenterSigma
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -32410,7 +32410,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1268694414}
   m_Layer: 0
-  m_Name: Brush Menu
+  m_Name: Method Menu
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -45223,104 +45223,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1605793526}
   m_CullTransparentMesh: 1
---- !u!1 &1609377555
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1609377560}
-  - component: {fileID: 1609377559}
-  - component: {fileID: 1609377558}
-  - component: {fileID: 1609377557}
-  - component: {fileID: 1609377556}
-  m_Layer: 0
-  m_Name: Brush
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1609377556
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1609377555}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4431c26b068ed349bd4345cc0d957f5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Neighbors: 6
-  InitialMaxSearchDistance: 0.1
-  Epsilon: 0.0001
-  timer: 0
---- !u!114 &1609377557
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1609377555}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a7e0b2804fe0eb84295a7670858d17d4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Neighbors: 4
-  InitialMaxSearchDistance: 0.1
-  timer: 0
---- !u!114 &1609377558
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1609377555}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e0bdeaca961f3b648a2d55e019b00791, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Sigma: 5
-  centerPool: {fileID: 1982043954}
-  sigmaSlider: {fileID: 1138520868}
-  timer: 0
---- !u!114 &1609377559
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1609377555}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4df35d9d401286545a1d0a8a962a8775, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  centerDeformation: {fileID: 1609377558}
-  sequenceDeformation: {fileID: 1609377557}
-  surfaceDeformation: {fileID: 1609377556}
-  edits: 0
---- !u!4 &1609377560
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1609377555}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1614985406
 GameObject:
   m_ObjectHideFlags: 0
@@ -49575,6 +49477,7 @@ GameObject:
   - component: {fileID: 1982043958}
   - component: {fileID: 1982043957}
   - component: {fileID: 1982043959}
+  - component: {fileID: 1982043960}
   m_Layer: 8
   m_Name: Sequence
   m_TagString: Untagged
@@ -49639,18 +49542,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 90d252f13f18c764eb4393a992be288f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useUnifiedPrototypeOnCommit: 0
-  editorPreviewDistance: 1.5
-  offlineSequentialCommitCount: 3
-  offlineTestCenterIndex: 0
-  offlineTestTranslation: {x: 0.05, y: 0, z: 0}
-  offlineMultiCenterIndices: 
-  offlineMultiCenterTranslations: []
+  methodSettings: {fileID: 1982043960}
   ui: {fileID: 90310475}
   playbackUI: {fileID: 1009174495}
   centerPool: {fileID: 1982043954}
   mesh: {fileID: 0}
-  activeBrush: {fileID: 1609377559}
   meshMaterial: {fileID: 2100000, guid: c491980b0bfe29a4eb604bcd986db65d, type: 2}
   currentFrame: 0
   time: 0
@@ -49743,6 +49639,25 @@ MonoBehaviour:
       m_SingletonActionBindings: []
       m_Flags: 0
     m_Reference: {fileID: 187161793506945269, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+--- !u!114 &1982043960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1982043952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10ded32e92166462f9532194437dc573, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  CurrentMethod: 0
+  CenterSigma: 1
+  SequenceNeighborCount: 4
+  SurfaceNeighborCount: 6
+  InflateRadius: 0.08
+  InflateStrength: 0.02
+  InflateMode: 0
 --- !u!1 &1982742693
 GameObject:
   m_ObjectHideFlags: 0
@@ -50627,7 +50542,7 @@ GameObject:
   - component: {fileID: 2006245535}
   - component: {fileID: 2006245534}
   m_Layer: 0
-  m_Name: Brush Canvas
+  m_Name: Method Canvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -52900,7 +52815,6 @@ SceneRoots:
   - {fileID: 1273798002}
   - {fileID: 1233695686}
   - {fileID: 928323913}
-  - {fileID: 1609377560}
   - {fileID: 1427515675}
   - {fileID: 2060328265}
   - {fileID: 1614985408}

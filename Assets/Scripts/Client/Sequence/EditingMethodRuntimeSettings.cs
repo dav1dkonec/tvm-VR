@@ -23,6 +23,11 @@ namespace TvmVr2.Client.Sequence
             SurfaceNeighborCount = Mathf.Max(2, value);
         }
 
+        public void SetCenterSigma(float value)
+        {
+            CenterSigma = Mathf.Max(0f, value);
+        }
+
         public void SetInflateRadius(float value)
         {
             InflateRadius = Mathf.Max(0.001f, value);

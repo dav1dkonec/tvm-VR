@@ -28,6 +28,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     private SequenceCenterPresenter centerPresenter;
     private SequenceBusyStateController busyStateController;
     private EditingCore editingCore;
+    private MeshCollider sequenceMeshCollider;
     public EditingMethodRuntimeSettings methodSettings;
 
     public SurfaceNeighborsUI ui;
@@ -146,6 +147,10 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             enabled = false;
             return;
         }
+
+        sequenceMeshCollider = gameObject.GetComponent<MeshCollider>();
+        if (sequenceMeshCollider == null)
+            sequenceMeshCollider = gameObject.AddComponent<MeshCollider>();
 
         if (playbackUI == null)
         {
@@ -273,6 +278,12 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     public void RedrawMesh()
     {
         meshPresenter.Redraw(mesh, frames[currentFrame]);
+
+        if (sequenceMeshCollider != null)
+        {
+            sequenceMeshCollider.sharedMesh = null;
+            sequenceMeshCollider.sharedMesh = mesh;
+        }
     }
 
     /// <summary>

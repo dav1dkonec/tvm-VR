@@ -145,22 +145,22 @@ public class InflateDeflateUI : MonoBehaviour
         RectTransform panel;
         if (panelObject == null)
         {
-            panel = CreatePanel(root, PanelName, new Vector2(0.34f, -0.10f), new Vector2(230f, 215f));
+            panel = CreatePanel(root, PanelName, new Vector2(0.155f, -0.07f), new Vector2(0.26f, 0.22f));
             panelObject = panel.gameObject;
 
-            CreateLabel(panel, "Inflate / Deflate", new Vector2(0f, 86f), 6.5f);
-            inflateButton = CreateButton(panel, "InflateModeButton", "Inflate", new Vector2(-52f, 54f), new Vector2(95f, 28f), SetInflateMode);
-            deflateButton = CreateButton(panel, "DeflateModeButton", "Deflate", new Vector2(52f, 54f), new Vector2(95f, 28f), SetDeflateMode);
+            CreateLabel(panel, "Inflate / Deflate", new Vector2(0f, 0.09f), 20f);
+            inflateButton = CreateButton(panel, "InflateModeButton", "Inflate", new Vector2(-0.055f, 0.055f), new Vector2(0.11f, 0.05f), SetInflateMode);
+            deflateButton = CreateButton(panel, "DeflateModeButton", "Deflate", new Vector2(0.055f, 0.055f), new Vector2(0.11f, 0.05f), SetDeflateMode);
 
-            radiusValueText = CreateLabel(panel, "Radius", new Vector2(0f, 22f), 5f);
-            var radiusSlider = CreateSlider(panel, "RadiusSlider", new Vector2(0f, 0f), 0.01f, 0.25f, target != null ? target.InflateRadius : 0.08f, OnRadiusChanged);
+            radiusValueText = CreateLabel(panel, "Radius", new Vector2(0f, 0.012f), 18f);
+            var radiusSlider = CreateSlider(panel, "RadiusSlider", new Vector2(0f, -0.006f), 0.01f, 0.25f, target != null ? target.InflateRadius : 0.08f, OnRadiusChanged);
 
-            strengthValueText = CreateLabel(panel, "Strength", new Vector2(0f, -34f), 5f);
-            var strengthSlider = CreateSlider(panel, "StrengthSlider", new Vector2(0f, -56f), 0.001f, 0.10f, target != null ? target.InflateStrength : 0.02f, OnStrengthChanged);
+            strengthValueText = CreateLabel(panel, "Strength", new Vector2(0f, -0.052f), 18f);
+            var strengthSlider = CreateSlider(panel, "StrengthSlider", new Vector2(0f, -0.07f), 0.001f, 0.10f, target != null ? target.InflateStrength : 0.02f, OnStrengthChanged);
 
-            CreateButton(panel, "InflateApplyButton", "Apply", new Vector2(-52f, -94f), new Vector2(95f, 28f), BeginPick);
-            CreateButton(panel, "InflateCancelButton", "Cancel", new Vector2(52f, -94f), new Vector2(95f, 28f), CancelPick);
-            statusText = CreateLabel(panel, "Status", new Vector2(0f, -125f), 4.4f);
+            CreateButton(panel, "InflateApplyButton", "Apply", new Vector2(-0.055f, -0.12f), new Vector2(0.11f, 0.05f), BeginPick);
+            CreateButton(panel, "InflateCancelButton", "Cancel", new Vector2(0.055f, -0.12f), new Vector2(0.11f, 0.05f), CancelPick);
+            statusText = CreateLabel(panel, "Status", new Vector2(0f, -0.17f), 14f);
 
             OnRadiusChanged(radiusSlider.value);
             OnStrengthChanged(strengthSlider.value);
@@ -194,6 +194,7 @@ public class InflateDeflateUI : MonoBehaviour
         panel.pivot = new Vector2(0.5f, 0.5f);
         panel.anchoredPosition = anchoredPosition;
         panel.sizeDelta = size;
+        panel.localScale = Vector3.one;
 
         var image = panelObject.GetComponent<Image>();
         image.color = new Color(0f, 0f, 0f, 0.45f);
@@ -210,7 +211,8 @@ public class InflateDeflateUI : MonoBehaviour
         rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = new Vector2(190f, 24f);
+        rect.sizeDelta = new Vector2(200f, 50f);
+        rect.localScale = new Vector3(0.0025f, 0.0025f, 0.0025f);
 
         var tmp = labelObject.GetComponent<TextMeshProUGUI>();
         tmp.fontSize = fontSize;
@@ -233,6 +235,7 @@ public class InflateDeflateUI : MonoBehaviour
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
         rect.sizeDelta = size;
+        rect.localScale = new Vector3(0.4f, 0.4f, 0.4f);
 
         var image = buttonObject.GetComponent<Image>();
         image.color = new Color(1f, 1f, 1f, 0.35f);
@@ -254,6 +257,7 @@ public class InflateDeflateUI : MonoBehaviour
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
         rect.sizeDelta = new Vector2(180f, 18f);
+        rect.localScale = new Vector3(0.001f, 0.001f, 0.001f);
 
         var backgroundObject = new GameObject("Background", typeof(RectTransform), typeof(Image));
         backgroundObject.transform.SetParent(sliderObject.transform, false);

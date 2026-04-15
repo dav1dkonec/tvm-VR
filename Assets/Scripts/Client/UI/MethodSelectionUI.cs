@@ -105,10 +105,10 @@ public class MethodSelectionUI : MonoBehaviour
         RectTransform panel;
         if (panelObject == null)
         {
-            panel = CreatePanel(root, PanelName, new Vector2(0.34f, 0.14f), new Vector2(220f, 85f));
-            CreateLabel(panel, "Method", new Vector2(0f, 22f), 7f);
-            basicTranslateButton = CreateButton(panel, "BasicTranslateButton", "Basic Translate", new Vector2(-52f, -10f), new Vector2(95f, 30f), SelectBasicTranslate);
-            inflateDeflateButton = CreateButton(panel, "InflateDeflateButton", "Inflate/Deflate", new Vector2(52f, -10f), new Vector2(95f, 30f), SelectInflateDeflate);
+            panel = CreatePanel(root, PanelName, new Vector2(0.15f, 0.115f), new Vector2(0.24f, 0.08f));
+            CreateLabel(panel, "Method", new Vector2(0f, 0.022f), 20f);
+            basicTranslateButton = CreateButton(panel, "BasicTranslateButton", "Basic Translate", new Vector2(-0.055f, -0.01f), new Vector2(0.11f, 0.05f), SelectBasicTranslate);
+            inflateDeflateButton = CreateButton(panel, "InflateDeflateButton", "Inflate/Deflate", new Vector2(0.055f, -0.01f), new Vector2(0.11f, 0.05f), SelectInflateDeflate);
         }
         else
         {
@@ -136,6 +136,7 @@ public class MethodSelectionUI : MonoBehaviour
         panel.pivot = new Vector2(0.5f, 0.5f);
         panel.anchoredPosition = anchoredPosition;
         panel.sizeDelta = size;
+        panel.localScale = Vector3.one;
 
         var image = panelObject.GetComponent<Image>();
         image.color = new Color(0f, 0f, 0f, 0.45f);
@@ -152,7 +153,8 @@ public class MethodSelectionUI : MonoBehaviour
         rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = new Vector2(180f, 24f);
+        rect.sizeDelta = new Vector2(200f, 50f);
+        rect.localScale = new Vector3(0.0025f, 0.0025f, 0.0025f);
 
         var tmp = labelObject.GetComponent<TextMeshProUGUI>();
         tmp.fontSize = fontSize;
@@ -175,6 +177,7 @@ public class MethodSelectionUI : MonoBehaviour
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
         rect.sizeDelta = size;
+        rect.localScale = new Vector3(0.4f, 0.4f, 0.4f);
 
         var image = buttonObject.GetComponent<Image>();
         image.color = new Color(1f, 1f, 1f, 0.35f);

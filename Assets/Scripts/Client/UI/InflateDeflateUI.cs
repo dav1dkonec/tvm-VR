@@ -137,7 +137,7 @@ public class InflateDeflateUI : MonoBehaviour
 
     private void BuildUi()
     {
-        var root = transform as RectTransform;
+        var root = ResolveUiRoot();
         if (root == null)
             return;
 
@@ -174,6 +174,14 @@ public class InflateDeflateUI : MonoBehaviour
             strengthValueText = FindText(panel, "StrengthLabel");
             statusText = FindText(panel, "StatusLabel");
         }
+    }
+
+    private RectTransform ResolveUiRoot()
+    {
+        if (transform.childCount > 0 && transform.GetChild(0) is RectTransform childRoot)
+            return childRoot;
+
+        return transform as RectTransform;
     }
 
     private static RectTransform CreatePanel(RectTransform parent, string name, Vector2 anchoredPosition, Vector2 size)

@@ -7,8 +7,7 @@ namespace TvmVr2.Client.Centers
             if (centerPool == null || centerCount < 0)
                 return;
 
-            if (centerPool.centers == null || centerPool.centers.Length != centerCount)
-                centerPool.Initialize(centerCount);
+            centerPool.PrepareForSequence(centerCount);
         }
 
         public void SyncPositions(CenterPool centerPool, System.Numerics.Vector3[] positions)

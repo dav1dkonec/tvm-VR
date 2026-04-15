@@ -72,6 +72,31 @@ public class CenterPool : MonoBehaviour
         }
     }
 
+    public void PrepareForSequence(int count)
+    {
+        if (count < 0)
+            return;
+
+        if (centers == null || centers.Length != count)
+        {
+            Initialize(count);
+            return;
+        }
+
+        for (int i = 0; i < centers.Length; i++)
+        {
+            if (centers[i] == null)
+            {
+                Initialize(count);
+                return;
+            }
+
+            var sphereWave = centers[i].GetComponent<SphereWave>();
+            if (sphereWave != null)
+                Destroy(sphereWave);
+        }
+    }
+
     /// <summary>
     /// Sets positions of the centers
     /// </summary>

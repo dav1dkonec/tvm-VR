@@ -6,12 +6,19 @@ using UnityEngine.UI;
 
 public class MethodSelectionUI : MonoBehaviour
 {
-    private const string PanelName = "Method Selection Panel";
+    private const string ToggleButtonName = "MethodToggleButton";
+    private const string DropdownRootName = "MethodDropdownRoot";
+    private const string BasicOptionName = "MethodBasicTranslateButton";
+    private const string InflateOptionName = "MethodInflateDeflateButton";
 
     private EditingMethodRuntimeSettings target;
     private InflateDeflateUI inflateDeflateUi;
+    private Button toggleButton;
     private Button basicTranslateButton;
     private Button inflateDeflateButton;
+    private TMP_Text toggleButtonText;
+    private GameObject dropdownRoot;
+    private bool dropdownVisible;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -35,12 +42,20 @@ public class MethodSelectionUI : MonoBehaviour
         ApplyMethodVisibility();
     }
 
+    public void ToggleMethodDropdown()
+    {
+        dropdownVisible = !dropdownVisible;
+        if (dropdownRoot != null)
+            dropdownRoot.SetActive(dropdownVisible);
+    }
+
     public void SelectBasicTranslate()
     {
         if (target == null)
             return;
 
         target.CurrentMethod = MethodKind.BasicTranslate;
+        dropdownVisible = false;
         ApplyMethodVisibility();
     }
 
@@ -50,6 +65,7 @@ public class MethodSelectionUI : MonoBehaviour
             return;
 
         target.CurrentMethod = MethodKind.InflateDeflate;
+        dropdownVisible = false;
         ApplyMethodVisibility();
     }
 
@@ -65,7 +81,21 @@ public class MethodSelectionUI : MonoBehaviour
         if (inflateDeflateUi != null)
             inflateDeflateUi.SetVisible(isInflate);
 
+        if (dropdownRoot != null)
+            dropdownRoot.SetActive(dropdownVisible);
+
+        UpdateToggleLabel();
         UpdateButtonState();
+    }
+
+    private void UpdateToggleLabel()
+    {
+        if (toggleButtonText == null || target == null)
+            return;
+
+        toggleButtonText.text = target.CurrentMethod == MethodKind.InflateDeflate
+            ? "Method: Inflate/Deflate"
+            : "Method: Basic Translate";
     }
 
     private void UpdateButtonState()
@@ -74,6 +104,7 @@ public class MethodSelectionUI : MonoBehaviour
             return;
 
         var isInflate = target.CurrentMethod == MethodKind.InflateDeflate;
+        SetButtonVisualState(toggleButton, true);
         SetButtonVisualState(basicTranslateButton, !isInflate);
         SetButtonVisualState(inflateDeflateButton, isInflate);
     }
@@ -101,21 +132,31 @@ public class MethodSelectionUI : MonoBehaviour
         if (root == null)
             return;
 
-        var panelObject = GameObject.Find(PanelName);
-        RectTransform panel;
-        if (panelObject == null)
-        {
-            panel = CreatePanel(root, PanelName, new Vector2(0.15f, 0.115f), new Vector2(0.24f, 0.08f));
-            CreateLabel(panel, "Method", new Vector2(0f, 0.022f), 20f);
-            basicTranslateButton = CreateButton(panel, "BasicTranslateButton", "Basic Translate", new Vector2(-0.055f, -0.01f), new Vector2(0.11f, 0.05f), SelectBasicTranslate);
-            inflateDeflateButton = CreateButton(panel, "InflateDeflateButton", "Inflate/Deflate", new Vector2(0.055f, -0.01f), new Vector2(0.11f, 0.05f), SelectInflateDeflate);
-        }
-        else
-        {
-            panel = panelObject.GetComponent<RectTransform>();
-            basicTranslateButton = FindButton(panel, "BasicTranslateButton");
-            inflateDeflateButton = FindButton(panel, "InflateDeflateButton");
-        }
+        DestroyLegacyPanel();
+
+        toggleButton = FindButton(root, ToggleButtonName);
+        dropdownRoot = FindObject(root, DropdownRootName);
+        basicTranslateButton = FindButton(root, BasicOptionName);
+        inflateDeflateButton = FindButton(root, InflateOptionName);
+
+        if (toggleButton == null)
+            toggleButton = CreateButton(root, ToggleButtonName, "Method", new Vector2(0f, 0.18f), new Vector2(0.3f, 0.1f), ToggleMethodDropdown);
+
+        toggleButtonText = FindText(toggleButton.GetComponent<RectTransform>(), "MethodLabel");
+        if (toggleButtonText == null)
+            toggleButtonText = FindText(toggleButton.GetComponent<RectTransform>(), "MethodToggleButtonLabel");
+
+        if (dropdownRoot == null)
+            dropdownRoot = CreateDropdownRoot(root, DropdownRootName, new Vector2(0f, 0.105f), new Vector2(0.3f, 0.12f)).gameObject;
+
+        var dropdownRect = dropdownRoot.GetComponent<RectTransform>();
+        if (basicTranslateButton == null)
+            basicTranslateButton = CreateButton(dropdownRect, BasicOptionName, "Basic Translate", new Vector2(0f, 0.025f), new Vector2(0.3f, 0.05f), SelectBasicTranslate);
+        if (inflateDeflateButton == null)
+            inflateDeflateButton = CreateButton(dropdownRect, InflateOptionName, "Inflate/Deflate", new Vector2(0f, -0.03f), new Vector2(0.3f, 0.05f), SelectInflateDeflate);
+
+        dropdownRoot.SetActive(false);
+        dropdownVisible = false;
     }
 
     private RectTransform ResolveUiRoot()
@@ -126,27 +167,30 @@ public class MethodSelectionUI : MonoBehaviour
         return transform as RectTransform;
     }
 
-    private static RectTransform CreatePanel(RectTransform parent, string name, Vector2 anchoredPosition, Vector2 size)
+    private static void DestroyLegacyPanel()
     {
-        var panelObject = new GameObject(name, typeof(RectTransform), typeof(Image));
-        panelObject.transform.SetParent(parent, false);
-        var panel = panelObject.GetComponent<RectTransform>();
-        panel.anchorMin = new Vector2(0.5f, 0.5f);
-        panel.anchorMax = new Vector2(0.5f, 0.5f);
-        panel.pivot = new Vector2(0.5f, 0.5f);
-        panel.anchoredPosition = anchoredPosition;
-        panel.sizeDelta = size;
-        panel.localScale = Vector3.one;
+        var legacy = GameObject.Find("Method Selection Panel");
+        if (legacy != null)
+            Destroy(legacy);
+    }
 
-        var image = panelObject.GetComponent<Image>();
-        image.color = new Color(0f, 0f, 0f, 0.45f);
-
-        return panel;
+    private static RectTransform CreateDropdownRoot(RectTransform parent, string name, Vector2 anchoredPosition, Vector2 size)
+    {
+        var rootObject = new GameObject(name, typeof(RectTransform));
+        rootObject.transform.SetParent(parent, false);
+        var rect = rootObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = anchoredPosition;
+        rect.sizeDelta = size;
+        rect.localScale = Vector3.one;
+        return rect;
     }
 
     private static TMP_Text CreateLabel(RectTransform parent, string text, Vector2 anchoredPosition, float fontSize)
     {
-        var labelObject = new GameObject(text + "Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        var labelObject = new GameObject(text.Replace(" ", string.Empty) + "Label", typeof(RectTransform), typeof(TextMeshProUGUI));
         labelObject.transform.SetParent(parent, false);
         var rect = labelObject.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -185,7 +229,7 @@ public class MethodSelectionUI : MonoBehaviour
         var button = buttonObject.GetComponent<Button>();
         button.onClick.AddListener(onClick);
 
-        CreateLabel(rect, text, Vector2.zero, 4.6f);
+        CreateLabel(rect, text, Vector2.zero, 20f);
         return button;
     }
 
@@ -193,5 +237,17 @@ public class MethodSelectionUI : MonoBehaviour
     {
         var child = parent.Find(name);
         return child != null ? child.GetComponent<Button>() : null;
+    }
+
+    private static TMP_Text FindText(RectTransform parent, string name)
+    {
+        var child = parent.Find(name);
+        return child != null ? child.GetComponent<TMP_Text>() : null;
+    }
+
+    private static GameObject FindObject(RectTransform parent, string name)
+    {
+        var child = parent.Find(name);
+        return child != null ? child.gameObject : null;
     }
 }

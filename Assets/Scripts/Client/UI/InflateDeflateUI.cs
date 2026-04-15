@@ -7,6 +7,8 @@ using UnityEngine.UI;
 public class InflateDeflateUI : MonoBehaviour
 {
     private const string PanelName = "Inflate Deflate Panel";
+    private const float RadiusStep = 0.01f;
+    private const float StrengthStep = 0.005f;
     private static readonly Color SelectedButtonColor = new(0.24f, 0.29f, 0.35f, 0.94f);
     private static readonly Color UnselectedButtonColor = new(0.10f, 0.13f, 0.16f, 0.78f);
 
@@ -23,7 +25,12 @@ public class InflateDeflateUI : MonoBehaviour
     {
         target = FindFirstObjectByType<EditingMethodRuntimeSettings>();
         teleportRay = FindFirstObjectByType<ActivateTeleportationRay>();
-        BuildUi();
+
+        var root = ResolveUiRoot();
+        if (root == null)
+            return;
+
+        BuildUi(root);
         SyncValues();
         SetVisible(target != null && target.CurrentMethod == MethodKind.InflateDeflate);
     }
@@ -37,7 +44,7 @@ public class InflateDeflateUI : MonoBehaviour
             teleportRay.CancelInflateDeflatePick();
 
         if (visible)
-            SetStatus("1. Set mode and parameters\n2. Press Apply\n3. Aim at the mesh and release the teleport trigger");
+            SetStatus("Set parameters, press Pick Point, then aim at the mesh and release the teleport trigger.");
     }
 
     public void SetInflateMode()
@@ -58,21 +65,39 @@ public class InflateDeflateUI : MonoBehaviour
         UpdateModeButtons();
     }
 
-    public void OnRadiusChanged(float value)
+    public void DecreaseRadius()
     {
         if (target == null)
             return;
 
-        target.SetInflateRadius(value);
+        target.SetInflateRadius(target.InflateRadius - RadiusStep);
         UpdateRadiusText();
     }
 
-    public void OnStrengthChanged(float value)
+    public void IncreaseRadius()
     {
         if (target == null)
             return;
 
-        target.SetInflateStrength(value);
+        target.SetInflateRadius(target.InflateRadius + RadiusStep);
+        UpdateRadiusText();
+    }
+
+    public void DecreaseStrength()
+    {
+        if (target == null)
+            return;
+
+        target.SetInflateStrength(target.InflateStrength - StrengthStep);
+        UpdateStrengthText();
+    }
+
+    public void IncreaseStrength()
+    {
+        if (target == null)
+            return;
+
+        target.SetInflateStrength(target.InflateStrength + StrengthStep);
         UpdateStrengthText();
     }
 
@@ -83,7 +108,7 @@ public class InflateDeflateUI : MonoBehaviour
 
         target.CurrentMethod = MethodKind.InflateDeflate;
         teleportRay.BeginInflateDeflatePick();
-        SetStatus("Pick is armed.\nHold the teleport trigger, aim at the mesh and release to choose the reference point.");
+        SetStatus("Pick mode is active. Hold the teleport trigger, aim at the mesh and release.");
     }
 
     public void CancelPick()
@@ -91,7 +116,7 @@ public class InflateDeflateUI : MonoBehaviour
         if (teleportRay != null)
             teleportRay.CancelInflateDeflatePick();
 
-        SetStatus("Selection cancelled.\nTeleport works normally again.");
+        SetStatus("Selection cancelled. Teleport works normally again.");
     }
 
     public void ShowPickFailed(string message)
@@ -101,7 +126,7 @@ public class InflateDeflateUI : MonoBehaviour
 
     public void ShowPickCompleted()
     {
-        SetStatus("Reference point selected.\nEdit was sent to the method pipeline.");
+        SetStatus("Reference point selected. The edit was sent to the method pipeline.");
     }
 
     private void SyncValues()
@@ -109,19 +134,19 @@ public class InflateDeflateUI : MonoBehaviour
         UpdateRadiusText();
         UpdateStrengthText();
         UpdateModeButtons();
-        SetStatus("1. Set mode and parameters\n2. Press Apply\n3. Aim at the mesh and release the teleport trigger");
+        SetStatus("Set parameters, press Pick Point, then aim at the mesh and release the teleport trigger.");
     }
 
     private void UpdateRadiusText()
     {
         if (radiusValueText != null && target != null)
-            radiusValueText.text = $"Radius: {target.InflateRadius:0.000}";
+            radiusValueText.text = $"{target.InflateRadius:0.000}";
     }
 
     private void UpdateStrengthText()
     {
         if (strengthValueText != null && target != null)
-            strengthValueText.text = $"Strength: {target.InflateStrength:0.000}";
+            strengthValueText.text = $"{target.InflateStrength:0.000}";
     }
 
     private void UpdateModeButtons()
@@ -140,53 +165,29 @@ public class InflateDeflateUI : MonoBehaviour
             statusText.text = message;
     }
 
-    private static void SetButtonVisualState(Selectable button, bool selected)
+    private void BuildUi(RectTransform root)
     {
-        if (button == null || button.targetGraphic == null)
-            return;
+        DestroyExistingPanel(root);
 
-        button.targetGraphic.color = selected ? SelectedButtonColor : UnselectedButtonColor;
-    }
+        var panel = CreatePanel(root, PanelName, new Vector2(0.02f, -0.03f), new Vector2(0.28f, 0.20f));
+        panelObject = panel.gameObject;
 
-    private void BuildUi()
-    {
-        var root = ResolveUiRoot();
-        if (root == null)
-            return;
+        CreateLabel(panel, "InflateDeflateTitle", "Inflate / Deflate", new Vector2(0f, 0.085f), new Vector2(0.22f, 0.04f), 13f, TextAlignmentOptions.Center);
 
-        panelObject = GameObject.Find(PanelName);
-        RectTransform panel;
-        if (panelObject == null)
-        {
-            panel = CreatePanel(root, PanelName, new Vector2(0.17f, -0.08f), new Vector2(0.34f, 0.30f));
-            panelObject = panel.gameObject;
+        CreateLabel(panel, "ModeTitle", "Mode", new Vector2(-0.095f, 0.045f), new Vector2(0.10f, 0.035f), 11f, TextAlignmentOptions.Left);
+        inflateButton = CreateButton(panel, "InflateModeButton", "Inflate", new Vector2(-0.035f, 0.045f), new Vector2(0.095f, 0.04f), SetInflateMode);
+        deflateButton = CreateButton(panel, "DeflateModeButton", "Deflate", new Vector2(0.065f, 0.045f), new Vector2(0.095f, 0.04f), SetDeflateMode);
 
-            CreateLabel(panel, "Inflate / Deflate", new Vector2(0f, 0.125f), 16f);
-            inflateButton = CreateButton(panel, "InflateModeButton", "Inflate", new Vector2(-0.075f, 0.085f), new Vector2(0.14f, 0.06f), SetInflateMode);
-            deflateButton = CreateButton(panel, "DeflateModeButton", "Deflate", new Vector2(0.075f, 0.085f), new Vector2(0.14f, 0.06f), SetDeflateMode);
+        CreateLabel(panel, "RadiusTitle", "Radius", new Vector2(-0.095f, 0.005f), new Vector2(0.10f, 0.035f), 11f, TextAlignmentOptions.Left);
+        CreateStepper(panel, "Radius", 0.005f, out radiusValueText, DecreaseRadius, IncreaseRadius);
 
-            radiusValueText = CreateLabel(panel, "Radius", new Vector2(0f, 0.035f), 14f);
-            var radiusSlider = CreateSlider(panel, "RadiusSlider", new Vector2(0f, 0.007f), 0.01f, 0.25f, target != null ? target.InflateRadius : 0.08f, OnRadiusChanged);
+        CreateLabel(panel, "StrengthTitle", "Strength", new Vector2(-0.095f, -0.035f), new Vector2(0.10f, 0.035f), 11f, TextAlignmentOptions.Left);
+        CreateStepper(panel, "Strength", -0.035f, out strengthValueText, DecreaseStrength, IncreaseStrength);
 
-            strengthValueText = CreateLabel(panel, "Strength", new Vector2(0f, -0.035f), 14f);
-            var strengthSlider = CreateSlider(panel, "StrengthSlider", new Vector2(0f, -0.063f), 0.001f, 0.10f, target != null ? target.InflateStrength : 0.02f, OnStrengthChanged);
+        CreateButton(panel, "InflatePickPointButton", "Pick Point", new Vector2(-0.045f, -0.085f), new Vector2(0.12f, 0.045f), BeginPick);
+        CreateButton(panel, "InflateCancelButton", "Cancel", new Vector2(0.075f, -0.085f), new Vector2(0.09f, 0.045f), CancelPick);
 
-            CreateButton(panel, "InflateApplyButton", "Apply", new Vector2(-0.075f, -0.125f), new Vector2(0.14f, 0.06f), BeginPick);
-            CreateButton(panel, "InflateCancelButton", "Cancel", new Vector2(0.075f, -0.125f), new Vector2(0.14f, 0.06f), CancelPick);
-            statusText = CreateLabel(panel, "Status", new Vector2(0f, -0.205f), 10f);
-
-            OnRadiusChanged(radiusSlider.value);
-            OnStrengthChanged(strengthSlider.value);
-        }
-        else
-        {
-            panel = panelObject.GetComponent<RectTransform>();
-            inflateButton = FindButton(panel, "InflateModeButton");
-            deflateButton = FindButton(panel, "DeflateModeButton");
-            radiusValueText = FindText(panel, "RadiusLabel");
-            strengthValueText = FindText(panel, "StrengthLabel");
-            statusText = FindText(panel, "StatusLabel");
-        }
+        statusText = CreateLabel(panel, "InflateStatusLabel", string.Empty, new Vector2(0f, -0.135f), new Vector2(0.24f, 0.05f), 8.5f, TextAlignmentOptions.Center);
     }
 
     private RectTransform ResolveUiRoot()
@@ -197,9 +198,16 @@ public class InflateDeflateUI : MonoBehaviour
         return transform as RectTransform;
     }
 
+    private static void DestroyExistingPanel(RectTransform root)
+    {
+        var existing = FindObjectRecursive(root, PanelName);
+        if (existing != null)
+            Destroy(existing);
+    }
+
     private static RectTransform CreatePanel(RectTransform parent, string name, Vector2 anchoredPosition, Vector2 size)
     {
-        var panelObject = new GameObject(name, typeof(RectTransform), typeof(Image));
+        var panelObject = new GameObject(name, typeof(RectTransform));
         panelObject.transform.SetParent(parent, false);
         var panel = panelObject.GetComponent<RectTransform>();
         panel.anchorMin = new Vector2(0.5f, 0.5f);
@@ -208,28 +216,31 @@ public class InflateDeflateUI : MonoBehaviour
         panel.anchoredPosition = anchoredPosition;
         panel.sizeDelta = size;
         panel.localScale = Vector3.one;
-
-        var image = panelObject.GetComponent<Image>();
-        image.color = new Color(0.03f, 0.04f, 0.05f, 0.80f);
-
         return panel;
     }
 
-    private static TMP_Text CreateLabel(RectTransform parent, string text, Vector2 anchoredPosition, float fontSize)
+    private static void CreateStepper(RectTransform parent, string prefix, float yPosition, out TMP_Text valueText, UnityEngine.Events.UnityAction onDecrease, UnityEngine.Events.UnityAction onIncrease)
     {
-        var labelObject = new GameObject(text.Replace(" ", string.Empty) + "Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        CreateButton(parent, prefix + "DecreaseButton", "-", new Vector2(-0.03f, yPosition), new Vector2(0.04f, 0.035f), onDecrease);
+        valueText = CreateLabel(parent, prefix + "ValueLabel", "0.000", new Vector2(0.03f, yPosition), new Vector2(0.08f, 0.035f), 11f, TextAlignmentOptions.Center);
+        CreateButton(parent, prefix + "IncreaseButton", "+", new Vector2(0.09f, yPosition), new Vector2(0.04f, 0.035f), onIncrease);
+    }
+
+    private static TMP_Text CreateLabel(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, float fontSize, TextAlignmentOptions alignment)
+    {
+        var labelObject = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
         labelObject.transform.SetParent(parent, false);
         var rect = labelObject.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0.5f, 0.5f);
         rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = new Vector2(240f, 70f);
+        rect.sizeDelta = size;
         rect.localScale = new Vector3(0.0025f, 0.0025f, 0.0025f);
 
         var tmp = labelObject.GetComponent<TextMeshProUGUI>();
         tmp.fontSize = fontSize;
-        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.alignment = alignment;
         tmp.text = text;
         tmp.color = Color.white;
         tmp.textWrappingMode = TextWrappingModes.Normal;
@@ -249,13 +260,15 @@ public class InflateDeflateUI : MonoBehaviour
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
         rect.sizeDelta = size;
-        rect.localScale = new Vector3(0.7f, 0.7f, 0.7f);
+        rect.localScale = new Vector3(0.75f, 0.75f, 0.75f);
 
         var image = buttonObject.GetComponent<Image>();
         image.color = UnselectedButtonColor;
 
         var button = buttonObject.GetComponent<Button>();
-        button.onClick.AddListener(onClick);
+        if (onClick != null)
+            button.onClick.AddListener(onClick);
+
         var colors = button.colors;
         colors.normalColor = image.color;
         colors.highlightedColor = new Color(0.34f, 0.39f, 0.45f, 0.95f);
@@ -263,83 +276,33 @@ public class InflateDeflateUI : MonoBehaviour
         colors.selectedColor = colors.highlightedColor;
         button.colors = colors;
 
-        CreateLabel(rect, text, Vector2.zero, 13f);
+        CreateLabel(rect, name + "Label", text, Vector2.zero, new Vector2(160f, 40f), 11f, TextAlignmentOptions.Center);
         return button;
     }
 
-    private static Slider CreateSlider(RectTransform parent, string name, Vector2 anchoredPosition, float min, float max, float value, UnityEngine.Events.UnityAction<float> onChanged)
+    private static void SetButtonVisualState(Selectable button, bool selected)
     {
-        var sliderObject = new GameObject(name, typeof(RectTransform), typeof(Slider));
-        sliderObject.transform.SetParent(parent, false);
-        var rect = sliderObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = new Vector2(220f, 24f);
-        rect.localScale = new Vector3(0.0018f, 0.0018f, 0.0018f);
+        if (button == null || button.targetGraphic == null)
+            return;
 
-        var backgroundObject = new GameObject("Background", typeof(RectTransform), typeof(Image));
-        backgroundObject.transform.SetParent(sliderObject.transform, false);
-        var backgroundRect = backgroundObject.GetComponent<RectTransform>();
-        backgroundRect.anchorMin = Vector2.zero;
-        backgroundRect.anchorMax = Vector2.one;
-        backgroundRect.offsetMin = Vector2.zero;
-        backgroundRect.offsetMax = Vector2.zero;
-        backgroundObject.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.22f);
-
-        var fillArea = new GameObject("Fill Area", typeof(RectTransform));
-        fillArea.transform.SetParent(sliderObject.transform, false);
-        var fillAreaRect = fillArea.GetComponent<RectTransform>();
-        fillAreaRect.anchorMin = new Vector2(0f, 0.25f);
-        fillAreaRect.anchorMax = new Vector2(1f, 0.75f);
-        fillAreaRect.offsetMin = new Vector2(8f, 0f);
-        fillAreaRect.offsetMax = new Vector2(-8f, 0f);
-
-        var fillObject = new GameObject("Fill", typeof(RectTransform), typeof(Image));
-        fillObject.transform.SetParent(fillArea.transform, false);
-        var fillRect = fillObject.GetComponent<RectTransform>();
-        fillRect.anchorMin = Vector2.zero;
-        fillRect.anchorMax = Vector2.one;
-        fillRect.offsetMin = Vector2.zero;
-        fillRect.offsetMax = Vector2.zero;
-        fillObject.GetComponent<Image>().color = new Color(0.75f, 0.79f, 0.84f, 0.95f);
-
-        var handleArea = new GameObject("Handle Slide Area", typeof(RectTransform));
-        handleArea.transform.SetParent(sliderObject.transform, false);
-        var handleAreaRect = handleArea.GetComponent<RectTransform>();
-        handleAreaRect.anchorMin = Vector2.zero;
-        handleAreaRect.anchorMax = Vector2.one;
-        handleAreaRect.offsetMin = new Vector2(8f, 0f);
-        handleAreaRect.offsetMax = new Vector2(-8f, 0f);
-
-        var handleObject = new GameObject("Handle", typeof(RectTransform), typeof(Image));
-        handleObject.transform.SetParent(handleArea.transform, false);
-        var handleRect = handleObject.GetComponent<RectTransform>();
-        handleRect.sizeDelta = new Vector2(14f, 18f);
-        handleObject.GetComponent<Image>().color = Color.white;
-
-        var slider = sliderObject.GetComponent<Slider>();
-        slider.minValue = min;
-        slider.maxValue = max;
-        slider.value = value;
-        slider.targetGraphic = handleObject.GetComponent<Image>();
-        slider.fillRect = fillRect;
-        slider.handleRect = handleRect;
-        slider.direction = Slider.Direction.LeftToRight;
-        slider.onValueChanged.AddListener(onChanged);
-        return slider;
+        button.targetGraphic.color = selected ? SelectedButtonColor : UnselectedButtonColor;
     }
 
-    private static Button FindButton(RectTransform parent, string name)
+    private static GameObject FindObjectRecursive(Transform parent, string name)
     {
-        var child = parent.Find(name);
-        return child != null ? child.GetComponent<Button>() : null;
-    }
+        if (parent == null)
+            return null;
 
-    private static TMP_Text FindText(RectTransform parent, string name)
-    {
-        var child = parent.Find(name);
-        return child != null ? child.GetComponent<TMP_Text>() : null;
+        if (parent.name == name)
+            return parent.gameObject;
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var found = FindObjectRecursive(parent.GetChild(i), name);
+            if (found != null)
+                return found;
+        }
+
+        return null;
     }
 }

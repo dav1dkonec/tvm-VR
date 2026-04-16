@@ -7,10 +7,12 @@ using UnityEngine.UI;
 public class InflateDeflateUI : MonoBehaviour
 {
     private const string PanelName = "Inflate Deflate Panel";
+    private const float RowWidth = 0.24000001f;
+    private const float RowHeight = 0.315f;
     private const float RadiusStep = 0.01f;
     private const float StrengthStep = 0.005f;
     private static readonly Color SelectedButtonColor = new(0.24f, 0.29f, 0.35f, 0.94f);
-    private static readonly Color UnselectedButtonColor = new(0.10f, 0.13f, 0.16f, 0.78f);
+    private static readonly Color UnselectedButtonColor = new(0.13725491f, 0.13725491f, 0.13725491f, 0.7058824f);
 
     private EditingMethodRuntimeSettings target;
     private ActivateTeleportationRay teleportRay;
@@ -44,7 +46,7 @@ public class InflateDeflateUI : MonoBehaviour
             teleportRay.CancelInflateDeflatePick();
 
         if (visible)
-            SetStatus("Set parameters, press Pick Point, then aim at the mesh and release the teleport trigger.");
+            SetStatus("Set parameters, press Pick Point, then use the left hand ray to aim at the mesh and release the teleport trigger.");
     }
 
     public void SetInflateMode()
@@ -108,7 +110,7 @@ public class InflateDeflateUI : MonoBehaviour
 
         target.CurrentMethod = MethodKind.InflateDeflate;
         teleportRay.BeginInflateDeflatePick();
-        SetStatus("Pick mode is active. Hold the teleport trigger, aim at the mesh and release.");
+        SetStatus("Pick mode is active. Use the left hand ray, hold the teleport trigger, aim at the mesh and release.");
     }
 
     public void CancelPick()
@@ -134,7 +136,7 @@ public class InflateDeflateUI : MonoBehaviour
         UpdateRadiusText();
         UpdateStrengthText();
         UpdateModeButtons();
-        SetStatus("Set parameters, press Pick Point, then aim at the mesh and release the teleport trigger.");
+        SetStatus("Set parameters, press Pick Point, then use the left hand ray to aim at the mesh and release the teleport trigger.");
     }
 
     private void UpdateRadiusText()
@@ -169,23 +171,27 @@ public class InflateDeflateUI : MonoBehaviour
     {
         DestroyExistingPanel(root);
 
-        var panel = CreatePanel(root, PanelName, new Vector2(0.00f, -0.02f), new Vector2(0.25f, 0.17f));
+        var panel = CreatePanel(root, PanelName);
         panelObject = panel.gameObject;
 
-        CreateLabel(panel, "ModeTitle", "Mode", new Vector2(-0.08f, 0.055f), new Vector2(90f, 30f), 10.5f, TextAlignmentOptions.Left);
-        inflateButton = CreateButton(panel, "InflateModeButton", "Inflate", new Vector2(0.005f, 0.055f), new Vector2(0.08f, 0.032f), SetInflateMode);
-        deflateButton = CreateButton(panel, "DeflateModeButton", "Deflate", new Vector2(0.090f, 0.055f), new Vector2(0.08f, 0.032f), SetDeflateMode);
+        var modeRow = CreateRow(panel, "ModeRow", 0.1152f);
+        CreateLabel(modeRow, "ModeTitle", "Mode", new Vector2(-78f, 0f), new Vector2(100f, 34f), 5f, TextAlignmentOptions.Left);
+        inflateButton = CreateButton(modeRow, "InflateModeButton", "Inflate", new Vector2(10f, 0f), new Vector2(64f, 32f), SetInflateMode);
+        deflateButton = CreateButton(modeRow, "DeflateModeButton", "Deflate", new Vector2(80f, 0f), new Vector2(64f, 32f), SetDeflateMode);
 
-        CreateLabel(panel, "RadiusTitle", "Radius", new Vector2(-0.08f, 0.015f), new Vector2(90f, 30f), 10.5f, TextAlignmentOptions.Left);
-        CreateStepper(panel, "Radius", 0.015f, out radiusValueText, DecreaseRadius, IncreaseRadius);
+        var radiusRow = CreateRow(panel, "RadiusRow", 0.0176f);
+        CreateLabel(radiusRow, "RadiusTitle", "Radius", new Vector2(-78f, 0f), new Vector2(100f, 34f), 5f, TextAlignmentOptions.Left);
+        CreateStepper(radiusRow, "Radius", out radiusValueText, DecreaseRadius, IncreaseRadius);
 
-        CreateLabel(panel, "StrengthTitle", "Strength", new Vector2(-0.08f, -0.025f), new Vector2(90f, 30f), 10.5f, TextAlignmentOptions.Left);
-        CreateStepper(panel, "Strength", -0.025f, out strengthValueText, DecreaseStrength, IncreaseStrength);
+        var strengthRow = CreateRow(panel, "StrengthRow", -0.08f);
+        CreateLabel(strengthRow, "StrengthTitle", "Strength", new Vector2(-78f, 0f), new Vector2(100f, 34f), 5f, TextAlignmentOptions.Left);
+        CreateStepper(strengthRow, "Strength", out strengthValueText, DecreaseStrength, IncreaseStrength);
 
-        CreateButton(panel, "InflatePickPointButton", "Pick Point", new Vector2(-0.025f, -0.07f), new Vector2(0.10f, 0.036f), BeginPick);
-        CreateButton(panel, "InflateCancelButton", "Cancel", new Vector2(0.080f, -0.07f), new Vector2(0.08f, 0.036f), CancelPick);
+        var actionRow = CreateRow(panel, "ActionRow", -0.181f);
+        CreateButton(actionRow, "InflatePickPointButton", "Pick Point", new Vector2(-25f, 0f), new Vector2(88f, 40f), BeginPick);
+        CreateButton(actionRow, "InflateCancelButton", "Cancel", new Vector2(60f, 0f), new Vector2(64f, 40f), CancelPick);
 
-        statusText = CreateLabel(panel, "InflateStatusLabel", string.Empty, new Vector2(0f, -0.115f), new Vector2(220f, 44f), 7.8f, TextAlignmentOptions.Center);
+        statusText = CreateLabel(panel, "InflateStatusLabel", string.Empty, new Vector2(0f, -0.255f), new Vector2(260f, 44f), 3.5f, TextAlignmentOptions.Center, new Vector3(0.0022f, 0.0022f, 0.0022f));
     }
 
     private RectTransform ResolveUiRoot()
@@ -203,7 +209,7 @@ public class InflateDeflateUI : MonoBehaviour
             Destroy(existing);
     }
 
-    private static RectTransform CreatePanel(RectTransform parent, string name, Vector2 anchoredPosition, Vector2 size)
+    private static RectTransform CreatePanel(RectTransform parent, string name)
     {
         var panelObject = new GameObject(name, typeof(RectTransform));
         panelObject.transform.SetParent(parent, false);
@@ -211,20 +217,39 @@ public class InflateDeflateUI : MonoBehaviour
         panel.anchorMin = new Vector2(0.5f, 0.5f);
         panel.anchorMax = new Vector2(0.5f, 0.5f);
         panel.pivot = new Vector2(0.5f, 0.5f);
-        panel.anchoredPosition = anchoredPosition;
-        panel.sizeDelta = size;
+        panel.anchoredPosition = Vector2.zero;
+        panel.sizeDelta = new Vector2(RowWidth, 0.70f);
         panel.localScale = Vector3.one;
         return panel;
     }
 
-    private static void CreateStepper(RectTransform parent, string prefix, float yPosition, out TMP_Text valueText, UnityEngine.Events.UnityAction onDecrease, UnityEngine.Events.UnityAction onIncrease)
+    private static RectTransform CreateRow(RectTransform parent, string name, float anchoredY)
     {
-        CreateButton(parent, prefix + "DecreaseButton", "-", new Vector2(0.000f, yPosition), new Vector2(0.034f, 0.03f), onDecrease);
-        valueText = CreateLabel(parent, prefix + "ValueLabel", "0.000", new Vector2(0.052f, yPosition), new Vector2(62f, 30f), 10f, TextAlignmentOptions.Center);
-        CreateButton(parent, prefix + "IncreaseButton", "+", new Vector2(0.104f, yPosition), new Vector2(0.034f, 0.03f), onIncrease);
+        var rowObject = new GameObject(name, typeof(RectTransform));
+        rowObject.transform.SetParent(parent, false);
+        var row = rowObject.GetComponent<RectTransform>();
+        row.anchorMin = new Vector2(0.5f, 0.5f);
+        row.anchorMax = new Vector2(0.5f, 0.5f);
+        row.pivot = new Vector2(0.5f, 0.5f);
+        row.anchoredPosition = new Vector2(0f, anchoredY);
+        row.sizeDelta = new Vector2(RowWidth, RowHeight);
+        row.localScale = Vector3.one;
+        return row;
+    }
+
+    private static void CreateStepper(RectTransform parent, string prefix, out TMP_Text valueText, UnityEngine.Events.UnityAction onDecrease, UnityEngine.Events.UnityAction onIncrease)
+    {
+        CreateButton(parent, prefix + "DecreaseButton", "-", new Vector2(10f, 0f), new Vector2(40f, 32f), onDecrease);
+        valueText = CreateLabel(parent, prefix + "ValueLabel", "0.000", new Vector2(58f, 0f), new Vector2(62f, 30f), 5f, TextAlignmentOptions.Center);
+        CreateButton(parent, prefix + "IncreaseButton", "+", new Vector2(106f, 0f), new Vector2(40f, 32f), onIncrease);
     }
 
     private static TMP_Text CreateLabel(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, float fontSize, TextAlignmentOptions alignment)
+    {
+        return CreateLabel(parent, name, text, anchoredPosition, size, fontSize, alignment, new Vector3(0.0025f, 0.0025f, 0.0025f));
+    }
+
+    private static TMP_Text CreateLabel(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, float fontSize, TextAlignmentOptions alignment, Vector3 scale)
     {
         var labelObject = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
         labelObject.transform.SetParent(parent, false);
@@ -234,7 +259,7 @@ public class InflateDeflateUI : MonoBehaviour
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
         rect.sizeDelta = size;
-        rect.localScale = new Vector3(0.0025f, 0.0025f, 0.0025f);
+        rect.localScale = scale;
 
         var tmp = labelObject.GetComponent<TextMeshProUGUI>();
         tmp.fontSize = fontSize;
@@ -259,7 +284,7 @@ public class InflateDeflateUI : MonoBehaviour
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
         rect.sizeDelta = size;
-        rect.localScale = new Vector3(0.75f, 0.75f, 0.75f);
+        rect.localScale = new Vector3(0.4f, 0.4f, 0.4f);
 
         var image = buttonObject.GetComponent<Image>();
         image.color = UnselectedButtonColor;
@@ -270,12 +295,12 @@ public class InflateDeflateUI : MonoBehaviour
 
         var colors = button.colors;
         colors.normalColor = image.color;
-        colors.highlightedColor = new Color(0.34f, 0.39f, 0.45f, 0.95f);
-        colors.pressedColor = new Color(0.52f, 0.58f, 0.64f, 0.95f);
+        colors.highlightedColor = new Color(0.9607843f, 0.9607843f, 0.9607843f, 1f);
+        colors.pressedColor = new Color(0.6792453f, 0.6792453f, 0.6792453f, 1f);
         colors.selectedColor = colors.highlightedColor;
         button.colors = colors;
 
-        CreateLabel(rect, name + "Label", text, Vector2.zero, new Vector2(160f, 40f), 11f, TextAlignmentOptions.Center);
+        CreateLabel(buttonObject.GetComponent<RectTransform>(), name + "Label", text, Vector2.zero, new Vector2(160f, 40f), 5f, TextAlignmentOptions.Center);
         return button;
     }
 

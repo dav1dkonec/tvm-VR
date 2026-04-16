@@ -26,6 +26,8 @@ public class ActivateTeleportationRay : MonoBehaviour
     private Sequence sequence;
     private EditingMethodRuntimeSettings methodSettings;
     private InflateDeflateUI inflateDeflateUi;
+    private TeleportationArea[] teleportationAreas;
+    private TeleportationAnchor[] teleportationAnchors;
     private bool wasPressed;
     private bool inflateDeflatePickArmed;
 
@@ -41,6 +43,8 @@ public class ActivateTeleportationRay : MonoBehaviour
         sequence = FindFirstObjectByType<Sequence>();
         methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
         inflateDeflateUi = FindFirstObjectByType<InflateDeflateUI>();
+        teleportationAreas = FindObjectsByType<TeleportationArea>(FindObjectsSortMode.None);
+        teleportationAnchors = FindObjectsByType<TeleportationAnchor>(FindObjectsSortMode.None);
     }
 
     /// <summary>
@@ -71,11 +75,13 @@ public class ActivateTeleportationRay : MonoBehaviour
             methodSettings.CurrentMethod = MethodKind.InflateDeflate;
 
         inflateDeflatePickArmed = true;
+        SetTeleportTargetsEnabled(false);
     }
 
     public void CancelInflateDeflatePick()
     {
         inflateDeflatePickArmed = false;
+        SetTeleportTargetsEnabled(true);
 
         if (leftTeleportation != null)
             leftTeleportation.SetActive(false);
@@ -110,6 +116,7 @@ public class ActivateTeleportationRay : MonoBehaviour
     private void TryPickInflateDeflateReferencePoint()
     {
         inflateDeflatePickArmed = false;
+        SetTeleportTargetsEnabled(true);
 
         if (rayInteractor == null || sequence == null)
             return;
@@ -119,14 +126,14 @@ public class ActivateTeleportationRay : MonoBehaviour
 
         if (!rayInteractor.TryGetCurrent3DRaycastHit(out var hit))
         {
-            inflateDeflateUi?.ShowPickFailed("No valid mesh point was hit.\nPress Apply again and aim at the sequence mesh.");
+            inflateDeflateUi?.ShowPickFailed("No valid mesh point was hit.\nPress Pick Point again, use the left hand ray and aim at the sequence mesh.");
             Debug.LogWarning("InflateDeflate: Reference point was not selected.");
             return;
         }
 
         if (hit.collider == null)
         {
-            inflateDeflateUi?.ShowPickFailed("No collider was hit.\nAim at the sequence mesh and try again.");
+            inflateDeflateUi?.ShowPickFailed("No collider was hit.\nUse the left hand ray and aim at the sequence mesh.");
             Debug.LogWarning("InflateDeflate: Raycast hit has no collider.");
             return;
         }
@@ -134,12 +141,33 @@ public class ActivateTeleportationRay : MonoBehaviour
         var hitSequence = hit.collider.GetComponentInParent<Sequence>();
         if (hitSequence != sequence)
         {
-            inflateDeflateUi?.ShowPickFailed("Aim at the loaded sequence mesh.\nTeleport surfaces cannot be used as reference points.");
+            inflateDeflateUi?.ShowPickFailed("Aim at the loaded sequence mesh with the left hand ray.\nTeleport surfaces cannot be used as reference points.");
             Debug.LogWarning("InflateDeflate: Aim at the sequence mesh to pick a reference point.");
             return;
         }
 
         inflateDeflateUi?.ShowPickCompleted();
         sequence.CommitInflateDeflate(hit.point);
+    }
+
+    private void SetTeleportTargetsEnabled(bool enabled)
+    {
+        SetTeleportTargetsEnabled(teleportationAreas, enabled);
+        SetTeleportTargetsEnabled(teleportationAnchors, enabled);
+    }
+
+    private void SetTeleportTargetsEnabled<T>(T[] targets, bool enabled) where T : Component
+    {
+        if (targets == null)
+            return;
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            var target = targets[i];
+            if (target == null)
+                continue;
+
+            target.gameObject.SetActive(enabled);
+        }
     }
 }

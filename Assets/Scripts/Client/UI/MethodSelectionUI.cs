@@ -114,9 +114,9 @@ public class MethodSelectionUI : MonoBehaviour
 
         methodLabelText.text = target.CurrentMethod switch
         {
-            MethodKind.InflateDeflate => "Method: Inflate",
-            MethodKind.LoopSequence => "Method: Looping",
-            _ => "Method: Basic"
+            MethodKind.InflateDeflate => "Inflate / Deflate",
+            MethodKind.LoopSequence => "Looping",
+            _ => "Basic Translate"
         };
     }
 
@@ -146,16 +146,16 @@ public class MethodSelectionUI : MonoBehaviour
         methodLabelText = CreateLabel(
             root,
             MethodLabelName,
-            "Method: Basic",
-            new Vector2(-0.045f, 0.18f),
-            new Vector2(170f, 40f),
-            11.5f,
-            TextAlignmentOptions.Left);
+            "Basic Translate",
+            new Vector2(0.01f, 0.18f),
+            new Vector2(180f, 40f),
+            10.5f,
+            TextAlignmentOptions.Center);
 
         CreateButton(
             root,
             ChangeButtonName,
-            "Change",
+            "Methods",
             new Vector2(0.22f, 0.18f),
             new Vector2(0.10f, 0.045f),
             ToggleMethodDropdown);

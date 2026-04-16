@@ -180,8 +180,8 @@ public class InflateDeflateUI : MonoBehaviour
 
         var modeRow = CreateRow(panel, "ModeRow", 0.1152f);
         CreateLabel(modeRow, "ModeTitle", "mode", new Vector2(0f, TitleY), Vector2.zero, 5f, TextAlignmentOptions.Center, new Vector3(0.005f, 0.005f, 0.005f));
-        inflateButton = CreateButton(modeRow, "InflateModeButton", "inflate", new Vector2(-0.042f, StepperButtonY), new Vector2(0.12f, 0.1f), SetInflateMode, UnselectedButtonColor, 3f, new Vector3(0.0018f, 0.0018f, 0.0018f));
-        deflateButton = CreateButton(modeRow, "DeflateModeButton", "deflate", new Vector2(0.042f, StepperButtonY), new Vector2(0.12f, 0.1f), SetDeflateMode, UnselectedButtonColor, 3f, new Vector3(0.0018f, 0.0018f, 0.0018f));
+        inflateButton = CreateButton(modeRow, "InflateModeButton", "inflate", new Vector2(-0.042f, StepperButtonY), new Vector2(0.12f, 0.1f), SetInflateMode, UnselectedButtonColor, 5f, new Vector3(0.0028f, 0.0028f, 0.0028f));
+        deflateButton = CreateButton(modeRow, "DeflateModeButton", "deflate", new Vector2(0.042f, StepperButtonY), new Vector2(0.12f, 0.1f), SetDeflateMode, UnselectedButtonColor, 5f, new Vector3(0.0028f, 0.0028f, 0.0028f));
 
         var radiusRow = CreateRow(panel, "RadiusRow", 0.0176f);
         CreateLabel(radiusRow, "RadiusTitle", "radius", new Vector2(0f, TitleY), Vector2.zero, 5f, TextAlignmentOptions.Center, new Vector3(0.005f, 0.005f, 0.005f));
@@ -243,9 +243,9 @@ public class InflateDeflateUI : MonoBehaviour
 
     private static void CreateStepper(RectTransform parent, string prefix, out TMP_Text valueText, UnityEngine.Events.UnityAction onDecrease, UnityEngine.Events.UnityAction onIncrease)
     {
-        CreateButton(parent, prefix + "DecreaseButton", "-", new Vector2(-0.055f, StepperButtonY), new Vector2(0.1f, 0.1f), onDecrease, StepperButtonColor, 5f, new Vector3(0.0025f, 0.0025f, 0.0025f));
+        CreateButton(parent, prefix + "DecreaseButton", "-", new Vector2(-0.055f, StepperButtonY), new Vector2(0.1f, 0.1f), onDecrease, StepperButtonColor, 7f, new Vector3(0.0032f, 0.0032f, 0.0032f));
         valueText = CreateLabel(parent, prefix + "ValueLabel", "0.000", new Vector2(0f, ValueY), Vector2.zero, 5f, TextAlignmentOptions.Center, new Vector3(0.005f, 0.005f, 0.005f));
-        CreateButton(parent, prefix + "IncreaseButton", "+", new Vector2(0.055f, StepperButtonY), new Vector2(0.1f, 0.1f), onIncrease, StepperButtonColor, 5f, new Vector3(0.0025f, 0.0025f, 0.0025f));
+        CreateButton(parent, prefix + "IncreaseButton", "+", new Vector2(0.055f, StepperButtonY), new Vector2(0.1f, 0.1f), onIncrease, StepperButtonColor, 7f, new Vector3(0.0032f, 0.0032f, 0.0032f));
     }
 
     private static TMP_Text CreateLabel(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, float fontSize, TextAlignmentOptions alignment)

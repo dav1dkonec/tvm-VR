@@ -54,9 +54,25 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             };
 
             var centers = input.Frames.Select(frame => frame.centers).ToArray();
-            var transformations = input.CenterTranslations
-                .Select(translation => DualQuaternion.Translation(new Vector3(translation.X, translation.Y, translation.Z)))
+            var transformations = Enumerable
+                .Repeat(DualQuaternion.Identity(), centers[input.FrameIndex].Length)
                 .ToArray();
+
+            for (var i = 0; i < input.SelectedCenterIndices.Length; i++)
+            {
+                var centerIndex = input.SelectedCenterIndices[i];
+                if (centerIndex < 0 || centerIndex >= transformations.Length)
+                {
+                    return new MethodExecutionResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"InflateDeflate selected center index {centerIndex} is outside valid range 0..{transformations.Length - 1}."
+                    };
+                }
+
+                var translation = input.CenterTranslations[i];
+                transformations[centerIndex] = DualQuaternion.Translation(new Vector3(translation.X, translation.Y, translation.Z));
+            }
 
             var affinityCalculation = new DistanceDirectionAffinityCalculation();
             var meshEditor = new MeshEditor(

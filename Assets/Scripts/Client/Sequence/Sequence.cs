@@ -416,47 +416,50 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         Pause();
         busyStateController.Enter(leftHand, rightHand, waitCanvas);
 
-        var succeeded = await Task.Run(() =>
+        try
         {
-            if (editingCore == null)
-                return false;
-
-            var methodKind = methodSettings != null ? methodSettings.CurrentMethod : MethodKind.BasicTranslate;
-            if (methodKind != MethodKind.InflateDeflate)
-                return false;
-
-            var result = editingCore.Execute(
-                new InflateDeflateRequest
-                {
-                    SequenceId = loadedName ?? string.Empty,
-                    FrameIndex = currentFrame,
-                    ReferencePoint = new Point3Data(referencePoint.x, referencePoint.y, referencePoint.z),
-                    Radius = methodSettings != null ? methodSettings.InflateRadius : 0.08f,
-                    Strength = methodSettings != null ? methodSettings.InflateStrength : 0.02f,
-                    Mode = methodSettings != null ? methodSettings.InflateMode : InflateDeflateMode.Inflate
-                },
-                BuildRuntimeContext());
-
-            if (!result.Succeeded)
+            var succeeded = await Task.Run(() =>
             {
-                Debug.LogError($"Sequence: {result.ErrorMessage}");
-            }
+                if (editingCore == null)
+                    return false;
 
-            return result.Succeeded;
-        });
+                var methodKind = methodSettings != null ? methodSettings.CurrentMethod : MethodKind.BasicTranslate;
+                if (methodKind != MethodKind.InflateDeflate)
+                    return false;
 
-        if (!succeeded)
+                var result = editingCore.Execute(
+                    new InflateDeflateRequest
+                    {
+                        SequenceId = loadedName ?? string.Empty,
+                        FrameIndex = currentFrame,
+                        ReferencePoint = new Point3Data(referencePoint.x, referencePoint.y, referencePoint.z),
+                        Radius = methodSettings != null ? methodSettings.InflateRadius : 0.08f,
+                        Strength = methodSettings != null ? methodSettings.InflateStrength : 0.02f,
+                        Mode = methodSettings != null ? methodSettings.InflateMode : InflateDeflateMode.Inflate
+                    },
+                    BuildRuntimeContext());
+
+                if (!result.Succeeded)
+                    Debug.LogError($"Sequence: {result.ErrorMessage}");
+
+                return result.Succeeded;
+            });
+
+            if (!succeeded)
+                return;
+
+            centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
+            RedrawMesh();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Sequence: InflateDeflate execution failed with exception: {ex}");
+        }
+        finally
         {
             busyStateController.Exit(leftHand, rightHand, waitCanvas);
             if (pl) Play();
-            return;
         }
-
-        centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
-        RedrawMesh();
-
-        busyStateController.Exit(leftHand, rightHand, waitCanvas);
-        if (pl) Play();
     }
 
     private SequenceRuntimeContext BuildRuntimeContext()

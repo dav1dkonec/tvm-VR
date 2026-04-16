@@ -45,7 +45,7 @@ namespace TVMEditor.Editing
             var newPositions = new Vector3[indices.Length];
             for (var i = 0; i < indices.Length; i++)
             {
-                newPositions[i] = transformations[i].Transform(centers[frameIndex][indices[i]]);
+                newPositions[i] = transformations[indices[i]].Transform(centers[frameIndex][indices[i]]);
             }
 
             if (AffinityCalculation != null && AffinityCalculation.GetCentersAffinity() == null)

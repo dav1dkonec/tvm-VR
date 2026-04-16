@@ -18,8 +18,8 @@ public class InflateDeflateUI : MonoBehaviour
     private static readonly Vector3 ValueScale = new(0.005f, 0.005f, 0.005f);
     private static readonly Vector3 ButtonLabelScale = new(0.0025f, 0.0025f, 0.0025f);
     private static readonly Vector3 StatusScale = new(0.0022f, 0.0022f, 0.0022f);
-    private static readonly Color SelectedButtonColor = new(0.24f, 0.29f, 0.35f, 0.94f);
-    private static readonly Color UnselectedButtonColor = new(0.13725491f, 0.13725491f, 0.13725491f, 0.7058824f);
+    private static readonly Color SelectedButtonColor = new(0.26f, 0.31f, 0.36f, 0.94f);
+    private static readonly Color UnselectedButtonColor = new(0.49019608f, 1f, 0.8784314f, 0.13725491f);
     private static readonly Color StepperButtonColor = new(0.49019608f, 1f, 0.8784314f, 0.13725491f);
 
     private EditingMethodRuntimeSettings target;
@@ -62,7 +62,12 @@ public class InflateDeflateUI : MonoBehaviour
             teleportRay.CancelInflateDeflatePick();
 
         if (visible)
+        {
+            if (target != null)
+                target.SetInflateMode(0);
+            UpdateModeButtons();
             SetStatus("Set parameters, press Pick Point, then use the left hand ray to aim at the mesh and release the teleport trigger.");
+        }
     }
 
     public void SetInflateMode()
@@ -192,8 +197,8 @@ public class InflateDeflateUI : MonoBehaviour
 
         var modeRow = CreateRow(panel, "ModeRow", 0.1152f);
         CreateLabel(modeRow, "ModeTitle", "mode", new Vector2(0f, TitleY), Vector2.zero, 5f, TextAlignmentOptions.Center, TitleScale, titleTemplate);
-        inflateButton = CreateButton(modeRow, "InflateModeButton", "inflate", new Vector2(-0.06f, StepperButtonY), new Vector2(0.20f, 0.1f), SetInflateMode, UnselectedButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
-        deflateButton = CreateButton(modeRow, "DeflateModeButton", "deflate", new Vector2(0.06f, StepperButtonY), new Vector2(0.20f, 0.1f), SetDeflateMode, UnselectedButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
+        inflateButton = CreateButton(modeRow, "InflateModeButton", "inflate", new Vector2(-0.075f, StepperButtonY), new Vector2(0.25f, 0.1f), SetInflateMode, UnselectedButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
+        deflateButton = CreateButton(modeRow, "DeflateModeButton", "deflate", new Vector2(0.075f, StepperButtonY), new Vector2(0.25f, 0.1f), SetDeflateMode, UnselectedButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
 
         var radiusRow = CreateRow(panel, "RadiusRow", 0.0176f);
         CreateLabel(radiusRow, "RadiusTitle", "radius", new Vector2(0f, TitleY), Vector2.zero, 5f, TextAlignmentOptions.Center, TitleScale, titleTemplate);
@@ -204,8 +209,8 @@ public class InflateDeflateUI : MonoBehaviour
         CreateStepper(strengthRow, "Strength", out strengthValueText, DecreaseStrength, IncreaseStrength);
 
         var actionRow = CreateRow(panel, "ActionRow", -0.181f);
-        CreateButton(actionRow, "InflatePickPointButton", "pick point", new Vector2(-0.075f, 0f), new Vector2(0.22f, 0.1f), BeginPick, UnselectedButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
-        CreateButton(actionRow, "InflateCancelButton", "cancel", new Vector2(0.085f, 0f), new Vector2(0.13f, 0.1f), CancelPick, UnselectedButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
+        CreateButton(actionRow, "InflatePickPointButton", "pick point", new Vector2(-0.085f, 0f), new Vector2(0.26f, 0.1f), BeginPick, UnselectedButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
+        CreateButton(actionRow, "InflateCancelButton", "cancel", new Vector2(0.095f, 0f), new Vector2(0.15f, 0.1f), CancelPick, UnselectedButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
 
         statusText = CreateLabel(panel, "InflateStatusLabel", string.Empty, new Vector2(0f, -0.255f), new Vector2(260f, 44f), 3.5f, TextAlignmentOptions.Center, StatusScale);
     }
@@ -349,9 +354,9 @@ public class InflateDeflateUI : MonoBehaviour
 
         var colors = button.colors;
         colors.normalColor = image.color;
-        colors.highlightedColor = new Color(0.9607843f, 0.9607843f, 0.9607843f, 1f);
-        colors.pressedColor = new Color(0.6792453f, 0.6792453f, 0.6792453f, 1f);
-        colors.selectedColor = colors.highlightedColor;
+        colors.highlightedColor = image.color;
+        colors.pressedColor = new Color(0.13725491f, 0.13725491f, 0.13725491f, 0.7058824f);
+        colors.selectedColor = image.color;
         button.colors = colors;
 
         CreateLabel(buttonObject.GetComponent<RectTransform>(), name + "Label", text, new Vector2(0f, 0.004f), new Vector2(200f, 50f), fontSize, TextAlignmentOptions.Center, labelScale, template);

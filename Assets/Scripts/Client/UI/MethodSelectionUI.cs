@@ -13,7 +13,7 @@ public class MethodSelectionUI : MonoBehaviour
     private const string BasicOptionName = "MethodBasicTranslateButton";
     private const string InflateOptionName = "MethodInflateDeflateButton";
     private const string LoopOptionName = "MethodLoopSequenceButton";
-    private static readonly Color SelectedButtonColor = new(0.49019608f, 1f, 0.8784314f, 0.38f);
+    private static readonly Color SelectedButtonColor = new(0.30f, 0.36f, 0.42f, 0.92f);
     private static readonly Color UnselectedButtonColor = new(0.08f, 0.11f, 0.14f, 0.72f);
     private static readonly Color DisabledButtonColor = new(0.10f, 0.10f, 0.10f, 0.40f);
 
@@ -157,7 +157,7 @@ public class MethodSelectionUI : MonoBehaviour
             ChangeButtonName,
             "Methods",
             new Vector2(0.22f, 0.18f),
-            new Vector2(0.10f, 0.045f),
+            new Vector2(0.15f, 0.045f),
             ToggleMethodDropdown);
 
         dropdownRoot = CreateDropdownRoot(

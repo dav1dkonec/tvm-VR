@@ -83,6 +83,7 @@ public class MethodSelectionUI : MonoBehaviour
             return;
 
         target.CurrentMethod = MethodKind.InflateDeflate;
+        target.SetInflateMode(0);
         dropdownVisible = false;
         ApplyMethodVisibility();
     }

@@ -21,6 +21,10 @@ public class InflateDeflateUI : MonoBehaviour
     private static readonly Color SelectedButtonColor = new(0.26f, 0.31f, 0.36f, 0.94f);
     private static readonly Color UnselectedButtonColor = new(0.49019608f, 1f, 0.8784314f, 0.13725491f);
     private static readonly Color StepperButtonColor = new(0.49019608f, 1f, 0.8784314f, 0.13725491f);
+    private static readonly Color ActionButtonColor = new(0.08f, 0.08f, 0.08f, 0.88f);
+    private static readonly Color ModeSelectedColor = new(0.10f, 0.10f, 0.10f, 0.88f);
+    private static readonly Color ModeUnselectedColor = new(0f, 0f, 0f, 0f);
+    private static readonly Color ModeTextColor = new(0.49019608f, 1f, 0.8784314f, 1f);
 
     private EditingMethodRuntimeSettings target;
     private ActivateTeleportationRay teleportRay;
@@ -178,8 +182,8 @@ public class InflateDeflateUI : MonoBehaviour
             return;
 
         var inflateSelected = target.InflateMode == InflateDeflateMode.Inflate;
-        SetButtonVisualState(inflateButton, inflateSelected);
-        SetButtonVisualState(deflateButton, !inflateSelected);
+        SetModeButtonVisualState(inflateButton, inflateSelected);
+        SetModeButtonVisualState(deflateButton, !inflateSelected);
     }
 
     private void SetStatus(string message)
@@ -197,8 +201,8 @@ public class InflateDeflateUI : MonoBehaviour
 
         var modeRow = CreateRow(panel, "ModeRow", 0.1152f);
         CreateLabel(modeRow, "ModeTitle", "mode", new Vector2(0f, TitleY), Vector2.zero, 5f, TextAlignmentOptions.Center, TitleScale, titleTemplate);
-        inflateButton = CreateButton(modeRow, "InflateModeButton", "inflate", new Vector2(-0.075f, StepperButtonY), new Vector2(0.25f, 0.1f), SetInflateMode, UnselectedButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
-        deflateButton = CreateButton(modeRow, "DeflateModeButton", "deflate", new Vector2(0.075f, StepperButtonY), new Vector2(0.25f, 0.1f), SetDeflateMode, UnselectedButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
+        inflateButton = CreateButton(modeRow, "InflateModeButton", "inflate", new Vector2(-0.075f, StepperButtonY), new Vector2(0.25f, 0.1f), SetInflateMode, ModeUnselectedColor, 20f, ButtonLabelScale, actionButtonTemplate);
+        deflateButton = CreateButton(modeRow, "DeflateModeButton", "deflate", new Vector2(0.075f, StepperButtonY), new Vector2(0.25f, 0.1f), SetDeflateMode, ModeUnselectedColor, 20f, ButtonLabelScale, actionButtonTemplate);
 
         var radiusRow = CreateRow(panel, "RadiusRow", 0.0176f);
         CreateLabel(radiusRow, "RadiusTitle", "radius", new Vector2(0f, TitleY), Vector2.zero, 5f, TextAlignmentOptions.Center, TitleScale, titleTemplate);
@@ -209,8 +213,8 @@ public class InflateDeflateUI : MonoBehaviour
         CreateStepper(strengthRow, "Strength", out strengthValueText, DecreaseStrength, IncreaseStrength);
 
         var actionRow = CreateRow(panel, "ActionRow", -0.181f);
-        CreateButton(actionRow, "InflatePickPointButton", "pick point", new Vector2(-0.085f, 0f), new Vector2(0.26f, 0.1f), BeginPick, UnselectedButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
-        CreateButton(actionRow, "InflateCancelButton", "cancel", new Vector2(0.095f, 0f), new Vector2(0.15f, 0.1f), CancelPick, UnselectedButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
+        CreateButton(actionRow, "InflatePickPointButton", "pick point", new Vector2(-0.085f, 0f), new Vector2(0.26f, 0.1f), BeginPick, ActionButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
+        CreateButton(actionRow, "InflateCancelButton", "cancel", new Vector2(0.095f, 0f), new Vector2(0.15f, 0.1f), CancelPick, ActionButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
 
         statusText = CreateLabel(panel, "InflateStatusLabel", string.Empty, new Vector2(0f, -0.255f), new Vector2(260f, 44f), 3.5f, TextAlignmentOptions.Center, StatusScale);
     }
@@ -384,6 +388,18 @@ public class InflateDeflateUI : MonoBehaviour
         targetText.enableKerning = template.enableKerning;
         targetText.isRightToLeftText = template.isRightToLeftText;
         targetText.color = template.color;
+    }
+
+    private static void SetModeButtonVisualState(Button button, bool selected)
+    {
+        if (button == null || button.targetGraphic == null)
+            return;
+
+        button.targetGraphic.color = selected ? ModeSelectedColor : ModeUnselectedColor;
+
+        var label = button.GetComponentInChildren<TMP_Text>();
+        if (label != null)
+            label.color = selected ? Color.white : ModeTextColor;
     }
 
     private static bool Approximately(Color a, Color b)

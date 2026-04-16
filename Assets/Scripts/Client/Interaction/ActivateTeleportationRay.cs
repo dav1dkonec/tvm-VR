@@ -56,7 +56,6 @@ public class ActivateTeleportationRay : MonoBehaviour
             return;
 
         bool isPressed = leftActivate.action.ReadValue<float>() > 0.01f;
-        leftTeleportation.SetActive(isPressed);
 
         if (wasPressed && !isPressed)
         {
@@ -65,6 +64,8 @@ public class ActivateTeleportationRay : MonoBehaviour
             else
                 TryTeleport();
         }
+
+        leftTeleportation.SetActive(isPressed);
 
         wasPressed = isPressed;
     }
@@ -124,7 +125,7 @@ public class ActivateTeleportationRay : MonoBehaviour
         if (methodSettings != null && methodSettings.CurrentMethod != MethodKind.InflateDeflate)
             return;
 
-        if (!rayInteractor.TryGetCurrent3DRaycastHit(out var hit))
+        if (!TryGetCurrentHit(out var hit))
         {
             inflateDeflateUi?.ShowPickFailed("No valid mesh point was hit.\nPress Pick Point again, use the left hand ray and aim at the sequence mesh.");
             Debug.LogWarning("InflateDeflate: Reference point was not selected.");
@@ -148,6 +149,20 @@ public class ActivateTeleportationRay : MonoBehaviour
 
         inflateDeflateUi?.ShowPickCompleted();
         sequence.CommitInflateDeflate(hit.point);
+    }
+
+    private bool TryGetCurrentHit(out RaycastHit hit)
+    {
+        hit = default;
+
+        if (rayInteractor == null)
+            return false;
+
+        if (rayInteractor.TryGetCurrent3DRaycastHit(out hit))
+            return true;
+
+        var ray = new Ray(rayInteractor.transform.position, rayInteractor.transform.forward);
+        return Physics.Raycast(ray, out hit, 100f);
     }
 
     private void SetTeleportTargetsEnabled(bool enabled)

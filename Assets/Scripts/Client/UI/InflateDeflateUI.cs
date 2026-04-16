@@ -9,10 +9,14 @@ public class InflateDeflateUI : MonoBehaviour
     private const string PanelName = "Inflate Deflate Panel";
     private const float RowWidth = 0.24000001f;
     private const float RowHeight = 0.315f;
+    private const float TitleY = 0.005f;
+    private const float ValueY = -0.03250019f;
+    private const float StepperButtonY = -0.035f;
     private const float RadiusStep = 0.01f;
     private const float StrengthStep = 0.005f;
     private static readonly Color SelectedButtonColor = new(0.24f, 0.29f, 0.35f, 0.94f);
     private static readonly Color UnselectedButtonColor = new(0.13725491f, 0.13725491f, 0.13725491f, 0.7058824f);
+    private static readonly Color StepperButtonColor = new(0.49019608f, 1f, 0.8784314f, 0.13725491f);
 
     private EditingMethodRuntimeSettings target;
     private ActivateTeleportationRay teleportRay;
@@ -175,21 +179,21 @@ public class InflateDeflateUI : MonoBehaviour
         panelObject = panel.gameObject;
 
         var modeRow = CreateRow(panel, "ModeRow", 0.1152f);
-        CreateLabel(modeRow, "ModeTitle", "Mode", new Vector2(-78f, 0f), new Vector2(100f, 34f), 5f, TextAlignmentOptions.Left);
-        inflateButton = CreateButton(modeRow, "InflateModeButton", "Inflate", new Vector2(10f, 0f), new Vector2(64f, 32f), SetInflateMode);
-        deflateButton = CreateButton(modeRow, "DeflateModeButton", "Deflate", new Vector2(80f, 0f), new Vector2(64f, 32f), SetDeflateMode);
+        CreateLabel(modeRow, "ModeTitle", "mode", new Vector2(0f, TitleY), Vector2.zero, 5f, TextAlignmentOptions.Center, new Vector3(0.005f, 0.005f, 0.005f));
+        inflateButton = CreateButton(modeRow, "InflateModeButton", "inflate", new Vector2(-0.042f, StepperButtonY), new Vector2(0.12f, 0.1f), SetInflateMode, UnselectedButtonColor, 3f, new Vector3(0.0018f, 0.0018f, 0.0018f));
+        deflateButton = CreateButton(modeRow, "DeflateModeButton", "deflate", new Vector2(0.042f, StepperButtonY), new Vector2(0.12f, 0.1f), SetDeflateMode, UnselectedButtonColor, 3f, new Vector3(0.0018f, 0.0018f, 0.0018f));
 
         var radiusRow = CreateRow(panel, "RadiusRow", 0.0176f);
-        CreateLabel(radiusRow, "RadiusTitle", "Radius", new Vector2(-78f, 0f), new Vector2(100f, 34f), 5f, TextAlignmentOptions.Left);
+        CreateLabel(radiusRow, "RadiusTitle", "radius", new Vector2(0f, TitleY), Vector2.zero, 5f, TextAlignmentOptions.Center, new Vector3(0.005f, 0.005f, 0.005f));
         CreateStepper(radiusRow, "Radius", out radiusValueText, DecreaseRadius, IncreaseRadius);
 
         var strengthRow = CreateRow(panel, "StrengthRow", -0.08f);
-        CreateLabel(strengthRow, "StrengthTitle", "Strength", new Vector2(-78f, 0f), new Vector2(100f, 34f), 5f, TextAlignmentOptions.Left);
+        CreateLabel(strengthRow, "StrengthTitle", "strength", new Vector2(0f, TitleY), Vector2.zero, 5f, TextAlignmentOptions.Center, new Vector3(0.005f, 0.005f, 0.005f));
         CreateStepper(strengthRow, "Strength", out strengthValueText, DecreaseStrength, IncreaseStrength);
 
         var actionRow = CreateRow(panel, "ActionRow", -0.181f);
-        CreateButton(actionRow, "InflatePickPointButton", "Pick Point", new Vector2(-25f, 0f), new Vector2(88f, 40f), BeginPick);
-        CreateButton(actionRow, "InflateCancelButton", "Cancel", new Vector2(60f, 0f), new Vector2(64f, 40f), CancelPick);
+        CreateButton(actionRow, "InflatePickPointButton", "pick point", new Vector2(-0.042f, 0f), new Vector2(0.13f, 0.1f), BeginPick, UnselectedButtonColor, 4f, new Vector3(0.0022f, 0.0022f, 0.0022f));
+        CreateButton(actionRow, "InflateCancelButton", "cancel", new Vector2(0.06f, 0f), new Vector2(0.09f, 0.1f), CancelPick, UnselectedButtonColor, 4f, new Vector3(0.0022f, 0.0022f, 0.0022f));
 
         statusText = CreateLabel(panel, "InflateStatusLabel", string.Empty, new Vector2(0f, -0.255f), new Vector2(260f, 44f), 3.5f, TextAlignmentOptions.Center, new Vector3(0.0022f, 0.0022f, 0.0022f));
     }
@@ -239,9 +243,9 @@ public class InflateDeflateUI : MonoBehaviour
 
     private static void CreateStepper(RectTransform parent, string prefix, out TMP_Text valueText, UnityEngine.Events.UnityAction onDecrease, UnityEngine.Events.UnityAction onIncrease)
     {
-        CreateButton(parent, prefix + "DecreaseButton", "-", new Vector2(10f, 0f), new Vector2(40f, 32f), onDecrease);
-        valueText = CreateLabel(parent, prefix + "ValueLabel", "0.000", new Vector2(58f, 0f), new Vector2(62f, 30f), 5f, TextAlignmentOptions.Center);
-        CreateButton(parent, prefix + "IncreaseButton", "+", new Vector2(106f, 0f), new Vector2(40f, 32f), onIncrease);
+        CreateButton(parent, prefix + "DecreaseButton", "-", new Vector2(-0.055f, StepperButtonY), new Vector2(0.1f, 0.1f), onDecrease, StepperButtonColor, 5f, new Vector3(0.0025f, 0.0025f, 0.0025f));
+        valueText = CreateLabel(parent, prefix + "ValueLabel", "0.000", new Vector2(0f, ValueY), Vector2.zero, 5f, TextAlignmentOptions.Center, new Vector3(0.005f, 0.005f, 0.005f));
+        CreateButton(parent, prefix + "IncreaseButton", "+", new Vector2(0.055f, StepperButtonY), new Vector2(0.1f, 0.1f), onIncrease, StepperButtonColor, 5f, new Vector3(0.0025f, 0.0025f, 0.0025f));
     }
 
     private static TMP_Text CreateLabel(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, float fontSize, TextAlignmentOptions alignment)
@@ -266,7 +270,7 @@ public class InflateDeflateUI : MonoBehaviour
         tmp.alignment = alignment;
         tmp.text = text;
         tmp.color = Color.white;
-        tmp.textWrappingMode = TextWrappingModes.Normal;
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
         tmp.raycastTarget = false;
         if (TMP_Settings.defaultFontAsset != null)
             tmp.font = TMP_Settings.defaultFontAsset;
@@ -274,7 +278,16 @@ public class InflateDeflateUI : MonoBehaviour
         return tmp;
     }
 
-    private static Button CreateButton(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, UnityEngine.Events.UnityAction onClick)
+    private static Button CreateButton(
+        RectTransform parent,
+        string name,
+        string text,
+        Vector2 anchoredPosition,
+        Vector2 size,
+        UnityEngine.Events.UnityAction onClick,
+        Color color,
+        float fontSize,
+        Vector3 labelScale)
     {
         var buttonObject = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
         buttonObject.transform.SetParent(parent, false);
@@ -287,7 +300,7 @@ public class InflateDeflateUI : MonoBehaviour
         rect.localScale = new Vector3(0.4f, 0.4f, 0.4f);
 
         var image = buttonObject.GetComponent<Image>();
-        image.color = UnselectedButtonColor;
+        image.color = color;
 
         var button = buttonObject.GetComponent<Button>();
         if (onClick != null)
@@ -300,7 +313,7 @@ public class InflateDeflateUI : MonoBehaviour
         colors.selectedColor = colors.highlightedColor;
         button.colors = colors;
 
-        CreateLabel(buttonObject.GetComponent<RectTransform>(), name + "Label", text, Vector2.zero, new Vector2(160f, 40f), 5f, TextAlignmentOptions.Center);
+        CreateLabel(buttonObject.GetComponent<RectTransform>(), name + "Label", text, new Vector2(0f, 0.004f), new Vector2(200f, 50f), fontSize, TextAlignmentOptions.Center, labelScale);
         return button;
     }
 

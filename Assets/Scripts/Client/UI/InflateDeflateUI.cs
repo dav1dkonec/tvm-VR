@@ -172,22 +172,22 @@ public class InflateDeflateUI : MonoBehaviour
         var panel = CreatePanel(root, PanelName, new Vector2(0.02f, -0.03f), new Vector2(0.28f, 0.20f));
         panelObject = panel.gameObject;
 
-        CreateLabel(panel, "InflateDeflateTitle", "Inflate / Deflate", new Vector2(0f, 0.085f), new Vector2(0.22f, 0.04f), 13f, TextAlignmentOptions.Center);
+        CreateLabel(panel, "InflateDeflateTitle", "Inflate / Deflate", new Vector2(0f, 0.085f), new Vector2(220f, 44f), 13f, TextAlignmentOptions.Center);
 
-        CreateLabel(panel, "ModeTitle", "Mode", new Vector2(-0.095f, 0.045f), new Vector2(0.10f, 0.035f), 11f, TextAlignmentOptions.Left);
+        CreateLabel(panel, "ModeTitle", "Mode", new Vector2(-0.095f, 0.045f), new Vector2(120f, 36f), 11f, TextAlignmentOptions.Left);
         inflateButton = CreateButton(panel, "InflateModeButton", "Inflate", new Vector2(-0.035f, 0.045f), new Vector2(0.095f, 0.04f), SetInflateMode);
         deflateButton = CreateButton(panel, "DeflateModeButton", "Deflate", new Vector2(0.065f, 0.045f), new Vector2(0.095f, 0.04f), SetDeflateMode);
 
-        CreateLabel(panel, "RadiusTitle", "Radius", new Vector2(-0.095f, 0.005f), new Vector2(0.10f, 0.035f), 11f, TextAlignmentOptions.Left);
+        CreateLabel(panel, "RadiusTitle", "Radius", new Vector2(-0.095f, 0.005f), new Vector2(120f, 36f), 11f, TextAlignmentOptions.Left);
         CreateStepper(panel, "Radius", 0.005f, out radiusValueText, DecreaseRadius, IncreaseRadius);
 
-        CreateLabel(panel, "StrengthTitle", "Strength", new Vector2(-0.095f, -0.035f), new Vector2(0.10f, 0.035f), 11f, TextAlignmentOptions.Left);
+        CreateLabel(panel, "StrengthTitle", "Strength", new Vector2(-0.095f, -0.035f), new Vector2(120f, 36f), 11f, TextAlignmentOptions.Left);
         CreateStepper(panel, "Strength", -0.035f, out strengthValueText, DecreaseStrength, IncreaseStrength);
 
         CreateButton(panel, "InflatePickPointButton", "Pick Point", new Vector2(-0.045f, -0.085f), new Vector2(0.12f, 0.045f), BeginPick);
         CreateButton(panel, "InflateCancelButton", "Cancel", new Vector2(0.075f, -0.085f), new Vector2(0.09f, 0.045f), CancelPick);
 
-        statusText = CreateLabel(panel, "InflateStatusLabel", string.Empty, new Vector2(0f, -0.135f), new Vector2(0.24f, 0.05f), 8.5f, TextAlignmentOptions.Center);
+        statusText = CreateLabel(panel, "InflateStatusLabel", string.Empty, new Vector2(0f, -0.135f), new Vector2(240f, 60f), 8.5f, TextAlignmentOptions.Center);
     }
 
     private RectTransform ResolveUiRoot()
@@ -222,7 +222,7 @@ public class InflateDeflateUI : MonoBehaviour
     private static void CreateStepper(RectTransform parent, string prefix, float yPosition, out TMP_Text valueText, UnityEngine.Events.UnityAction onDecrease, UnityEngine.Events.UnityAction onIncrease)
     {
         CreateButton(parent, prefix + "DecreaseButton", "-", new Vector2(-0.03f, yPosition), new Vector2(0.04f, 0.035f), onDecrease);
-        valueText = CreateLabel(parent, prefix + "ValueLabel", "0.000", new Vector2(0.03f, yPosition), new Vector2(0.08f, 0.035f), 11f, TextAlignmentOptions.Center);
+        valueText = CreateLabel(parent, prefix + "ValueLabel", "0.000", new Vector2(0.03f, yPosition), new Vector2(90f, 36f), 11f, TextAlignmentOptions.Center);
         CreateButton(parent, prefix + "IncreaseButton", "+", new Vector2(0.09f, yPosition), new Vector2(0.04f, 0.035f), onIncrease);
     }
 

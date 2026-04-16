@@ -148,7 +148,7 @@ public class MethodSelectionUI : MonoBehaviour
             MethodLabelName,
             "Active Method: Basic Translate",
             new Vector2(-0.05f, 0.18f),
-            new Vector2(0.24f, 0.05f),
+            new Vector2(260f, 46f),
             13f,
             TextAlignmentOptions.Left);
 

@@ -218,7 +218,7 @@ public class InflateDeflateUI : MonoBehaviour
         panel.anchorMax = new Vector2(0.5f, 0.5f);
         panel.pivot = new Vector2(0.5f, 0.5f);
         panel.anchoredPosition = Vector2.zero;
-        panel.sizeDelta = new Vector2(RowWidth, 0.70f);
+        panel.sizeDelta = Vector2.zero;
         panel.localScale = Vector3.one;
         return panel;
     }

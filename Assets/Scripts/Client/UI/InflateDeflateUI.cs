@@ -268,9 +268,9 @@ public class InflateDeflateUI : MonoBehaviour
 
     private void CreateStepper(RectTransform parent, string prefix, out TMP_Text valueText, UnityEngine.Events.UnityAction onDecrease, UnityEngine.Events.UnityAction onIncrease)
     {
-        CreateButton(parent, prefix + "DecreaseButton", "-", new Vector2(-0.07f, StepperButtonY), new Vector2(0.1f, 0.1f), onDecrease, StepperButtonColor, 20f, ButtonLabelScale, stepperButtonTemplate);
+        CreateButton(parent, prefix + "DecreaseButton", "-", new Vector2(-0.07f, StepperButtonY), new Vector2(0.1f, 0.1f), onDecrease, StepperButtonColor, 36f, ButtonLabelScale, stepperButtonTemplate);
         valueText = CreateLabel(parent, prefix + "ValueLabel", "0.000", new Vector2(0f, ValueY), Vector2.zero, 5f, TextAlignmentOptions.Center, ValueScale, valueTemplate);
-        CreateButton(parent, prefix + "IncreaseButton", "+", new Vector2(0.07f, StepperButtonY), new Vector2(0.1f, 0.1f), onIncrease, StepperButtonColor, 20f, ButtonLabelScale, stepperButtonTemplate);
+        CreateButton(parent, prefix + "IncreaseButton", "+", new Vector2(0.07f, StepperButtonY), new Vector2(0.1f, 0.1f), onIncrease, StepperButtonColor, 36f, ButtonLabelScale, stepperButtonTemplate);
     }
 
     private TMP_Text CreateLabel(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, float fontSize, TextAlignmentOptions alignment)
@@ -353,10 +353,20 @@ public class InflateDeflateUI : MonoBehaviour
             button.onClick.AddListener(onClick);
 
         var colors = button.colors;
-        colors.normalColor = image.color;
-        colors.highlightedColor = image.color;
-        colors.pressedColor = new Color(0.13725491f, 0.13725491f, 0.13725491f, 0.7058824f);
-        colors.selectedColor = image.color;
+        if (Approximately(color, StepperButtonColor))
+        {
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(0.9607843f, 0.9607843f, 0.9607843f, 1f);
+            colors.pressedColor = new Color(0.6792453f, 0.6792453f, 0.6792453f, 1f);
+            colors.selectedColor = colors.highlightedColor;
+        }
+        else
+        {
+            colors.normalColor = image.color;
+            colors.highlightedColor = image.color;
+            colors.pressedColor = new Color(0.13725491f, 0.13725491f, 0.13725491f, 0.7058824f);
+            colors.selectedColor = image.color;
+        }
         button.colors = colors;
 
         CreateLabel(buttonObject.GetComponent<RectTransform>(), name + "Label", text, new Vector2(0f, 0.004f), new Vector2(200f, 50f), fontSize, TextAlignmentOptions.Center, labelScale, template);
@@ -374,6 +384,15 @@ public class InflateDeflateUI : MonoBehaviour
         targetText.enableKerning = template.enableKerning;
         targetText.isRightToLeftText = template.isRightToLeftText;
         targetText.color = template.color;
+    }
+
+    private static bool Approximately(Color a, Color b)
+    {
+        const float epsilon = 0.0001f;
+        return Mathf.Abs(a.r - b.r) < epsilon
+            && Mathf.Abs(a.g - b.g) < epsilon
+            && Mathf.Abs(a.b - b.b) < epsilon
+            && Mathf.Abs(a.a - b.a) < epsilon;
     }
 
     private static void SetButtonVisualState(Selectable button, bool selected)

@@ -114,9 +114,9 @@ public class MethodSelectionUI : MonoBehaviour
 
         methodLabelText.text = target.CurrentMethod switch
         {
-            MethodKind.InflateDeflate => "Active Method: Inflate/Deflate",
-            MethodKind.LoopSequence => "Active Method: Looping",
-            _ => "Active Method: Basic Translate"
+            MethodKind.InflateDeflate => "Method: Inflate",
+            MethodKind.LoopSequence => "Method: Looping",
+            _ => "Method: Basic"
         };
     }
 
@@ -146,24 +146,24 @@ public class MethodSelectionUI : MonoBehaviour
         methodLabelText = CreateLabel(
             root,
             MethodLabelName,
-            "Active Method: Basic Translate",
-            new Vector2(-0.05f, 0.18f),
-            new Vector2(260f, 46f),
-            13f,
+            "Method: Basic",
+            new Vector2(-0.045f, 0.18f),
+            new Vector2(170f, 40f),
+            11.5f,
             TextAlignmentOptions.Left);
 
         CreateButton(
             root,
             ChangeButtonName,
             "Change",
-            new Vector2(0.125f, 0.18f),
-            new Vector2(0.11f, 0.05f),
+            new Vector2(0.22f, 0.18f),
+            new Vector2(0.10f, 0.045f),
             ToggleMethodDropdown);
 
         dropdownRoot = CreateDropdownRoot(
             root,
             DropdownRootName,
-            new Vector2(0.105f, 0.08f),
+            new Vector2(0.205f, 0.085f),
             new Vector2(0.18f, 0.165f)).gameObject;
 
         var dropdownRect = dropdownRoot.GetComponent<RectTransform>();
@@ -252,6 +252,7 @@ public class MethodSelectionUI : MonoBehaviour
         tmp.alignment = alignment;
         tmp.text = text;
         tmp.color = Color.white;
+        tmp.raycastTarget = false;
         if (TMP_Settings.defaultFontAsset != null)
             tmp.font = TMP_Settings.defaultFontAsset;
 

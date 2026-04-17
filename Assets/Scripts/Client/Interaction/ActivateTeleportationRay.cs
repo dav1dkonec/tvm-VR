@@ -3,7 +3,7 @@ using UnityEngine.InputSystem;
 using TvmVr2.Api.Enums;
 using TvmVr2.Client.Sequence;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
-using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
+using UnityEngine.XR.Interaction.Toolkit.Interactors.Visuals;
 
 /// <summary>
 /// Implemented following tutorials by Valem Tutorials
@@ -22,12 +22,12 @@ public class ActivateTeleportationRay : MonoBehaviour
     public InputActionProperty leftActivate;
 
     private UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor rayInteractor;
-    private TeleportationProvider teleportationProvider;
     private Sequence sequence;
     private EditingMethodRuntimeSettings methodSettings;
     private InflateDeflateUI inflateDeflateUi;
     private TeleportationArea[] teleportationAreas;
     private TeleportationAnchor[] teleportationAnchors;
+    private XRInteractorLineVisual lineVisual;
     private bool wasPressed;
     private bool inflateDeflatePickArmed;
 
@@ -37,14 +37,20 @@ public class ActivateTeleportationRay : MonoBehaviour
     void Awake()
     {
         if (leftTeleportation != null)
+        {
             rayInteractor = leftTeleportation.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor>();
+            lineVisual = leftTeleportation.GetComponent<XRInteractorLineVisual>();
+        }
 
-        teleportationProvider = FindFirstObjectByType<TeleportationProvider>();
         sequence = FindFirstObjectByType<Sequence>();
         methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
         inflateDeflateUi = FindFirstObjectByType<InflateDeflateUI>();
         teleportationAreas = FindObjectsByType<TeleportationArea>(FindObjectsSortMode.None);
         teleportationAnchors = FindObjectsByType<TeleportationAnchor>(FindObjectsSortMode.None);
+
+        // Keep anchor visuals in scene, but remove the ray reticle dot.
+        if (lineVisual != null)
+            lineVisual.reticle = null;
     }
 
     /// <summary>
@@ -57,13 +63,8 @@ public class ActivateTeleportationRay : MonoBehaviour
 
         bool isPressed = leftActivate.action.ReadValue<float>() > 0.01f;
 
-        if (wasPressed && !isPressed)
-        {
-            if (inflateDeflatePickArmed)
-                TryPickInflateDeflateReferencePoint();
-            else
-                TryTeleport();
-        }
+        if (wasPressed && !isPressed && inflateDeflatePickArmed)
+            TryPickInflateDeflateReferencePoint();
 
         leftTeleportation.SetActive(isPressed);
 
@@ -88,30 +89,6 @@ public class ActivateTeleportationRay : MonoBehaviour
             leftTeleportation.SetActive(false);
 
         inflateDeflateUi?.ShowPickFailed("Selection cancelled.\nTeleport works normally again.");
-    }
-
-    private void TryTeleport()
-    {
-        if (rayInteractor == null || teleportationProvider == null)
-            return;
-
-        if (!rayInteractor.TryGetCurrent3DRaycastHit(out var hit))
-            return;
-
-        var anchor = hit.collider.GetComponentInParent<TeleportationAnchor>();
-        var area = hit.collider.GetComponentInParent<TeleportationArea>();
-
-        if (anchor == null && area == null)
-            return;
-
-        var destination = anchor != null ? anchor.transform.position : hit.point;
-        var request = new TeleportRequest
-        {
-            destinationPosition = destination,
-            requestTime = Time.time
-        };
-
-        teleportationProvider.QueueTeleportRequest(request);
     }
 
     private void TryPickInflateDeflateReferencePoint()

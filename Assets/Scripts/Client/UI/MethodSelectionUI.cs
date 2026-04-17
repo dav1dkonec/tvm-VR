@@ -13,7 +13,7 @@ public class MethodSelectionUI : MonoBehaviour
     private const string BasicOptionName = "MethodBasicTranslateButton";
     private const string InflateOptionName = "MethodInflateDeflateButton";
     private const string LoopOptionName = "MethodLoopSequenceButton";
-    private static readonly Color SelectedButtonColor = new(0.30f, 0.36f, 0.42f, 0.92f);
+    private static readonly Color SelectedButtonColor = new(0.49019608f, 1f, 0.8784314f, 0.65f);
     private static readonly Color UnselectedButtonColor = new(0.08f, 0.11f, 0.14f, 0.72f);
     private static readonly Color DisabledButtonColor = new(0.10f, 0.10f, 0.10f, 0.40f);
 
@@ -307,7 +307,7 @@ public class MethodSelectionUI : MonoBehaviour
         if (label != null)
         {
             label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
-            label.color = Color.white;
+            label.color = selected ? new Color(0.05f, 0.10f, 0.08f, 1f) : Color.white;
         }
     }
 

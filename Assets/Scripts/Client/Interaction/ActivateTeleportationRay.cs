@@ -159,7 +159,7 @@ public class ActivateTeleportationRay : MonoBehaviour
             if (target == null)
                 continue;
 
-            target.gameObject.SetActive(enabled);
+            target.enabled = enabled;
         }
     }
 }

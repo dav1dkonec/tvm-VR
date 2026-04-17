@@ -1,5 +1,6 @@
 using System.IO;
 using System.Threading.Tasks;
+using UnityEngine;
 using TvmVr2.Api.Sequence;
 
 namespace TvmVr2.Client.Sequence
@@ -55,6 +56,7 @@ namespace TvmVr2.Client.Sequence
                     MeshIO.LoadMesh(meshes[i], out loadedFrames[i].vertices, out loadedFrames[i].faces);
                     MeshIO.LoadMesh(meshes[i], out loadedFrames[i].verticesUnedited, out loadedFrames[i].faces);
                     loadedFrames[i].FindNearest(request.NearestCenterCount);
+                    Debug.Log($"SequenceLoader: loaded frame {i + 1}/{loadedFrames.Length}");
                 }
             });
 

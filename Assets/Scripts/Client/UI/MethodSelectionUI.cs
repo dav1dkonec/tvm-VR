@@ -164,7 +164,7 @@ public class MethodSelectionUI : MonoBehaviour
         dropdownRoot = CreateDropdownRoot(
             root,
             DropdownRootName,
-            new Vector2(0.275f, 0.082f),
+            new Vector2(0.255f, 0.082f),
             new Vector2(0.18f, 0.165f)).gameObject;
 
         var dropdownRect = dropdownRoot.GetComponent<RectTransform>();

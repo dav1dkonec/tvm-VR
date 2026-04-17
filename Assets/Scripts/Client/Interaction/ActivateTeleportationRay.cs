@@ -4,6 +4,7 @@ using TvmVr2.Api.Enums;
 using TvmVr2.Client.Sequence;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors.Visuals;
+using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 
 /// <summary>
 /// Implemented following tutorials by Valem Tutorials
@@ -148,7 +149,22 @@ public class ActivateTeleportationRay : MonoBehaviour
         SetTeleportTargetsEnabled(teleportationAnchors, enabled);
     }
 
-    private void SetTeleportTargetsEnabled<T>(T[] targets, bool enabled) where T : Component
+    private void SetTeleportTargetsEnabled(TeleportationArea[] targets, bool enabled)
+    {
+        if (targets == null)
+            return;
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            var target = targets[i];
+            if (target == null)
+                continue;
+
+            target.enabled = enabled;
+        }
+    }
+
+    private void SetTeleportTargetsEnabled(TeleportationAnchor[] targets, bool enabled)
     {
         if (targets == null)
             return;

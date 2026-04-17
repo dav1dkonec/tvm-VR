@@ -214,8 +214,8 @@ public class InflateDeflateUI : MonoBehaviour
         CreateStepper(strengthRow, "Strength", out strengthValueText, DecreaseStrength, IncreaseStrength);
 
         var actionRow = CreateRow(panel, "ActionRow", -0.181f);
-        CreateButton(actionRow, "InflatePickPointButton", "pick point", new Vector2(-0.105f, 0f), new Vector2(0.31f, 0.1f), BeginPick, ActionButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
-        CreateButton(actionRow, "InflateCancelButton", "cancel", new Vector2(0.115f, 0f), new Vector2(0.19f, 0.1f), CancelPick, ActionButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
+        CreateButton(actionRow, "InflatePickPointButton", "pick point", new Vector2(-0.075f, 0f), new Vector2(0.36f, 0.1f), BeginPick, ActionButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
+        CreateButton(actionRow, "InflateCancelButton", "cancel", new Vector2(0.085f, 0f), new Vector2(0.24f, 0.1f), CancelPick, ActionButtonColor, 20f, ButtonLabelScale, actionButtonTemplate);
 
         statusText = CreateLabel(panel, "InflateStatusLabel", string.Empty, new Vector2(0f, -0.255f), new Vector2(260f, 44f), 3.5f, TextAlignmentOptions.Center, StatusScale);
     }
@@ -374,7 +374,16 @@ public class InflateDeflateUI : MonoBehaviour
         }
         button.colors = colors;
 
-        CreateLabel(buttonObject.GetComponent<RectTransform>(), name + "Label", text, new Vector2(0f, 0.004f), new Vector2(200f, 50f), fontSize, TextAlignmentOptions.Center, labelScale, template);
+        CreateLabel(
+            buttonObject.GetComponent<RectTransform>(),
+            name + "Label",
+            text,
+            new Vector2(0f, 0.004f),
+            new Vector2(Mathf.Max(200f, size.x * 1100f), 50f),
+            fontSize,
+            TextAlignmentOptions.Center,
+            labelScale,
+            template);
         return button;
     }
 

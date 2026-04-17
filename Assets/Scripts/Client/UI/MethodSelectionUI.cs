@@ -157,14 +157,14 @@ public class MethodSelectionUI : MonoBehaviour
             root,
             ChangeButtonName,
             "Methods",
-            new Vector2(0.275f, 0.182f),
+            new Vector2(0.245f, 0.182f),
             new Vector2(0.19f, 0.045f),
             ToggleMethodDropdown);
 
         dropdownRoot = CreateDropdownRoot(
             root,
             DropdownRootName,
-            new Vector2(0.255f, 0.097f),
+            new Vector2(0.355f, 0.092f),
             new Vector2(0.18f, 0.165f)).gameObject;
 
         var dropdownRect = dropdownRoot.GetComponent<RectTransform>();

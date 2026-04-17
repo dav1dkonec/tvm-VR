@@ -22,10 +22,10 @@ public class InflateDeflateUI : MonoBehaviour
     private static readonly Color UnselectedButtonColor = new(0.49019608f, 1f, 0.8784314f, 0.13725491f);
     private static readonly Color StepperButtonColor = new(0.49019608f, 1f, 0.8784314f, 0.13725491f);
     private static readonly Color ActionButtonColor = new(0.08f, 0.08f, 0.08f, 0.88f);
-    private static readonly Color ModeSelectedColor = new(0.49019608f, 1f, 0.8784314f, 0.65f);
+    private static readonly Color ModeSelectedColor = new(0f, 0f, 0f, 0f);
     private static readonly Color ModeUnselectedColor = new(0f, 0f, 0f, 0f);
-    private static readonly Color ModeSelectedTextColor = new(0.05f, 0.10f, 0.08f, 1f);
-    private static readonly Color ModeTextColor = new(0.88f, 0.92f, 0.90f, 0.95f);
+    private static readonly Color ModeSelectedTextColor = new(0.49019608f, 1f, 0.8784314f, 1f);
+    private static readonly Color ModeTextColor = new(1f, 1f, 1f, 0.95f);
 
     private EditingMethodRuntimeSettings target;
     private ActivateTeleportationRay teleportRay;
@@ -400,7 +400,10 @@ public class InflateDeflateUI : MonoBehaviour
 
         var label = button.GetComponentInChildren<TMP_Text>();
         if (label != null)
+        {
             label.color = selected ? ModeSelectedTextColor : ModeTextColor;
+            label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
+        }
     }
 
     private static bool Approximately(Color a, Color b)

@@ -213,7 +213,9 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         {
             SequencePath = sequencePath,
             SequenceName = sequenceName,
-            NearestCenterCount = methodSettings != null ? methodSettings.SurfaceNeighborCount : 6
+            // Match the original project behavior: precompute the full UI range,
+            // not just the currently selected value.
+            NearestCenterCount = ui != null ? ui.max : (methodSettings != null ? methodSettings.SurfaceNeighborCount : 6)
         });
         busyStateController.Exit(leftHand, rightHand, waitCanvas);
 

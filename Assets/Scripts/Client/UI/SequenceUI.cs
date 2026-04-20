@@ -8,7 +8,7 @@ using System;
 /// <summary>
 /// Sequence canvas
 /// </summary>
-public class SequenceUI : MonoBehaviour
+public class okSequenceUI : MonoBehaviour
 {
     /// <summary>
     /// Scroll view content

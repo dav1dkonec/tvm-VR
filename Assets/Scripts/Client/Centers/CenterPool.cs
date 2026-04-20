@@ -1,13 +1,17 @@
 using System.Collections;
 using System.Collections.Generic;
+using TvmVr2.Api.Enums;
+using TvmVr2.Client.Sequence;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 /// <summary>
 /// A pool of center objects to be used to display sequence frames
 /// </summary>
-public class CenterPool : MonoBehaviour
+public class CenterPool : MonoBehaviour, ICenterHoverListener
 {
+    private const float InflateStrengthPreviewMax = 0.1f;
+
     /// <summary>
     /// Center game object prefab
     /// </summary>
@@ -22,12 +26,15 @@ public class CenterPool : MonoBehaviour
     /// The center pool
     /// </summary>
     public CenterUI[] centers;
+    private EditingMethodRuntimeSettings methodSettings;
 
     /// <summary>
     /// Initializes the centers and animates them
     /// </summary>
     void Start()
     {
+        methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
+        CenterUI.RegisterListener(this);
         Idle();
     }
 
@@ -51,6 +58,7 @@ public class CenterPool : MonoBehaviour
     public void Initialize(int count)
     {
         CenterUI.ClearActiveSelections();
+        ClearPreview();
 
         // Destroy the old pool
         if (centers != null)
@@ -75,6 +83,8 @@ public class CenterPool : MonoBehaviour
 
     public void PrepareForSequence(int count)
     {
+        ClearPreview();
+
         if (count < 0)
             return;
 
@@ -119,6 +129,86 @@ public class CenterPool : MonoBehaviour
         }
     }
 
+    public void Notify(CenterUI center, bool hovering)
+    {
+        if (!hovering)
+        {
+            ClearPreview();
+            return;
+        }
+
+        if (center == null)
+            return;
+
+        if (methodSettings == null)
+            methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
+
+        var sigma = methodSettings != null ? methodSettings.CenterSigma : 1f;
+        var from = center.transform.position;
+
+        for (int i = 0; i < centers.Length; i++)
+        {
+            var targetCenter = centers[i];
+            if (targetCenter == null)
+                continue;
+
+            var distance = Vector3.Distance(from, targetCenter.transform.position);
+            var intensity = Mathf.Exp(-sigma * distance);
+            ApplyPreviewIntensity(targetCenter, intensity);
+        }
+    }
+
+    public void PreviewInflateDeflate(Vector3 referencePoint)
+    {
+        if (centers == null || centers.Length == 0)
+            return;
+
+        if (methodSettings == null)
+            methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
+
+        var radius = methodSettings != null ? methodSettings.InflateRadius : 0.08f;
+        var strength = methodSettings != null ? methodSettings.InflateStrength : 0.02f;
+        if (radius <= 0f || strength <= 0f)
+        {
+            ClearPreview();
+            return;
+        }
+
+        var strengthFactor = Mathf.Lerp(0.35f, 1f, Mathf.Clamp01(strength / InflateStrengthPreviewMax));
+
+        for (int i = 0; i < centers.Length; i++)
+        {
+            var targetCenter = centers[i];
+            if (targetCenter == null)
+                continue;
+
+            var distance = Vector3.Distance(referencePoint, targetCenter.transform.position);
+            if (distance > radius)
+            {
+                ApplyPreviewIntensity(targetCenter, 0f);
+                continue;
+            }
+
+            var falloff = 1f - (distance / radius);
+            ApplyPreviewIntensity(targetCenter, falloff * strengthFactor);
+        }
+    }
+
+    public void ClearPreview()
+    {
+        if (centers == null)
+            return;
+
+        for (int i = 0; i < centers.Length; i++)
+        {
+            var center = centers[i];
+            if (center == null || center.normalMaterial == null)
+                continue;
+
+            ApplyColor(center, center.normalColor);
+        }
+    }
+
     public void SetInteractionEnabled(bool enabled)
     {
         if (centers == null)
@@ -140,5 +230,25 @@ public class CenterPool : MonoBehaviour
             if (grabInteractable != null)
                 grabInteractable.enabled = enabled;
         }
+    }
+
+    private static void ApplyPreviewIntensity(CenterUI center, float intensity)
+    {
+        if (center == null || center.normalMaterial == null)
+            return;
+
+        var previewColor = Color.Lerp(center.normalColor, center.highlightedColor, Mathf.Clamp01(intensity));
+        ApplyColor(center, previewColor);
+    }
+
+    private static void ApplyColor(CenterUI center, Color color)
+    {
+        if (center.normalMaterial.HasProperty("_EmissionColor"))
+            center.normalMaterial.SetColor("_EmissionColor", color);
+
+        if (center.normalMaterial.HasProperty("_BaseColor"))
+            center.normalMaterial.SetColor("_BaseColor", color);
+        else if (center.normalMaterial.HasProperty("_Color"))
+            center.normalMaterial.SetColor("_Color", color);
     }
 }

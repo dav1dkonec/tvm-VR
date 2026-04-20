@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using TvmVr2.Api.Enums;
+using TvmVr2.Client.Centers;
 using TvmVr2.Client.Sequence;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors.Visuals;
@@ -12,6 +13,8 @@ using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 /// </summary>
 public class ActivateTeleportationRay : MonoBehaviour
 {
+    private const float AnchorSnapRadius = 1.5f;
+
     /// <summary>
     /// Teleportation ray object
     /// </summary>
@@ -24,6 +27,7 @@ public class ActivateTeleportationRay : MonoBehaviour
 
     private UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor rayInteractor;
     private Sequence sequence;
+    private CenterPool centerPool;
     private EditingMethodRuntimeSettings methodSettings;
     private InflateDeflateUI inflateDeflateUi;
     private TeleportationArea[] teleportationAreas;
@@ -44,14 +48,15 @@ public class ActivateTeleportationRay : MonoBehaviour
         }
 
         sequence = FindFirstObjectByType<Sequence>();
+        centerPool = FindFirstObjectByType<CenterPool>();
         methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
         inflateDeflateUi = FindFirstObjectByType<InflateDeflateUI>();
         teleportationAreas = FindObjectsByType<TeleportationArea>(FindObjectsSortMode.None);
         teleportationAnchors = FindObjectsByType<TeleportationAnchor>(FindObjectsSortMode.None);
 
-        // Keep anchor visuals in scene, but remove the ray reticle dot.
-        if (lineVisual != null)
-            lineVisual.reticle = null;
+        HideTeleportRayReticle();
+        HideTeleportAreaVisuals();
+        ExpandTeleportAnchorTolerance();
     }
 
     /// <summary>
@@ -66,6 +71,8 @@ public class ActivateTeleportationRay : MonoBehaviour
 
         if (wasPressed && !isPressed && inflateDeflatePickArmed)
             TryPickInflateDeflateReferencePoint();
+        else if (isPressed && inflateDeflatePickArmed)
+            UpdateInflateDeflatePreview();
 
         leftTeleportation.SetActive(isPressed);
 
@@ -78,12 +85,14 @@ public class ActivateTeleportationRay : MonoBehaviour
             methodSettings.CurrentMethod = MethodKind.InflateDeflate;
 
         inflateDeflatePickArmed = true;
+        centerPool?.ClearPreview();
         SetTeleportTargetsEnabled(false);
     }
 
     public void CancelInflateDeflatePick()
     {
         inflateDeflatePickArmed = false;
+        centerPool?.ClearPreview();
         SetTeleportTargetsEnabled(true);
 
         if (leftTeleportation != null)
@@ -95,6 +104,7 @@ public class ActivateTeleportationRay : MonoBehaviour
     private void TryPickInflateDeflateReferencePoint()
     {
         inflateDeflatePickArmed = false;
+        centerPool?.ClearPreview();
         SetTeleportTargetsEnabled(true);
 
         if (rayInteractor == null || sequence == null)
@@ -127,6 +137,33 @@ public class ActivateTeleportationRay : MonoBehaviour
 
         inflateDeflateUi?.ShowPickCompleted();
         sequence.CommitInflateDeflate(hit.point);
+    }
+
+    private void UpdateInflateDeflatePreview()
+    {
+        if (rayInteractor == null || sequence == null)
+            return;
+
+        if (methodSettings != null && methodSettings.CurrentMethod != MethodKind.InflateDeflate)
+        {
+            centerPool?.ClearPreview();
+            return;
+        }
+
+        if (!TryGetCurrentHit(out var hit) || hit.collider == null)
+        {
+            centerPool?.ClearPreview();
+            return;
+        }
+
+        var hitSequence = hit.collider.GetComponentInParent<Sequence>();
+        if (hitSequence != sequence)
+        {
+            centerPool?.ClearPreview();
+            return;
+        }
+
+        centerPool?.PreviewInflateDeflate(hit.point);
     }
 
     private bool TryGetCurrentHit(out RaycastHit hit)
@@ -176,6 +213,56 @@ public class ActivateTeleportationRay : MonoBehaviour
                 continue;
 
             target.enabled = enabled;
+        }
+    }
+
+    private void HideTeleportRayReticle()
+    {
+        if (lineVisual != null && lineVisual.reticle != null)
+        {
+            lineVisual.reticle.SetActive(false);
+            lineVisual.reticle = null;
+        }
+
+        if (leftTeleportation == null)
+            return;
+
+        var reticleTransform = leftTeleportation.transform.Find("Reticle");
+        if (reticleTransform != null)
+            reticleTransform.gameObject.SetActive(false);
+    }
+
+    private void HideTeleportAreaVisuals()
+    {
+        if (teleportationAreas != null)
+        {
+            for (int i = 0; i < teleportationAreas.Length; i++)
+            {
+                var area = teleportationAreas[i];
+                if (area == null)
+                    continue;
+
+                var renderers = area.GetComponentsInChildren<Renderer>(true);
+                for (int j = 0; j < renderers.Length; j++)
+                    renderers[j].enabled = false;
+            }
+        }
+    }
+
+    private void ExpandTeleportAnchorTolerance()
+    {
+        if (teleportationAnchors == null)
+            return;
+
+        for (int i = 0; i < teleportationAnchors.Length; i++)
+        {
+            var anchor = teleportationAnchors[i];
+            if (anchor == null)
+                continue;
+
+            var capsule = anchor.GetComponent<Collider>() as CapsuleCollider;
+            if (capsule != null)
+                capsule.radius = Mathf.Max(capsule.radius, AnchorSnapRadius);
         }
     }
 }

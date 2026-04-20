@@ -15,77 +15,37 @@ namespace TvmVr2.Core.Methods.BasicTranslate
 
         public Vector3[] DeformSurface(Frame frame)
         {
-            if (frame?.vertices == null || frame.verticesUnedited == null || frame.nearestCentersIndex == null || frame.nearestCentersDist == null)
-                return frame?.vertices;
-
             var deformedVertices = new Vector3[frame.vertices.Length];
+            var weights = new float[Neighbors - 1];
 
             for (var i = 0; i < frame.vertices.Length; i++)
             {
-                if (i >= frame.nearestCentersIndex.Length || i >= frame.nearestCentersDist.Length)
-                {
-                    deformedVertices[i] = frame.verticesUnedited[i];
-                    continue;
-                }
-
-                var indices = frame.nearestCentersIndex[i];
-                var distances = frame.nearestCentersDist[i];
-
-                if (indices == null || distances == null || indices.Length == 0 || distances.Length == 0)
-                {
-                    deformedVertices[i] = frame.verticesUnedited[i];
-                    continue;
-                }
-
-                var availableNeighbors = System.Math.Min(Neighbors, System.Math.Min(indices.Length, distances.Length));
-                if (availableNeighbors <= 1)
-                {
-                    var nearestIndex = indices[0];
-                    if (nearestIndex < 0 || nearestIndex >= frame.centers.Length || nearestIndex >= frame.centersUnedited.Length)
-                    {
-                        deformedVertices[i] = frame.verticesUnedited[i];
-                        continue;
-                    }
-
-                    var shiftSingle = frame.centers[nearestIndex] - frame.centersUnedited[nearestIndex];
-                    deformedVertices[i] = frame.verticesUnedited[i] + shiftSingle;
-                    continue;
-                }
-
-                var effectiveNeighborCount = availableNeighbors - 1;
-                var weights = new float[effectiveNeighborCount];
-                var normalizerDistance = distances[availableNeighbors - 1];
+                (var indices, var distances) = (frame.nearestCentersIndex[i], frame.nearestCentersDist[i]);
 
                 var shift = new Vector3();
                 var weightSum = 0f;
 
-                for (var j = 0; j < effectiveNeighborCount; j++)
+                for (var j = 0; j < Neighbors - 1; j++)
                 {
-                    weights[j] = normalizerDistance < Epsilon ? 1f : 1f - distances[j] / normalizerDistance;
+                    weights[j] = 1f - distances[j] / distances[Neighbors - 1];
                     weightSum += weights[j];
                 }
 
                 if (weightSum < Epsilon)
                 {
-                    var weight = 1f / effectiveNeighborCount;
+                    var weight = 1f / (Neighbors - 1);
 
-                    for (var j = 0; j < effectiveNeighborCount; j++)
+                    for (var j = 0; j < Neighbors - 1; j++)
                     {
-                        if (indices[j] < 0 || indices[j] >= frame.centers.Length || indices[j] >= frame.centersUnedited.Length)
-                            continue;
-
-                        var cb = frame.centersUnedited[indices[j]];
-                        var ca = frame.centers[indices[j]];
-                        shift += (ca - cb) * weight;
+                        var original = frame.centersUnedited[indices[j]];
+                        var edited = frame.centers[indices[j]];
+                        shift += (edited - original) * weight;
                     }
                 }
                 else
                 {
-                    for (var j = 0; j < effectiveNeighborCount; j++)
+                    for (var j = 0; j < Neighbors - 1; j++)
                     {
-                        if (indices[j] < 0 || indices[j] >= frame.centers.Length || indices[j] >= frame.centersUnedited.Length)
-                            continue;
-
                         var original = frame.centersUnedited[indices[j]];
                         var edited = frame.centers[indices[j]];
                         shift += (edited - original) * (weights[j] / weightSum);

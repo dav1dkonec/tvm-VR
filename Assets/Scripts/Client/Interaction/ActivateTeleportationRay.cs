@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 using TvmVr2.Api.Enums;
 using TvmVr2.Client.Centers;
 using TvmVr2.Client.Sequence;
+using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors.Visuals;
 using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
@@ -54,7 +55,7 @@ public class ActivateTeleportationRay : MonoBehaviour
         teleportationAreas = FindObjectsByType<TeleportationArea>(FindObjectsSortMode.None);
         teleportationAnchors = FindObjectsByType<TeleportationAnchor>(FindObjectsSortMode.None);
 
-        HideTeleportRayReticle();
+        ConfigureTeleportRayReticle();
         HideTeleportAreaVisuals();
         ExpandTeleportAnchorTolerance();
     }
@@ -216,20 +217,29 @@ public class ActivateTeleportationRay : MonoBehaviour
         }
     }
 
-    private void HideTeleportRayReticle()
+    private void ConfigureTeleportRayReticle()
     {
-        if (lineVisual != null && lineVisual.reticle != null)
-        {
-            lineVisual.reticle.SetActive(false);
-            lineVisual.reticle = null;
-        }
-
         if (leftTeleportation == null)
             return;
 
         var reticleTransform = leftTeleportation.transform.Find("Reticle");
-        if (reticleTransform != null)
-            reticleTransform.gameObject.SetActive(false);
+        if (reticleTransform == null)
+            return;
+
+        reticleTransform.gameObject.SetActive(true);
+
+        if (lineVisual != null)
+            lineVisual.reticle = reticleTransform.gameObject;
+
+        var renderer = reticleTransform.GetComponent<Renderer>();
+        if (renderer == null)
+            return;
+
+        var material = Resources.Load<Material>("Materials/Teleporter/Teleport Anchor");
+        if (material != null)
+        {
+            renderer.sharedMaterial = material;
+        }
     }
 
     private void HideTeleportAreaVisuals()

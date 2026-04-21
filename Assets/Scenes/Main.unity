@@ -11604,7 +11604,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 285906890}
-  - component: {fileID: 285906892}
   - component: {fileID: 285906891}
   m_Layer: 0
   m_Name: Inflate Radius
@@ -11655,24 +11654,6 @@ MonoBehaviour:
   text: {fileID: 1643498727}
   minus: {fileID: 599836305}
   plus: {fileID: 936424725}
---- !u!114 &285906892
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 285906889}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 53b2dafe3c2888a4697eb0b89041634a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  target: {fileID: 1982043960}
-  minus: {fileID: 599836305}
-  plus: {fileID: 936424725}
-  text: {fileID: 1643498727}
-  min: 2
-  max: 10
 --- !u!1 &292694542
 GameObject:
   m_ObjectHideFlags: 0
@@ -19291,7 +19272,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 675319005}
-  - component: {fileID: 675319007}
   - component: {fileID: 675319006}
   m_Layer: 0
   m_Name: Inflate Mode
@@ -19339,24 +19319,6 @@ MonoBehaviour:
   target: {fileID: 1982043960}
   inflateButton: {fileID: 43903946}
   deflateButton: {fileID: 598812889}
---- !u!114 &675319007
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 675319004}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 53b2dafe3c2888a4697eb0b89041634a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  target: {fileID: 1982043960}
-  minus: {fileID: 43903946}
-  plus: {fileID: 598812889}
-  text: {fileID: 1723881401}
-  min: 2
-  max: 10
 --- !u!1 &680758811
 GameObject:
   m_ObjectHideFlags: 0
@@ -40143,7 +40105,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1309871105}
-  - component: {fileID: 1309871107}
   - component: {fileID: 1309871106}
   m_Layer: 0
   m_Name: Inflate Strength
@@ -40194,24 +40155,6 @@ MonoBehaviour:
   text: {fileID: 1057728393}
   minus: {fileID: 1329903558}
   plus: {fileID: 15742170}
---- !u!114 &1309871107
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1309871104}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 53b2dafe3c2888a4697eb0b89041634a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  target: {fileID: 1982043960}
-  minus: {fileID: 1329903558}
-  plus: {fileID: 15742170}
-  text: {fileID: 1057728393}
-  min: 2
-  max: 10
 --- !u!1 &1310231421
 GameObject:
   m_ObjectHideFlags: 0
@@ -52722,8 +52665,8 @@ MonoBehaviour:
   CenterSigma: 1
   SequenceNeighborCount: 4
   SurfaceNeighborCount: 6
-  InflateRadius: 0.08
-  InflateStrength: 0.02
+  InflateRadius: 0.1
+  InflateStrength: 0.2
   InflateMode: 0
 --- !u!1 &1982742693
 GameObject:

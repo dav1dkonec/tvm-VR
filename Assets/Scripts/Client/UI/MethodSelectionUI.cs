@@ -13,9 +13,10 @@ public class MethodSelectionUI : MonoBehaviour
     private const string BasicOptionName = "MethodBasicTranslateButton";
     private const string InflateOptionName = "MethodInflateDeflateButton";
     private const string LoopOptionName = "MethodLoopSequenceButton";
-    private static readonly Color SelectedButtonColor = new(0.08f, 0.11f, 0.14f, 0.72f);
-    private static readonly Color UnselectedButtonColor = new(0.08f, 0.11f, 0.14f, 0.72f);
-    private static readonly Color DisabledButtonColor = new(0.10f, 0.10f, 0.10f, 0.40f);
+    private static readonly Color ButtonBackgroundColor = new(0.08f, 0.11f, 0.14f, 0.72f);
+    private static readonly Color ButtonHighlightedColor = new(0.35f, 0.40f, 0.46f, 0.95f);
+    private static readonly Color ButtonPressedColor = new(0.55f, 0.60f, 0.66f, 0.95f);
+    private static readonly Color TransparentColor = new(0f, 0f, 0f, 0f);
 
     private EditingMethodRuntimeSettings target;
     private InflateDeflateUI inflateDeflateUi;
@@ -174,14 +175,18 @@ public class MethodSelectionUI : MonoBehaviour
             "Basic Translate",
             new Vector2(0f, 0.05f),
             new Vector2(0.18f, 0.042f),
-            SelectBasicTranslate);
+            SelectBasicTranslate,
+            true,
+            true);
         inflateDeflateButton = CreateButton(
             dropdownRect,
             InflateOptionName,
             "Inflate/Deflate",
             new Vector2(0f, 0f),
             new Vector2(0.18f, 0.042f),
-            SelectInflateDeflate);
+            SelectInflateDeflate,
+            true,
+            true);
         loopSequenceButton = CreateButton(
             dropdownRect,
             LoopOptionName,
@@ -189,7 +194,8 @@ public class MethodSelectionUI : MonoBehaviour
             new Vector2(0f, -0.05f),
             new Vector2(0.18f, 0.042f),
             null,
-            false);
+            false,
+            true);
 
         dropdownRoot.SetActive(false);
         dropdownVisible = false;
@@ -232,7 +238,7 @@ public class MethodSelectionUI : MonoBehaviour
         rect.localScale = Vector3.one;
 
         var image = rootObject.GetComponent<Image>();
-        image.color = new Color(0.04f, 0.05f, 0.06f, 0.78f);
+        image.color = TransparentColor;
         return rect;
     }
 
@@ -260,7 +266,7 @@ public class MethodSelectionUI : MonoBehaviour
         return tmp;
     }
 
-    private static Button CreateButton(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, UnityEngine.Events.UnityAction onClick, bool interactable = true)
+    private static Button CreateButton(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, UnityEngine.Events.UnityAction onClick, bool interactable = true, bool textOnly = false)
     {
         var buttonObject = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
         buttonObject.transform.SetParent(parent, false);
@@ -273,7 +279,7 @@ public class MethodSelectionUI : MonoBehaviour
         rect.localScale = new Vector3(0.7f, 0.7f, 0.7f);
 
         var image = buttonObject.GetComponent<Image>();
-        image.color = interactable ? UnselectedButtonColor : DisabledButtonColor;
+        image.color = textOnly ? TransparentColor : ButtonBackgroundColor;
 
         var button = buttonObject.GetComponent<Button>();
         button.interactable = interactable;
@@ -281,9 +287,9 @@ public class MethodSelectionUI : MonoBehaviour
             button.onClick.AddListener(onClick);
 
         var colors = button.colors;
-        colors.normalColor = image.color;
-        colors.highlightedColor = new Color(0.35f, 0.40f, 0.46f, 0.95f);
-        colors.pressedColor = new Color(0.55f, 0.60f, 0.66f, 0.95f);
+        colors.normalColor = textOnly ? TransparentColor : ButtonBackgroundColor;
+        colors.highlightedColor = textOnly ? TransparentColor : ButtonHighlightedColor;
+        colors.pressedColor = textOnly ? TransparentColor : ButtonPressedColor;
         colors.selectedColor = colors.highlightedColor;
         button.colors = colors;
 
@@ -302,7 +308,7 @@ public class MethodSelectionUI : MonoBehaviour
         if (button == null || button.targetGraphic == null)
             return;
 
-        button.targetGraphic.color = selected ? SelectedButtonColor : UnselectedButtonColor;
+        button.targetGraphic.color = TransparentColor;
         var label = button.GetComponentInChildren<TMP_Text>();
         if (label != null)
         {
@@ -316,7 +322,7 @@ public class MethodSelectionUI : MonoBehaviour
         if (button == null || button.targetGraphic == null)
             return;
 
-        button.targetGraphic.color = DisabledButtonColor;
+        button.targetGraphic.color = TransparentColor;
         var label = button.GetComponentInChildren<TMP_Text>();
         if (label != null)
         {

@@ -29,17 +29,25 @@ public class InflateDeflateUI : MonoBehaviour
 
     private EditingMethodRuntimeSettings target;
     private ActivateTeleportationRay teleportRay;
-    private TMP_Text radiusValueText;
-    private TMP_Text strengthValueText;
-    private TMP_Text statusText;
     private TMP_Text titleTemplate;
     private TMP_Text valueTemplate;
     private TMP_Text stepperButtonTemplate;
     private TMP_Text actionButtonTemplate;
-    private GameObject panelObject;
-    private Button inflateButton;
-    private Button deflateButton;
     private bool isPickingReferencePoint;
+
+    [Header("Scene UI References")]
+    public GameObject panelObject;
+    public Button inflateButton;
+    public Button deflateButton;
+    public Button radiusDecreaseButton;
+    public Button radiusIncreaseButton;
+    public Button strengthDecreaseButton;
+    public Button strengthIncreaseButton;
+    public Button pickPointButton;
+    public Button cancelButton;
+    public TMP_Text radiusValueText;
+    public TMP_Text strengthValueText;
+    public TMP_Text statusText;
 
     private void Start()
     {
@@ -57,8 +65,16 @@ public class InflateDeflateUI : MonoBehaviour
         if (root == null)
             return;
 
-        CacheTemplates(root);
-        BuildUi(root);
+        if (HasSceneReferences())
+        {
+            WireSceneButtons();
+        }
+        else
+        {
+            CacheTemplates(root);
+            BuildUi(root);
+        }
+
         SyncValues();
         SetVisible(target != null && target.CurrentMethod == MethodKind.InflateDeflate);
     }
@@ -227,6 +243,37 @@ public class InflateDeflateUI : MonoBehaviour
     {
         if (statusText != null)
             statusText.text = message;
+    }
+
+    private bool HasSceneReferences()
+    {
+        return panelObject != null
+            && inflateButton != null
+            && deflateButton != null
+            && radiusValueText != null
+            && strengthValueText != null
+            && statusText != null;
+    }
+
+    private void WireSceneButtons()
+    {
+        WireButton(inflateButton, SetInflateMode);
+        WireButton(deflateButton, SetDeflateMode);
+        WireButton(radiusDecreaseButton, DecreaseRadius);
+        WireButton(radiusIncreaseButton, IncreaseRadius);
+        WireButton(strengthDecreaseButton, DecreaseStrength);
+        WireButton(strengthIncreaseButton, IncreaseStrength);
+        WireButton(pickPointButton, BeginPick);
+        WireButton(cancelButton, CancelPick);
+    }
+
+    private static void WireButton(Button button, UnityEngine.Events.UnityAction action)
+    {
+        if (button == null || action == null)
+            return;
+
+        button.onClick.RemoveListener(action);
+        button.onClick.AddListener(action);
     }
 
     private void BuildUi(RectTransform root)

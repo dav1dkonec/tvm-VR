@@ -16,6 +16,7 @@ public class MethodSelectionUI : MonoBehaviour
     private static readonly Color ButtonBackgroundColor = new(0.08f, 0.11f, 0.14f, 0.72f);
     private static readonly Color ButtonHighlightedColor = new(0.35f, 0.40f, 0.46f, 0.95f);
     private static readonly Color ButtonPressedColor = new(0.55f, 0.60f, 0.66f, 0.95f);
+    private static readonly Color DropdownBackgroundColor = new(0.49019608f, 1f, 0.8784314f, 0.16f);
     private static readonly Color TransparentColor = new(0f, 0f, 0f, 0f);
 
     private EditingMethodRuntimeSettings target;
@@ -238,7 +239,7 @@ public class MethodSelectionUI : MonoBehaviour
         rect.localScale = Vector3.one;
 
         var image = rootObject.GetComponent<Image>();
-        image.color = TransparentColor;
+        image.color = DropdownBackgroundColor;
         return rect;
     }
 

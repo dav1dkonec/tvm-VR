@@ -9,8 +9,8 @@ namespace TvmVr2.Client.Sequence
         public float CenterSigma = 1f;
         public int SequenceNeighborCount = 4;
         public int SurfaceNeighborCount = 6;
-        public float InflateRadius = 0.08f;
-        public float InflateStrength = 0.02f;
+        public float InflateRadius = 0.10f;
+        public float InflateStrength = 0.20f;
         public InflateDeflateMode InflateMode = InflateDeflateMode.Inflate;
 
         public void SetSequenceNeighborCount(int value)

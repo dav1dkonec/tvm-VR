@@ -39,6 +39,7 @@ public class InflateDeflateUI : MonoBehaviour
     private GameObject panelObject;
     private Button inflateButton;
     private Button deflateButton;
+    private bool isPickingReferencePoint;
 
     private void Start()
     {
@@ -46,7 +47,11 @@ public class InflateDeflateUI : MonoBehaviour
         teleportRay = FindFirstObjectByType<ActivateTeleportationRay>();
 
         if (target != null)
+        {
+            target.SetInflateRadius(0.10f);
+            target.SetInflateStrength(0.20f);
             target.SetInflateMode(0);
+        }
 
         var root = ResolveUiRoot();
         if (root == null)
@@ -77,6 +82,9 @@ public class InflateDeflateUI : MonoBehaviour
 
     public void SetInflateMode()
     {
+        if (!CanChangeParameters())
+            return;
+
         if (target == null)
             return;
 
@@ -86,6 +94,9 @@ public class InflateDeflateUI : MonoBehaviour
 
     public void SetDeflateMode()
     {
+        if (!CanChangeParameters())
+            return;
+
         if (target == null)
             return;
 
@@ -95,6 +106,9 @@ public class InflateDeflateUI : MonoBehaviour
 
     public void DecreaseRadius()
     {
+        if (!CanChangeParameters())
+            return;
+
         if (target == null)
             return;
 
@@ -104,6 +118,9 @@ public class InflateDeflateUI : MonoBehaviour
 
     public void IncreaseRadius()
     {
+        if (!CanChangeParameters())
+            return;
+
         if (target == null)
             return;
 
@@ -113,6 +130,9 @@ public class InflateDeflateUI : MonoBehaviour
 
     public void DecreaseStrength()
     {
+        if (!CanChangeParameters())
+            return;
+
         if (target == null)
             return;
 
@@ -122,6 +142,9 @@ public class InflateDeflateUI : MonoBehaviour
 
     public void IncreaseStrength()
     {
+        if (!CanChangeParameters())
+            return;
+
         if (target == null)
             return;
 
@@ -135,6 +158,7 @@ public class InflateDeflateUI : MonoBehaviour
             return;
 
         target.CurrentMethod = MethodKind.InflateDeflate;
+        isPickingReferencePoint = true;
         teleportRay.BeginInflateDeflatePick();
         SetStatus("Pick mode is active. Use the left hand ray, hold the teleport trigger, aim at the mesh and release.");
     }
@@ -144,17 +168,29 @@ public class InflateDeflateUI : MonoBehaviour
         if (teleportRay != null)
             teleportRay.CancelInflateDeflatePick();
 
+        isPickingReferencePoint = false;
         SetStatus("Selection cancelled. Teleport works normally again.");
     }
 
     public void ShowPickFailed(string message)
     {
+        isPickingReferencePoint = false;
         SetStatus(message);
     }
 
     public void ShowPickCompleted()
     {
+        isPickingReferencePoint = false;
         SetStatus("Reference point selected. The edit was sent to the method pipeline.");
+    }
+
+    private bool CanChangeParameters()
+    {
+        if (!isPickingReferencePoint)
+            return true;
+
+        SetStatus("Cannot change parameters while picking a reference point. Cancel point selection first.");
+        return false;
     }
 
     private void SyncValues()

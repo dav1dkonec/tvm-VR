@@ -17,6 +17,7 @@ public class MethodSelectionUI : MonoBehaviour
     private static readonly Color ButtonHighlightedColor = new(0.35f, 0.40f, 0.46f, 0.95f);
     private static readonly Color ButtonPressedColor = new(0.55f, 0.60f, 0.66f, 0.95f);
     private static readonly Color DropdownBackgroundColor = new(0.49019608f, 1f, 0.8784314f, 0.16f);
+    private static readonly Color SelectedMethodTextColor = new(0.12f, 0.45f, 0.28f, 1f);
     private static readonly Color TransparentColor = new(0f, 0f, 0f, 0f);
 
     private EditingMethodRuntimeSettings target;
@@ -161,12 +162,15 @@ public class MethodSelectionUI : MonoBehaviour
             "Methods",
             new Vector2(0.245f, 0.182f),
             new Vector2(0.19f, 0.045f),
-            ToggleMethodDropdown);
+            ToggleMethodDropdown,
+            true,
+            false,
+            10.5f);
 
         dropdownRoot = CreateDropdownRoot(
             root,
             DropdownRootName,
-            new Vector2(0.255f, 0.082f),
+            new Vector2(0.235f, 0.082f),
             new Vector2(0.18f, 0.165f)).gameObject;
 
         var dropdownRect = dropdownRoot.GetComponent<RectTransform>();
@@ -267,7 +271,7 @@ public class MethodSelectionUI : MonoBehaviour
         return tmp;
     }
 
-    private static Button CreateButton(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, UnityEngine.Events.UnityAction onClick, bool interactable = true, bool textOnly = false)
+    private static Button CreateButton(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, UnityEngine.Events.UnityAction onClick, bool interactable = true, bool textOnly = false, float labelFontSize = 12.5f)
     {
         var buttonObject = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
         buttonObject.transform.SetParent(parent, false);
@@ -294,7 +298,7 @@ public class MethodSelectionUI : MonoBehaviour
         colors.selectedColor = colors.highlightedColor;
         button.colors = colors;
 
-        CreateLabel(rect, name + "Label", text, Vector2.zero, new Vector2(220f, 50f), 12.5f, TextAlignmentOptions.Center);
+        CreateLabel(rect, name + "Label", text, Vector2.zero, new Vector2(220f, 50f), labelFontSize, TextAlignmentOptions.Center);
         return button;
     }
 
@@ -314,7 +318,7 @@ public class MethodSelectionUI : MonoBehaviour
         if (label != null)
         {
             label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
-            label.color = selected ? new Color(0.49019608f, 1f, 0.8784314f, 1f) : Color.white;
+            label.color = selected ? SelectedMethodTextColor : Color.white;
         }
     }
 

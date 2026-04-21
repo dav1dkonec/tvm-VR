@@ -16,8 +16,8 @@ public class MethodSelectionUI : MonoBehaviour
     private static readonly Color ButtonBackgroundColor = new(0.08f, 0.11f, 0.14f, 0.72f);
     private static readonly Color ButtonHighlightedColor = new(0.35f, 0.40f, 0.46f, 0.95f);
     private static readonly Color ButtonPressedColor = new(0.55f, 0.60f, 0.66f, 0.95f);
-    private static readonly Color DropdownBackgroundColor = new(0.49019608f, 1f, 0.8784314f, 0.16f);
-    private static readonly Color SelectedMethodTextColor = new(0.12f, 0.45f, 0.28f, 1f);
+    private static readonly Color DropdownBackgroundColor = new(0.08f, 0.11f, 0.14f, 0.62f);
+    private static readonly Color SelectedMethodTextColor = new(0.49019608f, 1f, 0.8784314f, 1f);
     private static readonly Color TransparentColor = new(0f, 0f, 0f, 0f);
 
     private EditingMethodRuntimeSettings target;
@@ -170,7 +170,7 @@ public class MethodSelectionUI : MonoBehaviour
         dropdownRoot = CreateDropdownRoot(
             root,
             DropdownRootName,
-            new Vector2(0.235f, 0.082f),
+            new Vector2(0.242f, 0.082f),
             new Vector2(0.18f, 0.165f)).gameObject;
 
         var dropdownRect = dropdownRoot.GetComponent<RectTransform>();
@@ -182,7 +182,8 @@ public class MethodSelectionUI : MonoBehaviour
             new Vector2(0.18f, 0.042f),
             SelectBasicTranslate,
             true,
-            true);
+            true,
+            10.5f);
         inflateDeflateButton = CreateButton(
             dropdownRect,
             InflateOptionName,
@@ -191,7 +192,8 @@ public class MethodSelectionUI : MonoBehaviour
             new Vector2(0.18f, 0.042f),
             SelectInflateDeflate,
             true,
-            true);
+            true,
+            10.5f);
         loopSequenceButton = CreateButton(
             dropdownRect,
             LoopOptionName,
@@ -200,7 +202,8 @@ public class MethodSelectionUI : MonoBehaviour
             new Vector2(0.18f, 0.042f),
             null,
             false,
-            true);
+            true,
+            10.5f);
 
         dropdownRoot.SetActive(false);
         dropdownVisible = false;

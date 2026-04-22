@@ -1672,7 +1672,7 @@ RectTransform:
   m_GameObject: {fileID: 106983978}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0.00000001542503}
-  m_LocalScale: {x: 0.0025, y: 0.0025, z: 0.0025}
+  m_LocalScale: {x: 0.00195, y: 0.00195, z: 0.00195}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 598812888}
@@ -2395,7 +2395,7 @@ RectTransform:
   m_GameObject: {fileID: 132720701}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -0}
-  m_LocalScale: {x: 0.0025, y: 0.0025, z: 0.0025}
+  m_LocalScale: {x: 0.00195, y: 0.00195, z: 0.00195}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 43903945}
@@ -30514,7 +30514,7 @@ MonoBehaviour:
         m_TargetAssemblyTypeName: TvmVr2.Client.Sequence.EditingMethodRuntimeSettings,
           Assembly-CSharp
         m_MethodName: SetCenterSigma
-        m_Mode: 1
+        m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine

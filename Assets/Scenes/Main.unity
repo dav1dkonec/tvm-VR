@@ -1729,8 +1729,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 22
-  m_fontSizeBase: 28
+  m_fontSize: 18
+  m_fontSizeBase: 18
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -2452,8 +2452,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 22
-  m_fontSizeBase: 28
+  m_fontSize: 18
+  m_fontSizeBase: 18
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -34880,6 +34880,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1276908795}
   - component: {fileID: 1276908796}
+  - component: {fileID: 1276908797}
   m_Layer: 0
   m_Name: Left Hand
   m_TagString: Untagged
@@ -35130,6 +35131,34 @@ MonoBehaviour:
       m_SingletonActionBindings: []
       m_Flags: 0
     m_Reference: {fileID: 0}
+--- !u!114 &1276908797
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1276908794}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f79bdb592c44d2c8f2c3da9350421d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  menuRoot: {fileID: 1268694413}
+  toggleAction:
+    m_UseReference: 1
+    m_Action:
+      m_Name: Left Sticky Method Menu
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: 3217dcc1-bd9c-4182-bcc3-ec025fb2355b
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    m_Reference: {fileID: -6131295136447488360, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  hand: 0
+  pressThreshold: 0.5
+  maxTapDuration: 0.25
 --- !u!1 &1287256695
 GameObject:
   m_ObjectHideFlags: 0
@@ -49674,6 +49703,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1768454292}
   - component: {fileID: 1768454293}
+  - component: {fileID: 1768454294}
   m_Layer: 0
   m_Name: Right Hand
   m_TagString: Untagged
@@ -49924,6 +49954,34 @@ MonoBehaviour:
       m_SingletonActionBindings: []
       m_Flags: 0
     m_Reference: {fileID: 0}
+--- !u!114 &1768454294
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1768454291}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f79bdb592c44d2c8f2c3da9350421d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  menuRoot: {fileID: 1009174493}
+  toggleAction:
+    m_UseReference: 1
+    m_Action:
+      m_Name: Right Sticky Playback Menu
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: 82e131a7-864f-462f-bcde-252eec8f98fa
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    m_Reference: {fileID: 83097790271614945, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  hand: 1
+  pressThreshold: 0.5
+  maxTapDuration: 0.25
 --- !u!1 &1772262513
 GameObject:
   m_ObjectHideFlags: 0

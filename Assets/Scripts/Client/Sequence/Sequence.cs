@@ -417,6 +417,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         var pl = playing;
         Pause();
         busyStateController.Enter(leftHand, rightHand, waitCanvas);
+        var localReferencePoint = transform.InverseTransformPoint(referencePoint);
 
         try
         {
@@ -434,7 +435,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
                     {
                         SequenceId = loadedName ?? string.Empty,
                         FrameIndex = currentFrame,
-                        ReferencePoint = new Point3Data(referencePoint.x, referencePoint.y, referencePoint.z),
+                        ReferencePoint = new Point3Data(localReferencePoint.x, localReferencePoint.y, localReferencePoint.z),
                         Radius = methodSettings != null ? methodSettings.InflateRadius : 0.08f,
                         Strength = methodSettings != null ? methodSettings.InflateStrength : 0.02f,
                         Mode = methodSettings != null ? methodSettings.InflateMode : InflateDeflateMode.Inflate

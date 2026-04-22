@@ -38,6 +38,12 @@ public class GrabToMove : MonoBehaviour
     /// </summary>
     void Update()
     {
+        if (StickyHandMenuToggle.SuppressRightGrabToMove)
+        {
+            wasDownR = false;
+            return;
+        }
+
         // Disabled during editing
         if (Sequence.editing || CenterUI.HasActiveSelection)
         {

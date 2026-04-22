@@ -13,10 +13,6 @@ public class MethodSelectionUI : MonoBehaviour
     private const string BasicOptionName = "MethodBasicTranslateButton";
     private const string InflateOptionName = "MethodInflateDeflateButton";
     private const string LoopOptionName = "MethodLoopSequenceButton";
-    private static readonly Color ButtonBackgroundColor = new(0.08f, 0.11f, 0.14f, 0.72f);
-    private static readonly Color ButtonHighlightedColor = new(0.35f, 0.40f, 0.46f, 0.95f);
-    private static readonly Color ButtonPressedColor = new(0.55f, 0.60f, 0.66f, 0.95f);
-    private static readonly Color DropdownBackgroundColor = new(0.08f, 0.11f, 0.14f, 0.62f);
     private static readonly Color SelectedMethodTextColor = new(0.49019608f, 1f, 0.8784314f, 1f);
     private static readonly Color TransparentColor = new(0f, 0f, 0f, 0f);
 
@@ -59,7 +55,8 @@ public class MethodSelectionUI : MonoBehaviour
             return;
 
         CacheBasicTranslateObjects(root);
-        BuildUi(root);
+        CacheMethodSelectionObjects(root);
+        WireMethodSelectionEvents();
         ApplyMethodVisibility();
     }
 
@@ -143,67 +140,33 @@ public class MethodSelectionUI : MonoBehaviour
         commitObject = FindObjectRecursive(root, "Commit");
     }
 
-    private void BuildUi(RectTransform root)
+    private void CacheMethodSelectionObjects(RectTransform root)
     {
-        DestroyLegacyObjects(root);
+        methodLabelText = FindComponentRecursive<TMP_Text>(root, MethodLabelName);
+        dropdownRoot = FindObjectRecursive(root, DropdownRootName);
 
-        methodLabelText = CreateLabel(
-            root,
-            MethodLabelName,
-            "Basic Translate",
-            new Vector2(0.01f, 0.18f),
-            new Vector2(180f, 40f),
-            10.5f,
-            TextAlignmentOptions.Center);
+        var changeButton = FindComponentRecursive<Button>(root, ChangeButtonName);
+        basicTranslateButton = FindComponentRecursive<Button>(root, BasicOptionName);
+        inflateDeflateButton = FindComponentRecursive<Button>(root, InflateOptionName);
+        loopSequenceButton = FindComponentRecursive<Button>(root, LoopOptionName);
 
-        CreateButton(
-            root,
-            ChangeButtonName,
-            "Methods",
-            new Vector2(0.245f, 0.182f),
-            new Vector2(0.19f, 0.045f),
-            ToggleMethodDropdown,
-            true,
-            false,
-            10.5f);
+        if (changeButton != null)
+            changeButton.onClick.AddListener(ToggleMethodDropdown);
+    }
 
-        dropdownRoot = CreateDropdownRoot(
-            root,
-            DropdownRootName,
-            new Vector2(0.242f, 0.082f),
-            new Vector2(0.18f, 0.165f)).gameObject;
+    private void WireMethodSelectionEvents()
+    {
+        if (basicTranslateButton != null)
+            basicTranslateButton.onClick.AddListener(SelectBasicTranslate);
 
-        var dropdownRect = dropdownRoot.GetComponent<RectTransform>();
-        basicTranslateButton = CreateButton(
-            dropdownRect,
-            BasicOptionName,
-            "Basic Translate",
-            new Vector2(0f, 0.05f),
-            new Vector2(0.18f, 0.042f),
-            SelectBasicTranslate,
-            true,
-            true,
-            10.5f);
-        inflateDeflateButton = CreateButton(
-            dropdownRect,
-            InflateOptionName,
-            "Inflate/Deflate",
-            new Vector2(0f, 0f),
-            new Vector2(0.18f, 0.042f),
-            SelectInflateDeflate,
-            true,
-            true,
-            10.5f);
-        loopSequenceButton = CreateButton(
-            dropdownRect,
-            LoopOptionName,
-            "Looping",
-            new Vector2(0f, -0.05f),
-            new Vector2(0.18f, 0.042f),
-            null,
-            false,
-            true,
-            10.5f);
+        if (inflateDeflateButton != null)
+            inflateDeflateButton.onClick.AddListener(SelectInflateDeflate);
+
+        if (loopSequenceButton != null)
+            loopSequenceButton.interactable = false;
+
+        if (dropdownRoot == null)
+            return;
 
         dropdownRoot.SetActive(false);
         dropdownVisible = false;
@@ -215,94 +178,6 @@ public class MethodSelectionUI : MonoBehaviour
             return childRoot;
 
         return transform as RectTransform;
-    }
-
-    private static void DestroyLegacyObjects(RectTransform root)
-    {
-        DestroyChild(root, "Method Selection Panel");
-        DestroyChild(root, MethodLabelName);
-        DestroyChild(root, ChangeButtonName);
-        DestroyChild(root, DropdownRootName);
-        DestroyChild(root, "MethodToggleButton");
-    }
-
-    private static void DestroyChild(Transform root, string childName)
-    {
-        var child = FindObjectRecursive(root, childName);
-        if (child != null)
-            Destroy(child);
-    }
-
-    private static RectTransform CreateDropdownRoot(RectTransform parent, string name, Vector2 anchoredPosition, Vector2 size)
-    {
-        var rootObject = new GameObject(name, typeof(RectTransform), typeof(Image));
-        rootObject.transform.SetParent(parent, false);
-        var rect = rootObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = size;
-        rect.localScale = Vector3.one;
-
-        var image = rootObject.GetComponent<Image>();
-        image.color = DropdownBackgroundColor;
-        return rect;
-    }
-
-    private static TMP_Text CreateLabel(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, float fontSize, TextAlignmentOptions alignment)
-    {
-        var labelObject = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
-        labelObject.transform.SetParent(parent, false);
-        var rect = labelObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = size;
-        rect.localScale = new Vector3(0.0025f, 0.0025f, 0.0025f);
-
-        var tmp = labelObject.GetComponent<TextMeshProUGUI>();
-        tmp.fontSize = fontSize;
-        tmp.alignment = alignment;
-        tmp.text = text;
-        tmp.color = Color.white;
-        tmp.raycastTarget = false;
-        if (TMP_Settings.defaultFontAsset != null)
-            tmp.font = TMP_Settings.defaultFontAsset;
-
-        return tmp;
-    }
-
-    private static Button CreateButton(RectTransform parent, string name, string text, Vector2 anchoredPosition, Vector2 size, UnityEngine.Events.UnityAction onClick, bool interactable = true, bool textOnly = false, float labelFontSize = 12.5f)
-    {
-        var buttonObject = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
-        buttonObject.transform.SetParent(parent, false);
-        var rect = buttonObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = size;
-        rect.localScale = new Vector3(0.7f, 0.7f, 0.7f);
-
-        var image = buttonObject.GetComponent<Image>();
-        image.color = textOnly ? TransparentColor : ButtonBackgroundColor;
-
-        var button = buttonObject.GetComponent<Button>();
-        button.interactable = interactable;
-        if (onClick != null)
-            button.onClick.AddListener(onClick);
-
-        var colors = button.colors;
-        colors.normalColor = textOnly ? TransparentColor : ButtonBackgroundColor;
-        colors.highlightedColor = textOnly ? TransparentColor : ButtonHighlightedColor;
-        colors.pressedColor = textOnly ? TransparentColor : ButtonPressedColor;
-        colors.selectedColor = colors.highlightedColor;
-        button.colors = colors;
-
-        CreateLabel(rect, name + "Label", text, Vector2.zero, new Vector2(220f, 50f), labelFontSize, TextAlignmentOptions.Center);
-        return button;
     }
 
     private static void SetObjectActive(GameObject targetObject, bool active)
@@ -317,7 +192,7 @@ public class MethodSelectionUI : MonoBehaviour
             return;
 
         button.targetGraphic.color = TransparentColor;
-        var label = button.GetComponentInChildren<TMP_Text>();
+        var label = button.GetComponentInChildren<TMP_Text>(true);
         if (label != null)
         {
             label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
@@ -331,7 +206,7 @@ public class MethodSelectionUI : MonoBehaviour
             return;
 
         button.targetGraphic.color = TransparentColor;
-        var label = button.GetComponentInChildren<TMP_Text>();
+        var label = button.GetComponentInChildren<TMP_Text>(true);
         if (label != null)
         {
             label.fontStyle = FontStyles.Normal;
@@ -339,10 +214,10 @@ public class MethodSelectionUI : MonoBehaviour
         }
     }
 
-    private static TMP_Text FindText(RectTransform parent, string name)
+    private static T FindComponentRecursive<T>(Transform parent, string name) where T : Component
     {
-        var child = parent.Find(name);
-        return child != null ? child.GetComponent<TMP_Text>() : null;
+        var targetObject = FindObjectRecursive(parent, name);
+        return targetObject != null ? targetObject.GetComponent<T>() : null;
     }
 
     private static GameObject FindObjectRecursive(Transform parent, string name)

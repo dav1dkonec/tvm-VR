@@ -23,6 +23,7 @@ public class StickyHandMenuToggle : MonoBehaviour
     private bool wasPressed;
     private bool isPendingTap;
     private float pressStartedAt;
+    private InflateDeflateUI inflateDeflateUi;
 
     public static bool SuppressRightGrabToMove { get; private set; }
 
@@ -30,6 +31,7 @@ public class StickyHandMenuToggle : MonoBehaviour
 
     private void OnEnable()
     {
+        inflateDeflateUi = FindFirstObjectByType<InflateDeflateUI>();
         toggleAction.action?.Enable();
     }
 
@@ -49,6 +51,13 @@ public class StickyHandMenuToggle : MonoBehaviour
 
         if (isPressed && !wasPressed)
         {
+            if (InflateDeflateUI.IsAnyPickActive)
+            {
+                inflateDeflateUi?.ShowPickModeBlockedMessage();
+                wasPressed = isPressed;
+                return;
+            }
+
             isPendingTap = true;
             pressStartedAt = Time.unscaledTime;
 

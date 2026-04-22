@@ -66,6 +66,9 @@ public class TransparencyUI : MonoBehaviour
     /// </summary>
     public void ValueChanged()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         var color = alphaMaterial.color;
         alphaMaterial.color = new Color(color.r, color.g, color.b, alphaSlider.value);
     }
@@ -75,6 +78,9 @@ public class TransparencyUI : MonoBehaviour
     /// </summary>
     public void Toggle()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         if (alphaOn)
         {
             alphaOn = false;

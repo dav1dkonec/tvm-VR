@@ -28,6 +28,9 @@ public class SequenceButtonUI : MonoBehaviour
     /// </summary>
     public void OnClick()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         FindFirstObjectByType<PlaybackUI>().Enable();
         sequence.Load(sequencePath, sequenceName.text);
     }

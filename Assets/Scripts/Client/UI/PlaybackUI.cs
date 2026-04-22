@@ -77,6 +77,9 @@ public class PlaybackUI : MonoBehaviour
     /// </summary>
     public void Play()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         if (Sequence.playing)
         {
             sequence.Pause();
@@ -100,6 +103,9 @@ public class PlaybackUI : MonoBehaviour
     /// </summary>
     public void Previous()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         sequence.Previous();
     }
 
@@ -109,6 +115,9 @@ public class PlaybackUI : MonoBehaviour
     /// </summary>
     public void Next()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         sequence.Next();
 
     }
@@ -119,6 +128,9 @@ public class PlaybackUI : MonoBehaviour
     /// </summary>
     public void First()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         sequence.First();
 
     }
@@ -128,6 +140,9 @@ public class PlaybackUI : MonoBehaviour
     /// </summary>
     public void Last()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         sequence.Last();
     }
 

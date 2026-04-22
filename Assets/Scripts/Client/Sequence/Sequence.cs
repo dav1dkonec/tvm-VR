@@ -246,6 +246,9 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     /// </summary>
     public async void SavePressed()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         if (loadedPath == null || !Directory.Exists(loadedPath))
         {
             Debug.LogWarning("Sequence: No loaded sequence directory is available for save.");

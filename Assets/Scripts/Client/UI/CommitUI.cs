@@ -8,6 +8,9 @@ public class CommitUI : MonoBehaviour
 
     public void OnCommitClicked()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         sequence.CommitAllEdits();
     }
 }

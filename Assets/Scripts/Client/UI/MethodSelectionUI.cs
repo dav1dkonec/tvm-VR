@@ -62,6 +62,9 @@ public class MethodSelectionUI : MonoBehaviour
 
     public void ToggleMethodDropdown()
     {
+        if (inflateDeflateUi != null && !inflateDeflateUi.CanChangeMethod())
+            return;
+
         dropdownVisible = !dropdownVisible;
         if (dropdownRoot != null)
             dropdownRoot.SetActive(dropdownVisible);
@@ -72,6 +75,9 @@ public class MethodSelectionUI : MonoBehaviour
         if (target == null)
             return;
 
+        if (inflateDeflateUi != null && !inflateDeflateUi.CanChangeMethod())
+            return;
+
         target.CurrentMethod = MethodKind.BasicTranslate;
         dropdownVisible = false;
         ApplyMethodVisibility();
@@ -80,6 +86,9 @@ public class MethodSelectionUI : MonoBehaviour
     public void SelectInflateDeflate()
     {
         if (target == null)
+            return;
+
+        if (inflateDeflateUi != null && !inflateDeflateUi.CanChangeMethod())
             return;
 
         target.CurrentMethod = MethodKind.InflateDeflate;
@@ -195,7 +204,7 @@ public class MethodSelectionUI : MonoBehaviour
         var label = button.GetComponentInChildren<TMP_Text>(true);
         if (label != null)
         {
-            label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
+            label.fontStyle = FontStyles.Normal;
             label.color = selected ? SelectedMethodTextColor : Color.white;
         }
     }

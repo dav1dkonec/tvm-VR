@@ -42,6 +42,9 @@ public class ResetPositionUI : MonoBehaviour
     /// </summary>
     public void OnClicked()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         positionable.transform.localPosition = position;
         positionable.transform.localRotation = rotation;
         positionable.transform.localScale = scale;

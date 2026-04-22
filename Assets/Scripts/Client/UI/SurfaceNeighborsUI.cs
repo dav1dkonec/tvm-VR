@@ -51,6 +51,9 @@ public class SurfaceNeighborsUI : MonoBehaviour
     /// </summary>
     public void OnPlusClicked()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         if (target == null)
             return;
 
@@ -65,6 +68,9 @@ public class SurfaceNeighborsUI : MonoBehaviour
     /// </summary>
     public void OnMinusClicked()
     {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
         if (target == null)
             return;
 

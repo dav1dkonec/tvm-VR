@@ -32,12 +32,27 @@ public class GrabToMove : MonoBehaviour
     /// True if the action was active in the previous frame, false otherwise
     /// </summary>
     bool wasDownR;
+    private InflateDeflateUI inflateDeflateUi;
+
+    private void Awake()
+    {
+        inflateDeflateUi = FindFirstObjectByType<InflateDeflateUI>();
+    }
 
     /// <summary>
     /// Translates the target object on drag
     /// </summary>
     void Update()
     {
+        if (InflateDeflateUI.IsAnyPickActive)
+        {
+            if (!wasDownR && rightSelect.action != null && rightSelect.action.IsPressed())
+                inflateDeflateUi?.ShowPickModeBlockedMessage();
+
+            wasDownR = false;
+            return;
+        }
+
         if (StickyHandMenuToggle.SuppressRightGrabToMove)
         {
             wasDownR = false;

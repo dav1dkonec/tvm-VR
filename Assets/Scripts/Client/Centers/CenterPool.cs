@@ -10,7 +10,9 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 /// </summary>
 public class CenterPool : MonoBehaviour, ICenterHoverListener
 {
-    private const float InflateStrengthPreviewMax = 0.1f;
+    private const float InflateStrengthPreviewReference = 0.5f;
+    private const float InflateStrengthPreviewMinimum = 0.15f;
+    private const float InflatePreviewMinimumVisibleIntensity = 0.35f;
 
     /// <summary>
     /// Center game object prefab
@@ -174,7 +176,10 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
             return;
         }
 
-        var strengthFactor = Mathf.Lerp(0.35f, 1f, Mathf.Clamp01(strength / InflateStrengthPreviewMax));
+        var strengthFactor = Mathf.Lerp(
+            InflateStrengthPreviewMinimum,
+            1f,
+            Mathf.Clamp01(strength / InflateStrengthPreviewReference));
 
         for (int i = 0; i < centers.Length; i++)
         {
@@ -189,8 +194,12 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
                 continue;
             }
 
-            var falloff = 1f - (distance / radius);
-            ApplyPreviewIntensity(targetCenter, falloff * strengthFactor);
+            var falloff = Mathf.Pow(1f - (distance / radius), 0.65f);
+            var visibleIntensity = Mathf.Lerp(
+                InflatePreviewMinimumVisibleIntensity,
+                1f,
+                falloff * strengthFactor);
+            ApplyPreviewIntensity(targetCenter, visibleIntensity);
         }
     }
 

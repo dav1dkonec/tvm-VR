@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using TvmVr2.Api.Enums;
 using TvmVr2.Client.Sequence;
@@ -5,19 +6,35 @@ using UnityEngine;
 
 public class InflateDeflateUI : MonoBehaviour
 {
+    private const float TransientMessageDuration = 2f;
+
     public GameObject panelObject;
     public TMP_Text statusText;
 
     private EditingMethodRuntimeSettings target;
     private ActivateTeleportationRay teleportRay;
+    private GameObject transientMessageCanvas;
+    private TMP_Text transientMessageText;
+    private Coroutine transientMessageRoutine;
     private bool isPickingReferencePoint;
 
+    public static bool IsAnyPickActive { get; private set; }
     public bool IsPickingReferencePoint => isPickingReferencePoint;
+
+    public static bool BlockIfPickActive()
+    {
+        if (!IsAnyPickActive)
+            return false;
+
+        Object.FindFirstObjectByType<InflateDeflateUI>()?.ShowPickModeBlockedMessage();
+        return true;
+    }
 
     private void Awake()
     {
         target = FindFirstObjectByType<EditingMethodRuntimeSettings>();
         teleportRay = FindFirstObjectByType<ActivateTeleportationRay>();
+        InitializeTransientMessageCanvas();
 
         if (target != null)
         {
@@ -29,8 +46,14 @@ public class InflateDeflateUI : MonoBehaviour
 
     private void Start()
     {
-        SetStatus("Set parameters, press Pick Point, then use the left hand ray to aim at the mesh and release the teleport trigger.");
+        SetWorkflowStatus();
         SetVisible(target != null && target.CurrentMethod == MethodKind.InflateDeflate);
+    }
+
+    private void OnDisable()
+    {
+        if (isPickingReferencePoint)
+            IsAnyPickActive = false;
     }
 
     public void SetVisible(bool visible)
@@ -42,7 +65,7 @@ public class InflateDeflateUI : MonoBehaviour
             CancelPickSilently();
 
         if (visible)
-            SetStatus("Set parameters, press Pick Point, then use the left hand ray to aim at the mesh and release the teleport trigger.");
+            SetWorkflowStatus();
     }
 
     public bool CanChangeParameters()
@@ -50,8 +73,22 @@ public class InflateDeflateUI : MonoBehaviour
         if (!isPickingReferencePoint)
             return true;
 
-        SetStatus("Cannot change parameters while picking a reference point. Cancel point selection first.");
+        ShowPickModeBlockedMessage();
         return false;
+    }
+
+    public bool CanChangeMethod()
+    {
+        if (!isPickingReferencePoint)
+            return true;
+
+        ShowPickModeBlockedMessage();
+        return false;
+    }
+
+    public void ShowPickModeBlockedMessage()
+    {
+        ShowTransientMessage("Finish or cancel point selection first.");
     }
 
     public void BeginPick()
@@ -59,44 +96,94 @@ public class InflateDeflateUI : MonoBehaviour
         if (target == null || teleportRay == null)
             return;
 
+        if (isPickingReferencePoint)
+        {
+            ShowPickModeBlockedMessage();
+            return;
+        }
+
         target.CurrentMethod = MethodKind.InflateDeflate;
         isPickingReferencePoint = true;
+        IsAnyPickActive = true;
         teleportRay.BeginInflateDeflatePick();
-        SetStatus("Pick mode is active. Use the left hand ray, hold the teleport trigger, aim at the mesh and release.");
+        ShowTransientMessage("Pick mode active. Aim at the mesh with the left hand ray.");
     }
 
     public void CancelPick()
     {
         CancelPickSilently();
-        SetStatus("Selection cancelled. Teleport works normally again.");
+        ShowTransientMessage("Selection cancelled.");
     }
 
     public void ShowPickFailed(string message)
     {
         isPickingReferencePoint = false;
-        SetStatus(message);
+        IsAnyPickActive = false;
+        ShowTransientMessage(message);
     }
 
     public void ShowPickCompleted()
     {
         isPickingReferencePoint = false;
-        SetStatus("Reference point selected. The edit was sent to the method pipeline.");
+        IsAnyPickActive = false;
+        ShowTransientMessage("Reference point selected.");
     }
 
     private void CancelPickSilently()
     {
-        if (!isPickingReferencePoint && teleportRay == null)
+        if (!isPickingReferencePoint)
             return;
 
         if (teleportRay != null)
             teleportRay.CancelInflateDeflatePick();
 
         isPickingReferencePoint = false;
+        IsAnyPickActive = false;
     }
 
     private void SetStatus(string message)
     {
         if (statusText != null)
             statusText.text = message;
+    }
+
+    private void SetWorkflowStatus()
+    {
+        SetStatus("Set parameters, press Pick Point, then use the left hand ray to aim at the mesh and release the teleport trigger.");
+    }
+
+    private void InitializeTransientMessageCanvas()
+    {
+        var sequence = FindFirstObjectByType<Sequence>();
+        if (sequence == null || sequence.waitCanvas == null)
+            return;
+
+        transientMessageCanvas = Instantiate(sequence.waitCanvas, sequence.waitCanvas.transform.parent);
+        transientMessageCanvas.name = "Transient Interaction Message";
+        transientMessageText = transientMessageCanvas.GetComponentInChildren<TMP_Text>(true);
+        transientMessageCanvas.SetActive(false);
+    }
+
+    private void ShowTransientMessage(string message)
+    {
+        if (transientMessageCanvas == null || transientMessageText == null)
+        {
+            Debug.Log(message);
+            return;
+        }
+
+        if (transientMessageRoutine != null)
+            StopCoroutine(transientMessageRoutine);
+
+        transientMessageRoutine = StartCoroutine(ShowTransientMessageRoutine(message));
+    }
+
+    private IEnumerator ShowTransientMessageRoutine(string message)
+    {
+        transientMessageText.text = message;
+        transientMessageCanvas.SetActive(true);
+        yield return new WaitForSecondsRealtime(TransientMessageDuration);
+        transientMessageCanvas.SetActive(false);
+        transientMessageRoutine = null;
     }
 }

@@ -13,10 +13,12 @@
 .DS_Store
 Thumbs.db
 .vs/
+.vsconfig
 .vscode/
 .idea/
 *.csproj
 *.sln
+*.slnx
 *.suo
 *.tmp
 *.user

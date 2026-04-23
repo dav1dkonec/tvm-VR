@@ -44,7 +44,8 @@ public class PinnedHandMenuController : MonoBehaviour
     public float maxHeightOffset = 0.15f;
     public bool faceHead = true;
     public bool useFixedPinnedPitch = true;
-    public float pinnedPitchDegrees = -3f;
+    public float pinnedPitchDegrees = -6f;
+    public float pinnedYawDegrees = 6f;
     public bool invertCanvasFacing = true;
     public Vector3 pinnedAdditionalRotationEuler;
     public bool pollDirectControllerInput = true;
@@ -158,7 +159,8 @@ public class PinnedHandMenuController : MonoBehaviour
         handTransform = transform;
         visualFaceTransform = null;
         orbitRadius = 0.55f;
-        pinnedPitchDegrees = -3f;
+        pinnedPitchDegrees = -6f;
+        pinnedYawDegrees = 6f;
         invertCanvasFacing = true;
         dragDegreesPerMeter = runtimeHand == MenuHand.Left ? 360f : 180f;
         pinnedAdditionalRotationEuler = Vector3.zero;
@@ -211,9 +213,7 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
 
         UpdatePinnedTransform();
-
-        if (menuRoot != null && !menuRoot.activeSelf)
-            menuRoot.SetActive(true);
+        EnsurePinnedMenuVisible();
     }
 
     private void BeginPress()
@@ -469,11 +469,43 @@ public class PinnedHandMenuController : MonoBehaviour
         ResolveVisualFaceTransform();
         Vector3 visualForward = invertCanvasFacing ? -toUser : toUser;
         Quaternion desiredVisualRotation = Quaternion.LookRotation(visualForward, Vector3.up);
+        float handYaw = hand == MenuHand.Left ? pinnedYawDegrees : -pinnedYawDegrees;
 
         if (useFixedPinnedPitch)
-            desiredVisualRotation *= Quaternion.Euler(pinnedPitchDegrees, 0f, 0f);
+            desiredVisualRotation *= Quaternion.Euler(pinnedPitchDegrees, handYaw, 0f);
+        else
+            desiredVisualRotation *= Quaternion.Euler(0f, handYaw, 0f);
 
         menuRoot.transform.rotation = desiredVisualRotation * Quaternion.Inverse(visualLocalRotation) * Quaternion.Euler(pinnedAdditionalRotationEuler);
+    }
+
+    private void EnsurePinnedMenuVisible()
+    {
+        if (menuRoot == null)
+            return;
+
+        if (!menuRoot.activeSelf)
+            menuRoot.SetActive(true);
+
+        ResolveVisualFaceTransform();
+
+        if (visualFaceTransform != null && !visualFaceTransform.gameObject.activeSelf)
+            visualFaceTransform.gameObject.SetActive(true);
+
+        foreach (Canvas canvas in menuRoot.GetComponentsInChildren<Canvas>(true))
+        {
+            if (!canvas.gameObject.activeSelf)
+                canvas.gameObject.SetActive(true);
+
+            canvas.enabled = true;
+        }
+
+        foreach (CanvasGroup canvasGroup in menuRoot.GetComponentsInChildren<CanvasGroup>(true))
+        {
+            canvasGroup.alpha = 1f;
+            canvasGroup.interactable = true;
+            canvasGroup.blocksRaycasts = true;
+        }
     }
 
     private void CaptureVisualFacingReference()

@@ -35183,7 +35183,8 @@ MonoBehaviour:
   maxHeightOffset: 0.15
   faceHead: 1
   useFixedPinnedPitch: 1
-  pinnedPitchDegrees: -3
+  pinnedPitchDegrees: -6
+  pinnedYawDegrees: 6
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
   pollDirectControllerInput: 1
@@ -50036,7 +50037,8 @@ MonoBehaviour:
   maxHeightOffset: 0.15
   faceHead: 1
   useFixedPinnedPitch: 1
-  pinnedPitchDegrees: -3
+  pinnedPitchDegrees: -6
+  pinnedYawDegrees: 6
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
   pollDirectControllerInput: 1

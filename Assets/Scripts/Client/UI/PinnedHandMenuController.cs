@@ -8,6 +8,10 @@ using UnityEngine.SceneManagement;
 public class PinnedHandMenuController : MonoBehaviour
 {
     private const string XrOriginName = "XR Origin";
+    private const string LeftHandName = "Left Hand";
+    private const string RightHandName = "Right Hand";
+    private const string MethodMenuName = "Method Menu";
+    private const string PlaybackMenuName = "Playback Menu";
 
     public enum MenuHand
     {
@@ -65,6 +69,13 @@ public class PinnedHandMenuController : MonoBehaviour
         var controllers = FindObjectsByType<PinnedHandMenuController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         Debug.Log($"PinnedHandMenuController diagnostic: scene='{SceneManager.GetActiveScene().name}', controllers={controllers.Length}");
 
+        if (controllers.Length == 0)
+        {
+            InstallRuntimeFallbackControllers();
+            controllers = FindObjectsByType<PinnedHandMenuController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            Debug.Log($"PinnedHandMenuController diagnostic: after runtime fallback install, controllers={controllers.Length}");
+        }
+
         foreach (var controller in controllers)
         {
             Debug.Log(
@@ -73,18 +84,45 @@ public class PinnedHandMenuController : MonoBehaviour
         }
     }
 
+    private static void InstallRuntimeFallbackControllers()
+    {
+        InstallRuntimeFallbackController(LeftHandName, MethodMenuName, MenuHand.Left);
+        InstallRuntimeFallbackController(RightHandName, PlaybackMenuName, MenuHand.Right);
+    }
+
+    private static void InstallRuntimeFallbackController(string handName, string menuName, MenuHand menuHand)
+    {
+        Transform handObject = FindSceneTransformByName(handName);
+        Transform menuObject = FindSceneTransformByName(menuName);
+
+        if (handObject == null || menuObject == null)
+        {
+            Debug.LogWarning($"PinnedHandMenuController diagnostic: cannot install {menuHand} fallback, hand='{handObject?.name}', menu='{menuObject?.name}'");
+            return;
+        }
+
+        var controller = handObject.GetComponent<PinnedHandMenuController>();
+        if (controller == null)
+            controller = handObject.gameObject.AddComponent<PinnedHandMenuController>();
+
+        controller.ConfigureRuntimeFallback(menuObject.gameObject, menuHand);
+        Debug.Log($"PinnedHandMenuController diagnostic: installed {menuHand} fallback on '{handObject.name}' for menu '{menuObject.name}'", controller);
+    }
+
+    private static Transform FindSceneTransformByName(string objectName)
+    {
+        foreach (var candidate in FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (candidate.name == objectName && candidate.gameObject.scene.IsValid())
+                return candidate;
+        }
+
+        return null;
+    }
+
     private void Awake()
     {
-        if (handTransform == null)
-            handTransform = transform;
-
-        if (headTransform == null && Camera.main != null)
-            headTransform = Camera.main.transform;
-
-        if (userRoot == null && headTransform != null)
-            userRoot = ResolveUserRoot(headTransform);
-
-        CacheOriginalMenuTransform();
+        ResolveMissingReferences();
         inflateDeflateUi = FindFirstObjectByType<InflateDeflateUI>();
     }
 
@@ -99,6 +137,38 @@ public class PinnedHandMenuController : MonoBehaviour
     {
         if (hand == MenuHand.Right)
             rightGrabReserved = false;
+    }
+
+    private void ConfigureRuntimeFallback(GameObject runtimeMenuRoot, MenuHand runtimeHand)
+    {
+        menuRoot = runtimeMenuRoot;
+        hand = runtimeHand;
+        handTransform = transform;
+        debugLogging = true;
+        pollDirectControllerInput = true;
+        pollTriggerAsFallback = true;
+        ResolveMissingReferences();
+        CacheOriginalMenuTransform();
+    }
+
+    private void ResolveMissingReferences()
+    {
+        if (handTransform == null)
+            handTransform = transform;
+
+        if (headTransform == null && Camera.main != null)
+            headTransform = Camera.main.transform;
+
+        if (userRoot == null)
+        {
+            Transform xrOrigin = FindSceneTransformByName(XrOriginName);
+            if (xrOrigin != null)
+                userRoot = xrOrigin;
+            else if (headTransform != null)
+                userRoot = ResolveUserRoot(headTransform);
+        }
+
+        CacheOriginalMenuTransform();
     }
 
     private void Update()

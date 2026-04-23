@@ -35176,18 +35176,15 @@ MonoBehaviour:
   tapMaxDuration: 0.4
   doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
-  pinnedDistance: 0.7
-  preserveInitialDistance: 0
-  dragHorizontalDegreesPerMeter: 360
-  dragAngularMultiplier: 6
+  orbitRadius: 0.7
+  dragDegreesPerMeter: 360
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
-  freezePinnedRotation: 0
   useFixedPinnedPitch: 1
   pinnedPitchDegrees: -1.5
-  pinnedYawOffsetDegrees: 6
+  pinnedAdditionalRotationEuler: {x: 0, y: 6, z: 0}
   pollDirectControllerInput: 1
   pollTriggerAsFallback: 1
   debugLogging: 1
@@ -50031,18 +50028,15 @@ MonoBehaviour:
   tapMaxDuration: 0.4
   doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
-  pinnedDistance: 0.7
-  preserveInitialDistance: 0
-  dragHorizontalDegreesPerMeter: 180
-  dragAngularMultiplier: 3
+  orbitRadius: 0.7
+  dragDegreesPerMeter: 180
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
-  freezePinnedRotation: 0
   useFixedPinnedPitch: 1
   pinnedPitchDegrees: -1.5
-  pinnedYawOffsetDegrees: 0
+  pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
   pollDirectControllerInput: 1
   pollTriggerAsFallback: 1
   debugLogging: 1

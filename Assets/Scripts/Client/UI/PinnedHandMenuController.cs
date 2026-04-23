@@ -37,18 +37,15 @@ public class PinnedHandMenuController : MonoBehaviour
     public float tapMaxDuration = 0.4f;
     public float doubleClickWindow = 0.6f;
     public float dragStartHoldTime = 0.15f;
-    public float pinnedDistance = 0.7f;
-    public bool preserveInitialDistance;
-    public float dragHorizontalDegreesPerMeter = 140f;
-    public float dragAngularMultiplier = 2.5f;
+    public float orbitRadius = 0.7f;
+    public float dragDegreesPerMeter = 180f;
     public float dragVerticalSensitivity = 1f;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
     public bool faceHead = true;
-    public bool freezePinnedRotation;
     public bool useFixedPinnedPitch = true;
     public float pinnedPitchDegrees = -1.5f;
-    public float pinnedYawOffsetDegrees;
+    public Vector3 pinnedAdditionalRotationEuler;
     public bool pollDirectControllerInput = true;
     public bool pollTriggerAsFallback = true;
     public bool debugLogging;
@@ -63,18 +60,13 @@ public class PinnedHandMenuController : MonoBehaviour
     private bool pressBlocked;
     private float pressStartedAt;
     private float lastTapAt = -10f;
-    private Vector3 pinnedDirectionLocal = Vector3.forward;
-    private float pinnedHeightOffset = -0.2f;
-    private float currentPinnedDistance;
-    private Quaternion pinnedRotationLocal = Quaternion.identity;
-    private Quaternion pinnedBaseWorldRotation = Quaternion.identity;
-    private Quaternion frozenPinnedRotation = Quaternion.identity;
-    private Vector3 pinnedBaseToHeadDirection = Vector3.forward;
     private Vector3 dragStartHandPosition;
-    private Vector3 dragStartHandDirectionLocal;
-    private Vector3 dragStartDirectionLocal;
+    private Quaternion dragBasisYawRotation = Quaternion.identity;
+    private float orbitAngleDegrees;
     private float dragStartHeightOffset;
-    private float dragStartDistance;
+    private float dragStartOrbitAngleDegrees;
+    private float heightOffset = -0.2f;
+    private Quaternion orbitRotationCorrection = Quaternion.identity;
     private InflateDeflateUI inflateDeflateUi;
 
     private static bool rightGrabReserved;
@@ -162,6 +154,9 @@ public class PinnedHandMenuController : MonoBehaviour
         menuRoot = runtimeMenuRoot;
         hand = runtimeHand;
         handTransform = transform;
+        orbitRadius = 0.7f;
+        dragDegreesPerMeter = runtimeHand == MenuHand.Left ? 360f : 180f;
+        pinnedAdditionalRotationEuler = runtimeHand == MenuHand.Left ? new Vector3(0f, 6f, 0f) : Vector3.zero;
         debugLogging = true;
         pollDirectControllerInput = true;
         pollTriggerAsFallback = true;
@@ -277,10 +272,9 @@ public class PinnedHandMenuController : MonoBehaviour
         pressCanBecomeTap = false;
 
         dragStartHandPosition = handTransform != null ? handTransform.position : menuRoot.transform.position;
-        dragStartHandDirectionLocal = GetLocalDirectionFromWorldPosition(dragStartHandPosition);
-        dragStartDirectionLocal = pinnedDirectionLocal;
-        dragStartHeightOffset = pinnedHeightOffset;
-        dragStartDistance = Mathf.Max(0.05f, currentPinnedDistance);
+        dragBasisYawRotation = GetHeadYawRotation();
+        dragStartOrbitAngleDegrees = orbitAngleDegrees;
+        dragStartHeightOffset = heightOffset;
         LogDebug("drag start");
     }
 
@@ -313,10 +307,8 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
 
         CacheOriginalMenuTransform();
-        CapturePinnedPlacementFromMenu();
-        pinnedRotationLocal = Quaternion.Inverse(GetUserYawRotation()) * menuRoot.transform.rotation;
-        CapturePinnedFacing();
-        frozenPinnedRotation = BuildFrozenPinnedRotation();
+        CaptureOrbitFromMenu();
+        CaptureOrbitRotationCorrection();
 
         menuRoot.transform.SetParent(null, true);
         menuRoot.SetActive(true);
@@ -407,70 +399,36 @@ public class PinnedHandMenuController : MonoBehaviour
         originalActive = menuRoot.activeSelf;
     }
 
-    private void UpdatePinnedPlacementFromHand()
-    {
-        if (headTransform == null)
-            return;
-
-        Vector3 sourcePosition = handTransform != null ? handTransform.position : headTransform.position + GetFallbackWorldDirection();
-        ApplyPinnedPlacementFromWorldPosition(sourcePosition);
-    }
-
     private void UpdatePinnedPlacementFromDrag()
     {
         if (handTransform == null || headTransform == null)
             return;
 
-        Quaternion userYaw = GetUserYawRotation();
-        Vector3 localDelta = Quaternion.Inverse(userYaw) * (handTransform.position - dragStartHandPosition);
-        Vector3 currentHandDirectionLocal = GetLocalDirectionFromWorldPosition(handTransform.position);
-        float handAngleDegrees = Vector3.SignedAngle(dragStartHandDirectionLocal, currentHandDirectionLocal, Vector3.up);
-        float angleDegrees = handAngleDegrees * dragAngularMultiplier;
+        Vector3 localDelta = Quaternion.Inverse(dragBasisYawRotation) * (handTransform.position - dragStartHandPosition);
 
-        if (Mathf.Abs(angleDegrees) < 0.01f)
-            angleDegrees = localDelta.x * dragHorizontalDegreesPerMeter;
-
-        pinnedDirectionLocal = Quaternion.Euler(0f, angleDegrees, 0f) * dragStartDirectionLocal;
-        pinnedDirectionLocal.y = 0f;
-
-        if (pinnedDirectionLocal.sqrMagnitude < 0.0001f)
-            pinnedDirectionLocal = dragStartDirectionLocal;
-
-        pinnedDirectionLocal.Normalize();
-        pinnedHeightOffset = Mathf.Clamp(
+        orbitAngleDegrees = dragStartOrbitAngleDegrees + localDelta.x * dragDegreesPerMeter;
+        heightOffset = Mathf.Clamp(
             dragStartHeightOffset + localDelta.y * dragVerticalSensitivity,
             minHeightOffset,
             maxHeightOffset);
-        currentPinnedDistance = dragStartDistance;
     }
 
-    private void CapturePinnedPlacementFromMenu()
+    private void CaptureOrbitFromMenu()
     {
         if (menuRoot == null)
             return;
 
-        ApplyPinnedPlacementFromWorldPosition(menuRoot.transform.position);
+        CaptureOrbitFromWorldPosition(menuRoot.transform.position);
     }
 
-    private void ApplyPinnedPlacementFromWorldPosition(Vector3 sourcePosition)
+    private void CaptureOrbitFromWorldPosition(Vector3 worldPosition)
     {
         if (headTransform == null)
             return;
 
-        Vector3 direction = sourcePosition - headTransform.position;
-        direction.y = 0f;
-
-        if (direction.sqrMagnitude < 0.0001f)
-            direction = GetFallbackWorldDirection();
-
-        direction.Normalize();
-        pinnedDirectionLocal = Quaternion.Inverse(GetUserYawRotation()) * direction;
-        pinnedDirectionLocal.y = 0f;
-        pinnedDirectionLocal.Normalize();
-        pinnedHeightOffset = Mathf.Clamp(sourcePosition.y - headTransform.position.y, minHeightOffset, maxHeightOffset);
-        currentPinnedDistance = preserveInitialDistance
-            ? Mathf.Max(0.05f, Vector3.Distance(new Vector3(sourcePosition.x, 0f, sourcePosition.z), new Vector3(headTransform.position.x, 0f, headTransform.position.z)))
-            : pinnedDistance;
+        Vector3 localDirection = Quaternion.Inverse(GetUserYawRotation()) * GetHorizontalDirection(worldPosition - headTransform.position);
+        orbitAngleDegrees = Mathf.Atan2(localDirection.x, localDirection.z) * Mathf.Rad2Deg;
+        heightOffset = Mathf.Clamp(worldPosition.y - headTransform.position.y, minHeightOffset, maxHeightOffset);
     }
 
     private void UpdatePinnedTransform()
@@ -479,70 +437,47 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
 
         Quaternion userYaw = GetUserYawRotation();
-        Vector3 direction = userYaw * pinnedDirectionLocal;
-        direction.y = 0f;
-
-        if (direction.sqrMagnitude < 0.0001f)
-            direction = GetFallbackWorldDirection();
-
-        direction.Normalize();
-        float distance = preserveInitialDistance ? currentPinnedDistance : pinnedDistance;
-        menuRoot.transform.position = headTransform.position + direction * distance + Vector3.up * pinnedHeightOffset;
+        Vector3 localDirection = Quaternion.Euler(0f, orbitAngleDegrees, 0f) * Vector3.forward;
+        Vector3 worldDirection = userYaw * localDirection;
+        worldDirection.y = 0f;
+        worldDirection.Normalize();
+        menuRoot.transform.position = headTransform.position + worldDirection * orbitRadius + Vector3.up * heightOffset;
 
         if (faceHead)
-            RotatePinnedMenuTowardHead(userYaw);
+            RotatePinnedMenuTowardHead(worldDirection);
         else
-            menuRoot.transform.rotation = userYaw * pinnedRotationLocal;
+            menuRoot.transform.rotation = userYaw * Quaternion.Euler(pinnedAdditionalRotationEuler);
     }
 
-    private void CapturePinnedFacing()
-    {
-        pinnedBaseWorldRotation = menuRoot.transform.rotation;
-
-        if (menuRoot == null || headTransform == null)
-            return;
-
-        pinnedBaseToHeadDirection = GetHorizontalDirection(headTransform.position - menuRoot.transform.position);
-        LogDebug($"baseToHead={pinnedBaseToHeadDirection}");
-    }
-
-    private void RotatePinnedMenuTowardHead(Quaternion fallbackUserYaw)
+    private void RotatePinnedMenuTowardHead(Vector3 worldDirectionFromUser)
     {
         if (menuRoot == null || headTransform == null)
-        {
-            menuRoot.transform.rotation = fallbackUserYaw * pinnedRotationLocal;
             return;
-        }
 
-        if (freezePinnedRotation)
-        {
-            menuRoot.transform.rotation = frozenPinnedRotation;
+        Vector3 toUser = -worldDirectionFromUser;
+        toUser.y = 0f;
+
+        if (toUser.sqrMagnitude < 0.0001f)
             return;
-        }
 
-        Vector3 currentToHead = GetHorizontalDirection(headTransform.position - menuRoot.transform.position);
-        float deltaYaw = Vector3.SignedAngle(pinnedBaseToHeadDirection, currentToHead, Vector3.up);
-        Quaternion stableRotation = Quaternion.AngleAxis(deltaYaw, Vector3.up) * pinnedBaseWorldRotation;
-
-        if (Mathf.Abs(pinnedYawOffsetDegrees) > 0.001f)
-            stableRotation = Quaternion.AngleAxis(pinnedYawOffsetDegrees, Vector3.up) * stableRotation;
-
-        menuRoot.transform.rotation = useFixedPinnedPitch
-            ? stableRotation * Quaternion.Euler(pinnedPitchDegrees, 0f, 0f)
-            : stableRotation;
-    }
-
-    private Quaternion BuildFrozenPinnedRotation()
-    {
-        Quaternion rotation = pinnedBaseWorldRotation;
-
-        if (Mathf.Abs(pinnedYawOffsetDegrees) > 0.001f)
-            rotation = Quaternion.AngleAxis(pinnedYawOffsetDegrees, Vector3.up) * rotation;
+        toUser.Normalize();
+        Quaternion faceUserRotation = Quaternion.LookRotation(toUser, Vector3.up);
+        Quaternion correction = orbitRotationCorrection * Quaternion.Euler(pinnedAdditionalRotationEuler);
 
         if (useFixedPinnedPitch)
-            rotation *= Quaternion.Euler(pinnedPitchDegrees, 0f, 0f);
+            correction *= Quaternion.Euler(pinnedPitchDegrees, 0f, 0f);
 
-        return rotation;
+        menuRoot.transform.rotation = faceUserRotation * correction;
+    }
+
+    private void CaptureOrbitRotationCorrection()
+    {
+        if (menuRoot == null || headTransform == null)
+            return;
+
+        Vector3 toUser = GetHorizontalDirection(headTransform.position - menuRoot.transform.position);
+        Quaternion faceUserRotation = Quaternion.LookRotation(toUser, Vector3.up);
+        orbitRotationCorrection = Quaternion.Inverse(faceUserRotation) * menuRoot.transform.rotation;
     }
 
     private Vector3 GetHorizontalDirection(Vector3 direction)
@@ -556,26 +491,16 @@ public class PinnedHandMenuController : MonoBehaviour
         return direction;
     }
 
-    private Vector3 GetLocalDirectionFromWorldPosition(Vector3 worldPosition)
-    {
-        if (headTransform == null)
-            return Vector3.forward;
-
-        Vector3 worldDirection = GetHorizontalDirection(worldPosition - headTransform.position);
-        Vector3 localDirection = Quaternion.Inverse(GetUserYawRotation()) * worldDirection;
-        localDirection.y = 0f;
-
-        if (localDirection.sqrMagnitude < 0.0001f)
-            return Vector3.forward;
-
-        localDirection.Normalize();
-        return localDirection;
-    }
-
     private Quaternion GetUserYawRotation()
     {
         Transform basis = userRoot != null ? userRoot : headTransform;
         return Quaternion.Euler(0f, basis.eulerAngles.y, 0f);
+    }
+
+    private Quaternion GetHeadYawRotation()
+    {
+        Transform basis = headTransform != null ? headTransform : userRoot;
+        return basis != null ? Quaternion.Euler(0f, basis.eulerAngles.y, 0f) : Quaternion.identity;
     }
 
     private Vector3 GetFallbackWorldDirection()

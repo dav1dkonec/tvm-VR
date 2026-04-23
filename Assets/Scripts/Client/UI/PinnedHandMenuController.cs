@@ -26,6 +26,7 @@ public class PinnedHandMenuController : MonoBehaviour
     public Transform userRoot;
     public Transform headTransform;
     public InputActionProperty grabAction;
+    public InputActionProperty alternateGrabAction;
     public MenuHand hand;
     public float pressThreshold = 0.5f;
     public float tapMaxDuration = 0.4f;
@@ -35,6 +36,7 @@ public class PinnedHandMenuController : MonoBehaviour
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
     public bool faceHead = true;
+    public bool debugLogging;
 
     private Transform originalParent;
     private Vector3 originalLocalPosition;
@@ -72,6 +74,7 @@ public class PinnedHandMenuController : MonoBehaviour
     private void OnEnable()
     {
         grabAction.action?.Enable();
+        alternateGrabAction.action?.Enable();
     }
 
     private void OnDisable()
@@ -82,11 +85,10 @@ public class PinnedHandMenuController : MonoBehaviour
 
     private void Update()
     {
-        var action = grabAction.action;
-        if (action == null)
+        if (grabAction.action == null && alternateGrabAction.action == null)
             return;
 
-        bool isPressed = action.IsPressed();
+        bool isPressed = IsGrabPressed();
 
         if (isPressed && !wasPressed)
             BeginPress();
@@ -127,6 +129,8 @@ public class PinnedHandMenuController : MonoBehaviour
 
         if (hand == MenuHand.Right)
             rightGrabReserved = true;
+
+        LogDebug("press");
     }
 
     private void UpdatePress()
@@ -169,11 +173,13 @@ public class PinnedHandMenuController : MonoBehaviour
         float now = Time.unscaledTime;
         if (now - lastTapAt <= doubleClickWindow)
         {
+            LogDebug("double tap");
             TogglePinned();
             lastTapAt = -10f;
             return;
         }
 
+        LogDebug("tap");
         lastTapAt = now;
     }
 
@@ -197,6 +203,7 @@ public class PinnedHandMenuController : MonoBehaviour
         menuRoot.SetActive(true);
         state = MenuState.Pinned;
         UpdatePinnedTransform();
+        LogDebug("pinned");
     }
 
     private void UnpinMenu()
@@ -209,6 +216,28 @@ public class PinnedHandMenuController : MonoBehaviour
         menuRoot.transform.localRotation = originalLocalRotation;
         menuRoot.SetActive(originalActive);
         state = MenuState.HandAttached;
+        LogDebug("unpinned");
+    }
+
+    private bool IsGrabPressed()
+    {
+        return IsActionPressed(grabAction.action) || IsActionPressed(alternateGrabAction.action);
+    }
+
+    private bool IsActionPressed(InputAction action)
+    {
+        if (action == null)
+            return false;
+
+        return action.IsPressed() || action.ReadValue<float>() >= pressThreshold;
+    }
+
+    private void LogDebug(string message)
+    {
+        if (!debugLogging)
+            return;
+
+        Debug.Log($"PinnedHandMenuController[{hand}]: {message}", this);
     }
 
     private void CacheOriginalMenuTransform()

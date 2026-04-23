@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Pins a hand menu near the user after a grab double tap and lets the same grab move it around the user.
@@ -58,6 +59,20 @@ public class PinnedHandMenuController : MonoBehaviour
 
     public static bool SuppressRightGrabToMove => rightGrabReserved;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void LogPinnedControllersAfterSceneLoad()
+    {
+        var controllers = FindObjectsByType<PinnedHandMenuController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        Debug.Log($"PinnedHandMenuController diagnostic: scene='{SceneManager.GetActiveScene().name}', controllers={controllers.Length}");
+
+        foreach (var controller in controllers)
+        {
+            Debug.Log(
+                $"PinnedHandMenuController diagnostic: hand={controller.hand}, object='{controller.name}', activeSelf={controller.gameObject.activeSelf}, activeInHierarchy={controller.gameObject.activeInHierarchy}, enabled={controller.enabled}, menuRoot='{controller.menuRoot?.name}', grabAction={(controller.grabAction.action != null)}, alternateGrabAction={(controller.alternateGrabAction.action != null)}",
+                controller);
+        }
+    }
+
     private void Awake()
     {
         if (handTransform == null)
@@ -77,7 +92,7 @@ public class PinnedHandMenuController : MonoBehaviour
     {
         grabAction.action?.Enable();
         alternateGrabAction.action?.Enable();
-        LogDebug($"enabled, grabAction={(grabAction.action != null)}, alternateGrabAction={(alternateGrabAction.action != null)}, directPolling={pollDirectControllerInput}");
+        Debug.Log($"PinnedHandMenuController[{hand}]: enabled, object='{name}', grabAction={(grabAction.action != null)}, alternateGrabAction={(alternateGrabAction.action != null)}, directPolling={pollDirectControllerInput}", this);
     }
 
     private void OnDisable()

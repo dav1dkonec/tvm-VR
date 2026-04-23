@@ -39,9 +39,12 @@ public class PinnedHandMenuController : MonoBehaviour
     public float dragStartHoldTime = 0.15f;
     public float pinnedDistance = 0.6f;
     public bool preserveInitialDistance = true;
+    public float dragHorizontalSensitivity = 1f;
+    public float dragVerticalSensitivity = 1f;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
     public bool faceHead = true;
+    public bool invertCanvasFacing;
     public bool pollDirectControllerInput = true;
     public bool pollTriggerAsFallback = true;
     public bool debugLogging;
@@ -63,6 +66,10 @@ public class PinnedHandMenuController : MonoBehaviour
     private Transform visibleCanvasTransform;
     private Quaternion canvasRotationInMenu = Quaternion.identity;
     private bool canvasForwardFacesHead = true;
+    private Vector3 dragStartHandPosition;
+    private Vector3 dragStartDirectionLocal;
+    private float dragStartHeightOffset;
+    private float dragStartDistance;
     private InflateDeflateUI inflateDeflateUi;
 
     private static bool rightGrabReserved;
@@ -151,6 +158,7 @@ public class PinnedHandMenuController : MonoBehaviour
         hand = runtimeHand;
         handTransform = transform;
         debugLogging = true;
+        invertCanvasFacing = runtimeHand == MenuHand.Right;
         pollDirectControllerInput = true;
         pollTriggerAsFallback = true;
         ResolveMissingReferences();
@@ -235,10 +243,10 @@ public class PinnedHandMenuController : MonoBehaviour
             pressCanBecomeTap = false;
 
         if (state == MenuState.Pinned && heldFor >= dragStartHoldTime)
-            state = MenuState.DraggingPinned;
+            BeginPinnedDrag();
 
         if (state == MenuState.DraggingPinned)
-            UpdatePinnedPlacementFromHand();
+            UpdatePinnedPlacementFromDrag();
 
         if (hand == MenuHand.Right && state == MenuState.HandAttached && !pressCanBecomeTap)
             rightGrabReserved = false;
@@ -257,6 +265,18 @@ public class PinnedHandMenuController : MonoBehaviour
 
         if (hand == MenuHand.Right)
             rightGrabReserved = false;
+    }
+
+    private void BeginPinnedDrag()
+    {
+        state = MenuState.DraggingPinned;
+        pressCanBecomeTap = false;
+
+        dragStartHandPosition = handTransform != null ? handTransform.position : menuRoot.transform.position;
+        dragStartDirectionLocal = pinnedDirectionLocal;
+        dragStartHeightOffset = pinnedHeightOffset;
+        dragStartDistance = Mathf.Max(0.05f, currentPinnedDistance);
+        LogDebug("drag start");
     }
 
     private void RegisterTap()
@@ -391,6 +411,30 @@ public class PinnedHandMenuController : MonoBehaviour
         ApplyPinnedPlacementFromWorldPosition(sourcePosition);
     }
 
+    private void UpdatePinnedPlacementFromDrag()
+    {
+        if (handTransform == null || headTransform == null)
+            return;
+
+        Quaternion userYaw = GetUserYawRotation();
+        Vector3 localDelta = Quaternion.Inverse(userYaw) * (handTransform.position - dragStartHandPosition);
+        float distance = Mathf.Max(0.05f, dragStartDistance);
+        float angleDegrees = localDelta.x / distance * Mathf.Rad2Deg * dragHorizontalSensitivity;
+
+        pinnedDirectionLocal = Quaternion.Euler(0f, angleDegrees, 0f) * dragStartDirectionLocal;
+        pinnedDirectionLocal.y = 0f;
+
+        if (pinnedDirectionLocal.sqrMagnitude < 0.0001f)
+            pinnedDirectionLocal = dragStartDirectionLocal;
+
+        pinnedDirectionLocal.Normalize();
+        pinnedHeightOffset = Mathf.Clamp(
+            dragStartHeightOffset + localDelta.y * dragVerticalSensitivity,
+            minHeightOffset,
+            maxHeightOffset);
+        currentPinnedDistance = distance;
+    }
+
     private void CapturePinnedPlacementFromMenu()
     {
         if (menuRoot == null)
@@ -459,6 +503,9 @@ public class PinnedHandMenuController : MonoBehaviour
 
         toHead.Normalize();
         canvasForwardFacesHead = Vector3.Dot(visibleCanvasTransform.forward, toHead) >= 0f;
+        if (invertCanvasFacing)
+            canvasForwardFacesHead = !canvasForwardFacesHead;
+
         LogDebug($"canvas='{visibleCanvasTransform.name}', forwardFacesHead={canvasForwardFacesHead}");
     }
 

@@ -45,8 +45,10 @@ public class PinnedHandMenuController : MonoBehaviour
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
     public bool faceHead = true;
+    public bool freezePinnedRotation = true;
     public bool useFixedPinnedPitch = true;
     public float pinnedPitchDegrees = -1.5f;
+    public float pinnedYawOffsetDegrees;
     public bool pollDirectControllerInput = true;
     public bool pollTriggerAsFallback = true;
     public bool debugLogging;
@@ -66,6 +68,7 @@ public class PinnedHandMenuController : MonoBehaviour
     private float currentPinnedDistance;
     private Quaternion pinnedRotationLocal = Quaternion.identity;
     private Quaternion pinnedBaseWorldRotation = Quaternion.identity;
+    private Quaternion frozenPinnedRotation = Quaternion.identity;
     private Vector3 pinnedBaseToHeadDirection = Vector3.forward;
     private Vector3 dragStartHandPosition;
     private Vector3 dragStartHandDirectionLocal;
@@ -313,6 +316,7 @@ public class PinnedHandMenuController : MonoBehaviour
         CapturePinnedPlacementFromMenu();
         pinnedRotationLocal = Quaternion.Inverse(GetUserYawRotation()) * menuRoot.transform.rotation;
         CapturePinnedFacing();
+        frozenPinnedRotation = BuildFrozenPinnedRotation();
 
         menuRoot.transform.SetParent(null, true);
         menuRoot.SetActive(true);
@@ -510,6 +514,12 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
         }
 
+        if (freezePinnedRotation)
+        {
+            menuRoot.transform.rotation = frozenPinnedRotation;
+            return;
+        }
+
         Vector3 currentToHead = GetHorizontalDirection(headTransform.position - menuRoot.transform.position);
         float deltaYaw = Vector3.SignedAngle(pinnedBaseToHeadDirection, currentToHead, Vector3.up);
         Quaternion stableRotation = Quaternion.AngleAxis(deltaYaw, Vector3.up) * pinnedBaseWorldRotation;
@@ -517,6 +527,19 @@ public class PinnedHandMenuController : MonoBehaviour
         menuRoot.transform.rotation = useFixedPinnedPitch
             ? stableRotation * Quaternion.Euler(pinnedPitchDegrees, 0f, 0f)
             : stableRotation;
+    }
+
+    private Quaternion BuildFrozenPinnedRotation()
+    {
+        Quaternion rotation = pinnedBaseWorldRotation;
+
+        if (Mathf.Abs(pinnedYawOffsetDegrees) > 0.001f)
+            rotation = Quaternion.AngleAxis(pinnedYawOffsetDegrees, Vector3.up) * rotation;
+
+        if (useFixedPinnedPitch)
+            rotation *= Quaternion.Euler(pinnedPitchDegrees, 0f, 0f);
+
+        return rotation;
     }
 
     private Vector3 GetHorizontalDirection(Vector3 direction)

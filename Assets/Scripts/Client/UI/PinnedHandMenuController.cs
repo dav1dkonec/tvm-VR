@@ -57,6 +57,7 @@ public class PinnedHandMenuController : MonoBehaviour
     private float lastTapAt = -10f;
     private Vector3 pinnedDirectionLocal = Vector3.forward;
     private float pinnedHeightOffset = -0.2f;
+    private Quaternion pinnedRotationLocal = Quaternion.identity;
     private InflateDeflateUI inflateDeflateUi;
 
     private static bool rightGrabReserved;
@@ -282,7 +283,8 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
 
         CacheOriginalMenuTransform();
-        UpdatePinnedPlacementFromHand();
+        CapturePinnedPlacementFromMenu();
+        pinnedRotationLocal = Quaternion.Inverse(GetUserYawRotation()) * menuRoot.transform.rotation;
 
         menuRoot.transform.SetParent(null, true);
         menuRoot.SetActive(true);
@@ -379,6 +381,22 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
 
         Vector3 sourcePosition = handTransform != null ? handTransform.position : headTransform.position + GetFallbackWorldDirection();
+        ApplyPinnedPlacementFromWorldPosition(sourcePosition);
+    }
+
+    private void CapturePinnedPlacementFromMenu()
+    {
+        if (menuRoot == null)
+            return;
+
+        ApplyPinnedPlacementFromWorldPosition(menuRoot.transform.position);
+    }
+
+    private void ApplyPinnedPlacementFromWorldPosition(Vector3 sourcePosition)
+    {
+        if (headTransform == null)
+            return;
+
         Vector3 direction = sourcePosition - headTransform.position;
         direction.y = 0f;
 
@@ -407,19 +425,7 @@ public class PinnedHandMenuController : MonoBehaviour
         direction.Normalize();
         menuRoot.transform.position = headTransform.position + direction * pinnedDistance + Vector3.up * pinnedHeightOffset;
 
-        if (faceHead)
-            FaceHeadYawOnly();
-    }
-
-    private void FaceHeadYawOnly()
-    {
-        Vector3 toHead = headTransform.position - menuRoot.transform.position;
-        toHead.y = 0f;
-
-        if (toHead.sqrMagnitude < 0.0001f)
-            return;
-
-        menuRoot.transform.rotation = Quaternion.LookRotation(-toHead.normalized, Vector3.up);
+        menuRoot.transform.rotation = userYaw * pinnedRotationLocal;
     }
 
     private Quaternion GetUserYawRotation()

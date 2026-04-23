@@ -35184,6 +35184,7 @@ MonoBehaviour:
   faceHead: 1
   useFixedPinnedPitch: 1
   pinnedPitchDegrees: -3
+  invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
   pollDirectControllerInput: 1
   pollTriggerAsFallback: 1
@@ -50036,6 +50037,7 @@ MonoBehaviour:
   faceHead: 1
   useFixedPinnedPitch: 1
   pinnedPitchDegrees: -3
+  invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
   pollDirectControllerInput: 1
   pollTriggerAsFallback: 1

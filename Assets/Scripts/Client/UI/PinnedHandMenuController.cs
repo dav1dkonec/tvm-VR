@@ -45,6 +45,7 @@ public class PinnedHandMenuController : MonoBehaviour
     public bool faceHead = true;
     public bool useFixedPinnedPitch = true;
     public float pinnedPitchDegrees = -3f;
+    public bool invertCanvasFacing = true;
     public Vector3 pinnedAdditionalRotationEuler;
     public bool pollDirectControllerInput = true;
     public bool pollTriggerAsFallback = true;
@@ -158,6 +159,7 @@ public class PinnedHandMenuController : MonoBehaviour
         visualFaceTransform = null;
         orbitRadius = 0.55f;
         pinnedPitchDegrees = -3f;
+        invertCanvasFacing = true;
         dragDegreesPerMeter = runtimeHand == MenuHand.Left ? 360f : 180f;
         pinnedAdditionalRotationEuler = Vector3.zero;
         debugLogging = true;
@@ -465,7 +467,8 @@ public class PinnedHandMenuController : MonoBehaviour
 
         toUser.Normalize();
         ResolveVisualFaceTransform();
-        Quaternion desiredVisualRotation = Quaternion.LookRotation(toUser, Vector3.up);
+        Vector3 visualForward = invertCanvasFacing ? -toUser : toUser;
+        Quaternion desiredVisualRotation = Quaternion.LookRotation(visualForward, Vector3.up);
 
         if (useFixedPinnedPitch)
             desiredVisualRotation *= Quaternion.Euler(pinnedPitchDegrees, 0f, 0f);

@@ -35178,7 +35178,7 @@ MonoBehaviour:
   dragStartHoldTime: 0.15
   pinnedDistance: 0.7
   preserveInitialDistance: 1
-  dragHorizontalSensitivity: 4
+  dragHorizontalDegreesPerMeter: 220
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
@@ -50030,7 +50030,7 @@ MonoBehaviour:
   dragStartHoldTime: 0.15
   pinnedDistance: 0.7
   preserveInitialDistance: 1
-  dragHorizontalSensitivity: 4
+  dragHorizontalDegreesPerMeter: 110
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15

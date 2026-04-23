@@ -98,44 +98,26 @@ public class ActivateTeleportationRay : MonoBehaviour
 
         if (leftTeleportation != null)
             leftTeleportation.SetActive(false);
-
-        inflateDeflateUi?.ShowPickFailed("Selection cancelled.\nTeleport works normally again.");
     }
 
     private void TryPickInflateDeflateReferencePoint()
     {
-        inflateDeflatePickArmed = false;
-        centerPool?.ClearPreview();
-        SetTeleportTargetsEnabled(true);
-
         if (rayInteractor == null || sequence == null)
             return;
 
         if (methodSettings != null && methodSettings.CurrentMethod != MethodKind.InflateDeflate)
             return;
 
-        if (!TryGetCurrentHit(out var hit))
-        {
-            inflateDeflateUi?.ShowPickFailed("No valid mesh point was hit.\nPress Pick Point again, use the left hand ray and aim at the sequence mesh.");
-            Debug.LogWarning("InflateDeflate: Reference point was not selected.");
+        if (!TryGetCurrentHit(out var hit) || hit.collider == null)
             return;
-        }
-
-        if (hit.collider == null)
-        {
-            inflateDeflateUi?.ShowPickFailed("No collider was hit.\nUse the left hand ray and aim at the sequence mesh.");
-            Debug.LogWarning("InflateDeflate: Raycast hit has no collider.");
-            return;
-        }
 
         var hitSequence = hit.collider.GetComponentInParent<Sequence>();
         if (hitSequence != sequence)
-        {
-            inflateDeflateUi?.ShowPickFailed("Aim at the loaded sequence mesh with the left hand ray.\nTeleport surfaces cannot be used as reference points.");
-            Debug.LogWarning("InflateDeflate: Aim at the sequence mesh to pick a reference point.");
             return;
-        }
 
+        inflateDeflatePickArmed = false;
+        centerPool?.ClearPreview();
+        SetTeleportTargetsEnabled(true);
         inflateDeflateUi?.ShowPickCompleted();
         sequence.CommitInflateDeflate(hit.point);
     }

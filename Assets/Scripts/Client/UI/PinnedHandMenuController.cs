@@ -37,9 +37,9 @@ public class PinnedHandMenuController : MonoBehaviour
     public float tapMaxDuration = 0.4f;
     public float doubleClickWindow = 0.6f;
     public float dragStartHoldTime = 0.15f;
-    public float pinnedDistance = 0.6f;
+    public float pinnedDistance = 0.65f;
     public bool preserveInitialDistance = true;
-    public float dragHorizontalSensitivity = 4f;
+    public float dragHorizontalDegreesPerMeter = 140f;
     public float dragVerticalSensitivity = 1f;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
@@ -418,7 +418,7 @@ public class PinnedHandMenuController : MonoBehaviour
         Quaternion userYaw = GetUserYawRotation();
         Vector3 localDelta = Quaternion.Inverse(userYaw) * (handTransform.position - dragStartHandPosition);
         float distance = Mathf.Max(0.05f, dragStartDistance);
-        float angleDegrees = localDelta.x / distance * Mathf.Rad2Deg * dragHorizontalSensitivity;
+        float angleDegrees = localDelta.x * dragHorizontalDegreesPerMeter;
 
         pinnedDirectionLocal = Quaternion.Euler(0f, angleDegrees, 0f) * dragStartDirectionLocal;
         pinnedDirectionLocal.y = 0f;
@@ -480,7 +480,7 @@ public class PinnedHandMenuController : MonoBehaviour
         menuRoot.transform.position = headTransform.position + direction * distance + Vector3.up * pinnedHeightOffset;
 
         if (faceHead)
-            RotatePinnedMenuTowardHead(userYaw, state == MenuState.DraggingPinned);
+            RotatePinnedMenuTowardHead(userYaw);
         else
             menuRoot.transform.rotation = userYaw * pinnedRotationLocal;
     }
@@ -497,16 +497,13 @@ public class PinnedHandMenuController : MonoBehaviour
         LogDebug($"baseToHead={pinnedBaseToHeadDirection}");
     }
 
-    private void RotatePinnedMenuTowardHead(Quaternion fallbackUserYaw, bool keepCurrentRotation)
+    private void RotatePinnedMenuTowardHead(Quaternion fallbackUserYaw)
     {
         if (menuRoot == null || headTransform == null)
         {
             menuRoot.transform.rotation = fallbackUserYaw * pinnedRotationLocal;
             return;
         }
-
-        if (keepCurrentRotation)
-            return;
 
         Vector3 currentToHead = GetHorizontalDirection(headTransform.position - menuRoot.transform.position);
         float deltaYaw = Vector3.SignedAngle(pinnedBaseToHeadDirection, currentToHead, Vector3.up);

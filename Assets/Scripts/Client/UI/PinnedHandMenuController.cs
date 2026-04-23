@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.XR;
 
 /// <summary>
 /// Pins a hand menu near the user after a grab double tap and lets the same grab move it around the user.
@@ -36,6 +37,8 @@ public class PinnedHandMenuController : MonoBehaviour
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
     public bool faceHead = true;
+    public bool pollDirectControllerInput = true;
+    public bool pollTriggerAsFallback = true;
     public bool debugLogging;
 
     private Transform originalParent;
@@ -75,6 +78,7 @@ public class PinnedHandMenuController : MonoBehaviour
     {
         grabAction.action?.Enable();
         alternateGrabAction.action?.Enable();
+        LogDebug($"enabled, grabAction={(grabAction.action != null)}, alternateGrabAction={(alternateGrabAction.action != null)}, directPolling={pollDirectControllerInput}");
     }
 
     private void OnDisable()
@@ -85,9 +89,6 @@ public class PinnedHandMenuController : MonoBehaviour
 
     private void Update()
     {
-        if (grabAction.action == null && alternateGrabAction.action == null)
-            return;
-
         bool isPressed = IsGrabPressed();
 
         if (isPressed && !wasPressed)
@@ -221,7 +222,9 @@ public class PinnedHandMenuController : MonoBehaviour
 
     private bool IsGrabPressed()
     {
-        return IsActionPressed(grabAction.action) || IsActionPressed(alternateGrabAction.action);
+        return IsActionPressed(grabAction.action) ||
+               IsActionPressed(alternateGrabAction.action) ||
+               IsDirectControllerGrabPressed();
     }
 
     private bool IsActionPressed(InputAction action)
@@ -229,7 +232,42 @@ public class PinnedHandMenuController : MonoBehaviour
         if (action == null)
             return false;
 
-        return action.IsPressed() || action.ReadValue<float>() >= pressThreshold;
+        try
+        {
+            if (action.IsPressed())
+                return true;
+
+            return action.ReadValue<float>() >= pressThreshold;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private bool IsDirectControllerGrabPressed()
+    {
+        if (!pollDirectControllerInput)
+            return false;
+
+        XRNode node = hand == MenuHand.Left ? XRNode.LeftHand : XRNode.RightHand;
+        InputDevice device = InputDevices.GetDeviceAtXRNode(node);
+        if (!device.isValid)
+            return false;
+
+        if (device.TryGetFeatureValue(CommonUsages.gripButton, out bool gripButton) && gripButton)
+            return true;
+
+        if (device.TryGetFeatureValue(CommonUsages.grip, out float gripValue) && gripValue >= pressThreshold)
+            return true;
+
+        if (!pollTriggerAsFallback)
+            return false;
+
+        if (device.TryGetFeatureValue(CommonUsages.triggerButton, out bool triggerButton) && triggerButton)
+            return true;
+
+        return device.TryGetFeatureValue(CommonUsages.trigger, out float triggerValue) && triggerValue >= pressThreshold;
     }
 
     private void LogDebug(string message)

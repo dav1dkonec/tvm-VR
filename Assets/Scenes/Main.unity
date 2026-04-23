@@ -35180,6 +35180,8 @@ MonoBehaviour:
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
+  pollDirectControllerInput: 1
+  pollTriggerAsFallback: 1
   debugLogging: 1
 --- !u!1 &1287256695
 GameObject:
@@ -50025,6 +50027,8 @@ MonoBehaviour:
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
+  pollDirectControllerInput: 1
+  pollTriggerAsFallback: 1
   debugLogging: 1
 --- !u!1 &1772262513
 GameObject:

@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.XR;
 
 /// <summary>
 /// Pins a hand menu near the user after a grab double tap and lets the same grab move it around the user.
@@ -250,24 +249,24 @@ public class PinnedHandMenuController : MonoBehaviour
         if (!pollDirectControllerInput)
             return false;
 
-        XRNode node = hand == MenuHand.Left ? XRNode.LeftHand : XRNode.RightHand;
-        InputDevice device = InputDevices.GetDeviceAtXRNode(node);
+        UnityEngine.XR.XRNode node = hand == MenuHand.Left ? UnityEngine.XR.XRNode.LeftHand : UnityEngine.XR.XRNode.RightHand;
+        UnityEngine.XR.InputDevice device = UnityEngine.XR.InputDevices.GetDeviceAtXRNode(node);
         if (!device.isValid)
             return false;
 
-        if (device.TryGetFeatureValue(CommonUsages.gripButton, out bool gripButton) && gripButton)
+        if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.gripButton, out bool gripButton) && gripButton)
             return true;
 
-        if (device.TryGetFeatureValue(CommonUsages.grip, out float gripValue) && gripValue >= pressThreshold)
+        if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.grip, out float gripValue) && gripValue >= pressThreshold)
             return true;
 
         if (!pollTriggerAsFallback)
             return false;
 
-        if (device.TryGetFeatureValue(CommonUsages.triggerButton, out bool triggerButton) && triggerButton)
+        if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.triggerButton, out bool triggerButton) && triggerButton)
             return true;
 
-        return device.TryGetFeatureValue(CommonUsages.trigger, out float triggerValue) && triggerValue >= pressThreshold;
+        return device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out float triggerValue) && triggerValue >= pressThreshold;
     }
 
     private void LogDebug(string message)

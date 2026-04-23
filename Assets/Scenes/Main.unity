@@ -35177,6 +35177,7 @@ MonoBehaviour:
   doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
   pinnedDistance: 0.7
+  preserveInitialDistance: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
@@ -50024,6 +50025,7 @@ MonoBehaviour:
   doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
   pinnedDistance: 0.7
+  preserveInitialDistance: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1

@@ -37,7 +37,8 @@ public class PinnedHandMenuController : MonoBehaviour
     public float tapMaxDuration = 0.4f;
     public float doubleClickWindow = 0.6f;
     public float dragStartHoldTime = 0.15f;
-    public float pinnedDistance = 0.7f;
+    public float pinnedDistance = 0.6f;
+    public bool preserveInitialDistance = true;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
     public bool faceHead = true;
@@ -57,7 +58,11 @@ public class PinnedHandMenuController : MonoBehaviour
     private float lastTapAt = -10f;
     private Vector3 pinnedDirectionLocal = Vector3.forward;
     private float pinnedHeightOffset = -0.2f;
+    private float currentPinnedDistance;
     private Quaternion pinnedRotationLocal = Quaternion.identity;
+    private Transform visibleCanvasTransform;
+    private Quaternion canvasRotationInMenu = Quaternion.identity;
+    private bool canvasForwardFacesHead = true;
     private InflateDeflateUI inflateDeflateUi;
 
     private static bool rightGrabReserved;
@@ -285,6 +290,7 @@ public class PinnedHandMenuController : MonoBehaviour
         CacheOriginalMenuTransform();
         CapturePinnedPlacementFromMenu();
         pinnedRotationLocal = Quaternion.Inverse(GetUserYawRotation()) * menuRoot.transform.rotation;
+        CaptureVisibleCanvasOrientation();
 
         menuRoot.transform.SetParent(null, true);
         menuRoot.SetActive(true);
@@ -303,6 +309,7 @@ public class PinnedHandMenuController : MonoBehaviour
         menuRoot.transform.localRotation = originalLocalRotation;
         menuRoot.SetActive(originalActive);
         state = MenuState.HandAttached;
+        visibleCanvasTransform = null;
         LogDebug("unpinned");
     }
 
@@ -408,6 +415,9 @@ public class PinnedHandMenuController : MonoBehaviour
         pinnedDirectionLocal.y = 0f;
         pinnedDirectionLocal.Normalize();
         pinnedHeightOffset = Mathf.Clamp(sourcePosition.y - headTransform.position.y, minHeightOffset, maxHeightOffset);
+        currentPinnedDistance = preserveInitialDistance
+            ? Mathf.Max(0.05f, Vector3.Distance(new Vector3(sourcePosition.x, 0f, sourcePosition.z), new Vector3(headTransform.position.x, 0f, headTransform.position.z)))
+            : pinnedDistance;
     }
 
     private void UpdatePinnedTransform()
@@ -423,9 +433,68 @@ public class PinnedHandMenuController : MonoBehaviour
             direction = GetFallbackWorldDirection();
 
         direction.Normalize();
-        menuRoot.transform.position = headTransform.position + direction * pinnedDistance + Vector3.up * pinnedHeightOffset;
+        float distance = preserveInitialDistance ? currentPinnedDistance : pinnedDistance;
+        menuRoot.transform.position = headTransform.position + direction * distance + Vector3.up * pinnedHeightOffset;
 
-        menuRoot.transform.rotation = userYaw * pinnedRotationLocal;
+        if (faceHead)
+            FaceVisibleCanvasTowardHead(userYaw);
+        else
+            menuRoot.transform.rotation = userYaw * pinnedRotationLocal;
+    }
+
+    private void CaptureVisibleCanvasOrientation()
+    {
+        visibleCanvasTransform = FindVisibleCanvasTransform();
+        if (visibleCanvasTransform == null)
+            return;
+
+        canvasRotationInMenu = Quaternion.Inverse(menuRoot.transform.rotation) * visibleCanvasTransform.rotation;
+
+        if (headTransform == null)
+            return;
+
+        Vector3 toHead = headTransform.position - visibleCanvasTransform.position;
+        if (toHead.sqrMagnitude < 0.0001f)
+            return;
+
+        toHead.Normalize();
+        canvasForwardFacesHead = Vector3.Dot(visibleCanvasTransform.forward, toHead) >= 0f;
+        LogDebug($"canvas='{visibleCanvasTransform.name}', forwardFacesHead={canvasForwardFacesHead}");
+    }
+
+    private Transform FindVisibleCanvasTransform()
+    {
+        if (menuRoot == null)
+            return null;
+
+        Canvas[] canvases = menuRoot.GetComponentsInChildren<Canvas>(true);
+        if (canvases == null || canvases.Length == 0)
+            return null;
+
+        return canvases[0].transform;
+    }
+
+    private void FaceVisibleCanvasTowardHead(Quaternion fallbackUserYaw)
+    {
+        if (visibleCanvasTransform == null || headTransform == null)
+        {
+            menuRoot.transform.rotation = fallbackUserYaw * pinnedRotationLocal;
+            return;
+        }
+
+        Vector3 toHead = headTransform.position - visibleCanvasTransform.position;
+        toHead.y = 0f;
+
+        if (toHead.sqrMagnitude < 0.0001f)
+        {
+            menuRoot.transform.rotation = fallbackUserYaw * pinnedRotationLocal;
+            return;
+        }
+
+        toHead.Normalize();
+        Vector3 desiredCanvasForward = canvasForwardFacesHead ? toHead : -toHead;
+        Quaternion desiredCanvasRotation = Quaternion.LookRotation(desiredCanvasForward, Vector3.up);
+        menuRoot.transform.rotation = desiredCanvasRotation * Quaternion.Inverse(canvasRotationInMenu);
     }
 
     private Quaternion GetUserYawRotation()

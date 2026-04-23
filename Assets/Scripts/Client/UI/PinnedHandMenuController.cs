@@ -45,7 +45,7 @@ public class PinnedHandMenuController : MonoBehaviour
     public float maxHeightOffset = 0.15f;
     public bool faceHead = true;
     public bool useFixedPinnedPitch = true;
-    public float pinnedPitchDegrees = -8f;
+    public float pinnedPitchDegrees = -3f;
     public bool pollDirectControllerInput = true;
     public bool pollTriggerAsFallback = true;
     public bool debugLogging;
@@ -505,17 +505,13 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
         }
 
-        if (!useFixedPinnedPitch)
-        {
-            Vector3 currentToHead = GetHorizontalDirection(headTransform.position - menuRoot.transform.position);
-            float deltaYaw = Vector3.SignedAngle(pinnedBaseToHeadDirection, currentToHead, Vector3.up);
-            menuRoot.transform.rotation = Quaternion.AngleAxis(deltaYaw, Vector3.up) * pinnedBaseWorldRotation;
-            return;
-        }
+        Vector3 currentToHead = GetHorizontalDirection(headTransform.position - menuRoot.transform.position);
+        float deltaYaw = Vector3.SignedAngle(pinnedBaseToHeadDirection, currentToHead, Vector3.up);
+        Quaternion stableRotation = Quaternion.AngleAxis(deltaYaw, Vector3.up) * pinnedBaseWorldRotation;
 
-        Vector3 fromHead = GetHorizontalDirection(menuRoot.transform.position - headTransform.position);
-        float yaw = Mathf.Atan2(fromHead.x, fromHead.z) * Mathf.Rad2Deg;
-        menuRoot.transform.rotation = Quaternion.Euler(pinnedPitchDegrees, yaw, pinnedBaseRoll);
+        menuRoot.transform.rotation = useFixedPinnedPitch
+            ? stableRotation * Quaternion.Euler(pinnedPitchDegrees, 0f, 0f)
+            : stableRotation;
     }
 
     private Vector3 GetHorizontalDirection(Vector3 direction)

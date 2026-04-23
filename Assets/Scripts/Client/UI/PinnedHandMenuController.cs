@@ -46,6 +46,7 @@ public class PinnedHandMenuController : MonoBehaviour
     public bool faceHead = true;
     public bool useFixedPinnedPitch = true;
     public float pinnedPitchDegrees = -1.5f;
+    public float pinnedYawTowardHeadDegrees = 12f;
     public bool pollDirectControllerInput = true;
     public bool pollTriggerAsFallback = true;
     public bool debugLogging;
@@ -66,7 +67,7 @@ public class PinnedHandMenuController : MonoBehaviour
     private Quaternion pinnedRotationLocal = Quaternion.identity;
     private Quaternion pinnedBaseWorldRotation = Quaternion.identity;
     private Vector3 pinnedBaseToHeadDirection = Vector3.forward;
-    private float pinnedBaseRoll;
+    private bool rootForwardFacesHead = true;
     private Vector3 dragStartHandPosition;
     private Vector3 dragStartDirectionLocal;
     private float dragStartHeightOffset;
@@ -488,12 +489,12 @@ public class PinnedHandMenuController : MonoBehaviour
     private void CapturePinnedFacing()
     {
         pinnedBaseWorldRotation = menuRoot.transform.rotation;
-        pinnedBaseRoll = NormalizeAngle(menuRoot.transform.eulerAngles.z);
 
         if (menuRoot == null || headTransform == null)
             return;
 
         pinnedBaseToHeadDirection = GetHorizontalDirection(headTransform.position - menuRoot.transform.position);
+        rootForwardFacesHead = Vector3.Dot(menuRoot.transform.forward, pinnedBaseToHeadDirection) >= 0f;
         LogDebug($"baseToHead={pinnedBaseToHeadDirection}");
     }
 
@@ -509,9 +510,27 @@ public class PinnedHandMenuController : MonoBehaviour
         float deltaYaw = Vector3.SignedAngle(pinnedBaseToHeadDirection, currentToHead, Vector3.up);
         Quaternion stableRotation = Quaternion.AngleAxis(deltaYaw, Vector3.up) * pinnedBaseWorldRotation;
 
+        Quaternion adjustedRotation = ApplyYawTowardHead(stableRotation, currentToHead);
         menuRoot.transform.rotation = useFixedPinnedPitch
-            ? stableRotation * Quaternion.Euler(pinnedPitchDegrees, 0f, 0f)
-            : stableRotation;
+            ? adjustedRotation * Quaternion.Euler(pinnedPitchDegrees, 0f, 0f)
+            : adjustedRotation;
+    }
+
+    private Quaternion ApplyYawTowardHead(Quaternion rotation, Vector3 currentToHead)
+    {
+        if (pinnedYawTowardHeadDegrees <= 0f)
+            return rotation;
+
+        Vector3 currentFacing = rootForwardFacesHead ? rotation * Vector3.forward : -(rotation * Vector3.forward);
+        currentFacing.y = 0f;
+
+        if (currentFacing.sqrMagnitude < 0.0001f)
+            return rotation;
+
+        currentFacing.Normalize();
+        float signedYaw = Vector3.SignedAngle(currentFacing, currentToHead, Vector3.up);
+        float correction = Mathf.Clamp(signedYaw, -pinnedYawTowardHeadDegrees, pinnedYawTowardHeadDegrees);
+        return Quaternion.AngleAxis(correction, Vector3.up) * rotation;
     }
 
     private Vector3 GetHorizontalDirection(Vector3 direction)
@@ -523,17 +542,6 @@ public class PinnedHandMenuController : MonoBehaviour
 
         direction.Normalize();
         return direction;
-    }
-
-    private static float NormalizeAngle(float angle)
-    {
-        while (angle > 180f)
-            angle -= 360f;
-
-        while (angle < -180f)
-            angle += 360f;
-
-        return angle;
     }
 
     private Quaternion GetUserYawRotation()

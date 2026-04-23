@@ -37,14 +37,14 @@ public class PinnedHandMenuController : MonoBehaviour
     public float tapMaxDuration = 0.4f;
     public float doubleClickWindow = 0.6f;
     public float dragStartHoldTime = 0.15f;
-    public float orbitRadius = 0.6f;
+    public float orbitRadius = 0.55f;
     public float dragDegreesPerMeter = 180f;
     public float dragVerticalSensitivity = 1f;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
     public bool faceHead = true;
     public bool useFixedPinnedPitch = true;
-    public float pinnedPitchDegrees = -1.5f;
+    public float pinnedPitchDegrees = -3f;
     public Vector3 pinnedAdditionalRotationEuler;
     public bool pollDirectControllerInput = true;
     public bool pollTriggerAsFallback = true;
@@ -68,7 +68,6 @@ public class PinnedHandMenuController : MonoBehaviour
     private float heightOffset = -0.2f;
     private Transform visualFaceTransform;
     private Quaternion visualLocalRotation = Quaternion.identity;
-    private float visualForwardSign = 1f;
     private InflateDeflateUI inflateDeflateUi;
 
     private static bool rightGrabReserved;
@@ -157,7 +156,8 @@ public class PinnedHandMenuController : MonoBehaviour
         hand = runtimeHand;
         handTransform = transform;
         visualFaceTransform = null;
-        orbitRadius = 0.6f;
+        orbitRadius = 0.55f;
+        pinnedPitchDegrees = -3f;
         dragDegreesPerMeter = runtimeHand == MenuHand.Left ? 360f : 180f;
         pinnedAdditionalRotationEuler = Vector3.zero;
         debugLogging = true;
@@ -465,7 +465,7 @@ public class PinnedHandMenuController : MonoBehaviour
 
         toUser.Normalize();
         ResolveVisualFaceTransform();
-        Quaternion desiredVisualRotation = Quaternion.LookRotation(toUser * visualForwardSign, Vector3.up);
+        Quaternion desiredVisualRotation = Quaternion.LookRotation(toUser, Vector3.up);
 
         if (useFixedPinnedPitch)
             desiredVisualRotation *= Quaternion.Euler(pinnedPitchDegrees, 0f, 0f);
@@ -485,10 +485,7 @@ public class PinnedHandMenuController : MonoBehaviour
         if (headTransform == null)
             return;
 
-        Vector3 toUser = GetHorizontalDirection(headTransform.position - visualFaceTransform.position);
-        float forwardDot = Vector3.Dot(visualFaceTransform.forward, toUser);
-        visualForwardSign = forwardDot >= 0f ? 1f : -1f;
-        LogDebug($"visual face sign={visualForwardSign}, dot={forwardDot}");
+        LogDebug($"visual face='{visualFaceTransform.name}'");
     }
 
     private void ResolveVisualFaceTransform()

@@ -35178,12 +35178,11 @@ MonoBehaviour:
   dragStartHoldTime: 0.15
   pinnedDistance: 0.7
   preserveInitialDistance: 1
-  dragHorizontalSensitivity: 1
+  dragHorizontalSensitivity: 2.5
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
-  invertCanvasFacing: 0
   pollDirectControllerInput: 1
   pollTriggerAsFallback: 1
   debugLogging: 1
@@ -50029,12 +50028,11 @@ MonoBehaviour:
   dragStartHoldTime: 0.15
   pinnedDistance: 0.7
   preserveInitialDistance: 1
-  dragHorizontalSensitivity: 1
+  dragHorizontalSensitivity: 2.5
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
-  invertCanvasFacing: 1
   pollDirectControllerInput: 1
   pollTriggerAsFallback: 1
   debugLogging: 1

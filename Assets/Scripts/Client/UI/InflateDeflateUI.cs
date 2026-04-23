@@ -88,7 +88,7 @@ public class InflateDeflateUI : MonoBehaviour
 
     public void ShowPickModeBlockedMessage()
     {
-        ShowTransientMessage("Finish or cancel point selection first.");
+        ShowTransientMessage("Select a point or cancel first.");
     }
 
     public void BeginPick()

@@ -35161,8 +35161,8 @@ MonoBehaviour:
     m_Reference: {fileID: -6131295136447488360, guid: c348712bda248c246b8c49b3db54643f, type: 3}
   hand: 0
   pressThreshold: 0.5
-  tapMaxDuration: 0.25
-  doubleClickWindow: 0.3
+  tapMaxDuration: 0.4
+  doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
   pinnedDistance: 0.7
   minHeightOffset: -0.45
@@ -49993,8 +49993,8 @@ MonoBehaviour:
     m_Reference: {fileID: 83097790271614945, guid: c348712bda248c246b8c49b3db54643f, type: 3}
   hand: 1
   pressThreshold: 0.5
-  tapMaxDuration: 0.25
-  doubleClickWindow: 0.3
+  tapMaxDuration: 0.4
+  doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
   pinnedDistance: 0.7
   minHeightOffset: -0.45

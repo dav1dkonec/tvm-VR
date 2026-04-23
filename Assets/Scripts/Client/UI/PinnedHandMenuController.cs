@@ -28,15 +28,13 @@ public class PinnedHandMenuController : MonoBehaviour
     public InputActionProperty grabAction;
     public MenuHand hand;
     public float pressThreshold = 0.5f;
-    public float tapMaxDuration = 0.25f;
-    public float doubleClickWindow = 0.3f;
+    public float tapMaxDuration = 0.4f;
+    public float doubleClickWindow = 0.6f;
     public float dragStartHoldTime = 0.15f;
     public float pinnedDistance = 0.7f;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
     public bool faceHead = true;
-    
-    
 
     private Transform originalParent;
     private Vector3 originalLocalPosition;
@@ -88,7 +86,7 @@ public class PinnedHandMenuController : MonoBehaviour
         if (action == null)
             return;
 
-        bool isPressed = action.ReadValue<float>() >= pressThreshold;
+        bool isPressed = action.IsPressed();
 
         if (isPressed && !wasPressed)
             BeginPress();

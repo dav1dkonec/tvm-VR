@@ -106,27 +106,25 @@ public class InflateDeflateUI : MonoBehaviour
         isPickingReferencePoint = true;
         IsAnyPickActive = true;
         teleportRay.BeginInflateDeflatePick();
-        ShowTransientMessage("Pick mode active. Aim at the mesh with the left hand ray.");
     }
 
     public void CancelPick()
     {
         CancelPickSilently();
-        ShowTransientMessage("Selection cancelled.");
     }
 
     public void ShowPickFailed(string message)
     {
         isPickingReferencePoint = false;
         IsAnyPickActive = false;
-        ShowTransientMessage(message);
+        if (!string.IsNullOrWhiteSpace(message))
+            Debug.LogWarning(message);
     }
 
     public void ShowPickCompleted()
     {
         isPickingReferencePoint = false;
         IsAnyPickActive = false;
-        ShowTransientMessage("Reference point selected.");
     }
 
     private void CancelPickSilently()

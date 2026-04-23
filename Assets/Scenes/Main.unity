@@ -35179,13 +35179,13 @@ MonoBehaviour:
   pinnedDistance: 0.7
   preserveInitialDistance: 1
   dragHorizontalDegreesPerMeter: 360
+  dragAngularMultiplier: 3.5
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
   useFixedPinnedPitch: 1
   pinnedPitchDegrees: -1.5
-  pinnedYawTowardHeadDegrees: 12
   pollDirectControllerInput: 1
   pollTriggerAsFallback: 1
   debugLogging: 1
@@ -50032,13 +50032,13 @@ MonoBehaviour:
   pinnedDistance: 0.7
   preserveInitialDistance: 1
   dragHorizontalDegreesPerMeter: 180
+  dragAngularMultiplier: 2
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
   useFixedPinnedPitch: 1
   pinnedPitchDegrees: -1.5
-  pinnedYawTowardHeadDegrees: 12
   pollDirectControllerInput: 1
   pollTriggerAsFallback: 1
   debugLogging: 1

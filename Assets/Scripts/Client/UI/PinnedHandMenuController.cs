@@ -37,15 +37,15 @@ public class PinnedHandMenuController : MonoBehaviour
     public float tapMaxDuration = 0.4f;
     public float doubleClickWindow = 0.6f;
     public float dragStartHoldTime = 0.15f;
-    public float pinnedDistance = 0.65f;
-    public bool preserveInitialDistance = true;
+    public float pinnedDistance = 0.7f;
+    public bool preserveInitialDistance;
     public float dragHorizontalDegreesPerMeter = 140f;
     public float dragAngularMultiplier = 2.5f;
     public float dragVerticalSensitivity = 1f;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
     public bool faceHead = true;
-    public bool freezePinnedRotation = true;
+    public bool freezePinnedRotation;
     public bool useFixedPinnedPitch = true;
     public float pinnedPitchDegrees = -1.5f;
     public float pinnedYawOffsetDegrees;
@@ -523,6 +523,9 @@ public class PinnedHandMenuController : MonoBehaviour
         Vector3 currentToHead = GetHorizontalDirection(headTransform.position - menuRoot.transform.position);
         float deltaYaw = Vector3.SignedAngle(pinnedBaseToHeadDirection, currentToHead, Vector3.up);
         Quaternion stableRotation = Quaternion.AngleAxis(deltaYaw, Vector3.up) * pinnedBaseWorldRotation;
+
+        if (Mathf.Abs(pinnedYawOffsetDegrees) > 0.001f)
+            stableRotation = Quaternion.AngleAxis(pinnedYawOffsetDegrees, Vector3.up) * stableRotation;
 
         menuRoot.transform.rotation = useFixedPinnedPitch
             ? stableRotation * Quaternion.Euler(pinnedPitchDegrees, 0f, 0f)

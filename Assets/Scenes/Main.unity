@@ -35177,14 +35177,14 @@ MonoBehaviour:
   doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
   pinnedDistance: 0.7
-  preserveInitialDistance: 1
+  preserveInitialDistance: 0
   dragHorizontalDegreesPerMeter: 360
   dragAngularMultiplier: 6
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
-  freezePinnedRotation: 1
+  freezePinnedRotation: 0
   useFixedPinnedPitch: 1
   pinnedPitchDegrees: -1.5
   pinnedYawOffsetDegrees: 6
@@ -50032,14 +50032,14 @@ MonoBehaviour:
   doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
   pinnedDistance: 0.7
-  preserveInitialDistance: 1
+  preserveInitialDistance: 0
   dragHorizontalDegreesPerMeter: 180
   dragAngularMultiplier: 3
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
-  freezePinnedRotation: 1
+  freezePinnedRotation: 0
   useFixedPinnedPitch: 1
   pinnedPitchDegrees: -1.5
   pinnedYawOffsetDegrees: 0

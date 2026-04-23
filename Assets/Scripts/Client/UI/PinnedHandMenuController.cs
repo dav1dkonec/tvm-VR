@@ -37,7 +37,7 @@ public class PinnedHandMenuController : MonoBehaviour
     public float tapMaxDuration = 0.4f;
     public float doubleClickWindow = 0.6f;
     public float dragStartHoldTime = 0.15f;
-    public float orbitRadius = 0.7f;
+    public float orbitRadius = 0.6f;
     public float dragDegreesPerMeter = 180f;
     public float dragVerticalSensitivity = 1f;
     public float minHeightOffset = -0.45f;
@@ -66,7 +66,9 @@ public class PinnedHandMenuController : MonoBehaviour
     private float dragStartHeightOffset;
     private float dragStartOrbitAngleDegrees;
     private float heightOffset = -0.2f;
-    private Quaternion orbitRotationCorrection = Quaternion.identity;
+    private Transform visualFaceTransform;
+    private Quaternion visualLocalRotation = Quaternion.identity;
+    private float visualForwardSign = 1f;
     private InflateDeflateUI inflateDeflateUi;
 
     private static bool rightGrabReserved;
@@ -154,9 +156,10 @@ public class PinnedHandMenuController : MonoBehaviour
         menuRoot = runtimeMenuRoot;
         hand = runtimeHand;
         handTransform = transform;
-        orbitRadius = 0.7f;
+        visualFaceTransform = null;
+        orbitRadius = 0.6f;
         dragDegreesPerMeter = runtimeHand == MenuHand.Left ? 360f : 180f;
-        pinnedAdditionalRotationEuler = runtimeHand == MenuHand.Left ? new Vector3(0f, 6f, 0f) : Vector3.zero;
+        pinnedAdditionalRotationEuler = Vector3.zero;
         debugLogging = true;
         pollDirectControllerInput = true;
         pollTriggerAsFallback = true;
@@ -308,7 +311,7 @@ public class PinnedHandMenuController : MonoBehaviour
 
         CacheOriginalMenuTransform();
         CaptureOrbitFromMenu();
-        CaptureOrbitRotationCorrection();
+        CaptureVisualFacingReference();
 
         menuRoot.transform.SetParent(null, true);
         menuRoot.SetActive(true);
@@ -461,23 +464,40 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
 
         toUser.Normalize();
-        Quaternion faceUserRotation = Quaternion.LookRotation(toUser, Vector3.up);
-        Quaternion correction = orbitRotationCorrection * Quaternion.Euler(pinnedAdditionalRotationEuler);
+        ResolveVisualFaceTransform();
+        Quaternion desiredVisualRotation = Quaternion.LookRotation(toUser * visualForwardSign, Vector3.up);
 
         if (useFixedPinnedPitch)
-            correction *= Quaternion.Euler(pinnedPitchDegrees, 0f, 0f);
+            desiredVisualRotation *= Quaternion.Euler(pinnedPitchDegrees, 0f, 0f);
 
-        menuRoot.transform.rotation = faceUserRotation * correction;
+        menuRoot.transform.rotation = desiredVisualRotation * Quaternion.Inverse(visualLocalRotation) * Quaternion.Euler(pinnedAdditionalRotationEuler);
     }
 
-    private void CaptureOrbitRotationCorrection()
+    private void CaptureVisualFacingReference()
     {
-        if (menuRoot == null || headTransform == null)
+        ResolveVisualFaceTransform();
+
+        if (menuRoot == null || visualFaceTransform == null)
             return;
 
-        Vector3 toUser = GetHorizontalDirection(headTransform.position - menuRoot.transform.position);
-        Quaternion faceUserRotation = Quaternion.LookRotation(toUser, Vector3.up);
-        orbitRotationCorrection = Quaternion.Inverse(faceUserRotation) * menuRoot.transform.rotation;
+        visualLocalRotation = Quaternion.Inverse(menuRoot.transform.rotation) * visualFaceTransform.rotation;
+
+        if (headTransform == null)
+            return;
+
+        Vector3 toUser = GetHorizontalDirection(headTransform.position - visualFaceTransform.position);
+        float forwardDot = Vector3.Dot(visualFaceTransform.forward, toUser);
+        visualForwardSign = forwardDot >= 0f ? 1f : -1f;
+        LogDebug($"visual face sign={visualForwardSign}, dot={forwardDot}");
+    }
+
+    private void ResolveVisualFaceTransform()
+    {
+        if (visualFaceTransform != null || menuRoot == null)
+            return;
+
+        Canvas canvas = menuRoot.GetComponentInChildren<Canvas>(true);
+        visualFaceTransform = canvas != null ? canvas.transform : menuRoot.transform;
     }
 
     private Vector3 GetHorizontalDirection(Vector3 direction)

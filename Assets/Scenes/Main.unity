@@ -35183,6 +35183,8 @@ MonoBehaviour:
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
+  useFixedPinnedPitch: 1
+  pinnedPitchDegrees: -8
   pollDirectControllerInput: 1
   pollTriggerAsFallback: 1
   debugLogging: 1
@@ -50033,6 +50035,8 @@ MonoBehaviour:
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
   faceHead: 1
+  useFixedPinnedPitch: 1
+  pinnedPitchDegrees: -8
   pollDirectControllerInput: 1
   pollTriggerAsFallback: 1
   debugLogging: 1

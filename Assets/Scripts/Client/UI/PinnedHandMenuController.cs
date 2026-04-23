@@ -39,13 +39,13 @@ public class PinnedHandMenuController : MonoBehaviour
     public float dragStartHoldTime = 0.15f;
     public float pinnedDistance = 0.6f;
     public bool preserveInitialDistance = true;
-    public float dragHorizontalSensitivity = 2.5f;
+    public float dragHorizontalSensitivity = 4f;
     public float dragVerticalSensitivity = 1f;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
     public bool faceHead = true;
     public bool useFixedPinnedPitch = true;
-    public float pinnedPitchDegrees = -3f;
+    public float pinnedPitchDegrees = -1.5f;
     public bool pollDirectControllerInput = true;
     public bool pollTriggerAsFallback = true;
     public bool debugLogging;
@@ -480,7 +480,7 @@ public class PinnedHandMenuController : MonoBehaviour
         menuRoot.transform.position = headTransform.position + direction * distance + Vector3.up * pinnedHeightOffset;
 
         if (faceHead)
-            RotatePinnedMenuTowardHead(userYaw);
+            RotatePinnedMenuTowardHead(userYaw, state == MenuState.DraggingPinned);
         else
             menuRoot.transform.rotation = userYaw * pinnedRotationLocal;
     }
@@ -497,13 +497,16 @@ public class PinnedHandMenuController : MonoBehaviour
         LogDebug($"baseToHead={pinnedBaseToHeadDirection}");
     }
 
-    private void RotatePinnedMenuTowardHead(Quaternion fallbackUserYaw)
+    private void RotatePinnedMenuTowardHead(Quaternion fallbackUserYaw, bool keepCurrentRotation)
     {
         if (menuRoot == null || headTransform == null)
         {
             menuRoot.transform.rotation = fallbackUserYaw * pinnedRotationLocal;
             return;
         }
+
+        if (keepCurrentRotation)
+            return;
 
         Vector3 currentToHead = GetHorizontalDirection(headTransform.position - menuRoot.transform.position);
         float deltaYaw = Vector3.SignedAngle(pinnedBaseToHeadDirection, currentToHead, Vector3.up);

@@ -35184,8 +35184,9 @@ MonoBehaviour:
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
-  pinnedPitchDegrees: 40
+  pinnedPitchDegrees: 8
   pinnedYawDegrees: 6
+  verticalFacingSensitivity: 1.6
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
   pollDirectControllerInput: 1
@@ -50037,8 +50038,9 @@ MonoBehaviour:
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
-  pinnedPitchDegrees: 40
+  pinnedPitchDegrees: 8
   pinnedYawDegrees: 6
+  verticalFacingSensitivity: 1.6
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
   pollDirectControllerInput: 1

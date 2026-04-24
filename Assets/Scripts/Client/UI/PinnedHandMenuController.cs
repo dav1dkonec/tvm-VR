@@ -44,8 +44,9 @@ public class PinnedHandMenuController : MonoBehaviour
     public float dragVerticalSensitivity = 1f;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
-    public float pinnedPitchDegrees = 40f;
+    public float pinnedPitchDegrees = 8f;
     public float pinnedYawDegrees = 6f;
+    public float verticalFacingSensitivity = 1.6f;
     public bool invertCanvasFacing = true;
     public Vector3 pinnedAdditionalRotationEuler;
     public bool pollDirectControllerInput = true;
@@ -331,10 +332,10 @@ public class PinnedHandMenuController : MonoBehaviour
         worldDirection.y = 0f;
         worldDirection.Normalize();
         menuRoot.transform.position = headTransform.position + worldDirection * orbitRadius + Vector3.up * heightOffset;
-        RotatePinnedMenuTowardHead(worldDirection);
+        RotatePinnedMenuTowardHead();
     }
 
-    private void RotatePinnedMenuTowardHead(Vector3 worldDirectionFromUser)
+    private void RotatePinnedMenuTowardHead()
     {
         GameObject menuRoot = bindings.menuRoot;
         Transform headTransform = bindings.headTransform;
@@ -346,6 +347,7 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
 
         Vector3 toUser = bindings.headTransform.position - visualFaceTransform.position;
+        toUser.y *= verticalFacingSensitivity;
         if (toUser.sqrMagnitude < 0.0001f)
             return;
 

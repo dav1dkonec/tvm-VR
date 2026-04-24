@@ -44,7 +44,7 @@ public class PinnedHandMenuController : MonoBehaviour
     public float dragVerticalSensitivity = 1f;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
-    public float pinnedPitchDegrees = -30f;
+    public float pinnedPitchDegrees = 40f;
     public float pinnedYawDegrees = 6f;
     public bool invertCanvasFacing = true;
     public Vector3 pinnedAdditionalRotationEuler;

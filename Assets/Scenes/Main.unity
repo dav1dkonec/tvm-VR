@@ -35184,7 +35184,7 @@ MonoBehaviour:
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
-  pinnedPitchDegrees: -30
+  pinnedPitchDegrees: 40
   pinnedYawDegrees: 6
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
@@ -50037,7 +50037,7 @@ MonoBehaviour:
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
-  pinnedPitchDegrees: -30
+  pinnedPitchDegrees: 40
   pinnedYawDegrees: 6
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}

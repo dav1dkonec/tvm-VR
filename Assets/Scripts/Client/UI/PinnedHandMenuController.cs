@@ -360,7 +360,7 @@ public class PinnedHandMenuController : MonoBehaviour
 
         Vector3 visualForward = invertCanvasFacing ? -toUserHorizontal : toUserHorizontal;
         Quaternion faceRotation = Quaternion.LookRotation(visualForward, Vector3.up);
-        float autoPitchDegrees = -Mathf.Atan2(toUser.y * verticalFacingSensitivity, Mathf.Max(0.001f, new Vector2(toUser.x, toUser.z).magnitude)) * Mathf.Rad2Deg;
+        float autoPitchDegrees = Mathf.Atan2(toUser.y * verticalFacingSensitivity, Mathf.Max(0.001f, new Vector2(toUser.x, toUser.z).magnitude)) * Mathf.Rad2Deg;
         autoPitchDegrees = Mathf.Clamp(autoPitchDegrees, -maxAutoPitchDegrees, maxAutoPitchDegrees);
         float totalPitchDegrees = pinnedPitchDegrees + autoPitchDegrees;
         float handYaw = hand == MenuHand.Left ? pinnedYawDegrees : -pinnedYawDegrees;

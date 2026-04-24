@@ -75,7 +75,7 @@ public class RightReferencePointRay : MonoBehaviour
             return;
         }
 
-        var isPressed = rightActivate.action.ReadValue<float>() > 0.01f;
+        var isPressed = rightActivate.action.IsPressed();
 
         if (isPressed)
             UpdatePreview();

@@ -341,16 +341,15 @@ public class PinnedHandMenuController : MonoBehaviour
         if (menuRoot == null || headTransform == null)
             return;
 
-        Vector3 toUser = -worldDirectionFromUser;
-        toUser.y = 0f;
+        Transform visualFaceTransform = VisualFaceTransform;
+        if (visualFaceTransform == null)
+            return;
 
+        Vector3 toUser = bindings.headTransform.position - visualFaceTransform.position;
         if (toUser.sqrMagnitude < 0.0001f)
             return;
 
         toUser.Normalize();
-        Transform visualFaceTransform = VisualFaceTransform;
-        if (visualFaceTransform == null)
-            return;
 
         Vector3 visualForward = invertCanvasFacing ? -toUser : toUser;
         Quaternion faceRotation = Quaternion.LookRotation(visualForward, Vector3.up);

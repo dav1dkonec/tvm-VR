@@ -29,7 +29,7 @@ public class RightReferencePointRay : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
-        var grabToMove = Object.FindFirstObjectByType<GrabToMove>();
+        var grabToMove = UnityEngine.Object.FindFirstObjectByType<GrabToMove>();
         var handObject = grabToMove != null ? grabToMove.rightHand : GameObject.Find("Right Hand");
         if (handObject == null || handObject.GetComponent<RightReferencePointRay>() != null)
             return;
@@ -46,14 +46,14 @@ public class RightReferencePointRay : MonoBehaviour
         if (rightHand == null)
             rightHand = gameObject;
 
-        var grabToMove = Object.FindFirstObjectByType<GrabToMove>();
+        var grabToMove = UnityEngine.Object.FindFirstObjectByType<GrabToMove>();
         if (rightActivate.action == null && grabToMove != null)
             rightActivate = grabToMove.rightSelect;
 
-        methodSettings = Object.FindFirstObjectByType<EditingMethodRuntimeSettings>();
-        inflateDeflateUi = Object.FindFirstObjectByType<InflateDeflateUI>();
-        sequence = Object.FindFirstObjectByType<Sequence>();
-        centerPool = Object.FindFirstObjectByType<CenterPool>();
+        methodSettings = UnityEngine.Object.FindFirstObjectByType<EditingMethodRuntimeSettings>();
+        inflateDeflateUi = UnityEngine.Object.FindFirstObjectByType<InflateDeflateUI>();
+        sequence = UnityEngine.Object.FindFirstObjectByType<Sequence>();
+        centerPool = UnityEngine.Object.FindFirstObjectByType<CenterPool>();
 
         CreateLaser();
         SetLaserActive(false);

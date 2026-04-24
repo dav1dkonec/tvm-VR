@@ -352,7 +352,15 @@ public class PinnedHandMenuController : MonoBehaviour
         Vector3 visualForward = invertCanvasFacing ? -toUser : toUser;
         Quaternion desiredVisualRotation = Quaternion.LookRotation(visualForward, Vector3.up);
         float handYaw = hand == MenuHand.Left ? pinnedYawDegrees : -pinnedYawDegrees;
-        desiredVisualRotation *= Quaternion.Euler(pinnedPitchDegrees, handYaw, 0f);
+
+        desiredVisualRotation =
+            Quaternion.AngleAxis(handYaw, desiredVisualRotation * Vector3.up) *
+            desiredVisualRotation;
+
+        desiredVisualRotation =
+            Quaternion.AngleAxis(pinnedPitchDegrees, desiredVisualRotation * Vector3.right) *
+            desiredVisualRotation;
+
         menuRoot.transform.rotation = desiredVisualRotation * Quaternion.Inverse(visualLocalRotation) * Quaternion.Euler(pinnedAdditionalRotationEuler);
     }
 

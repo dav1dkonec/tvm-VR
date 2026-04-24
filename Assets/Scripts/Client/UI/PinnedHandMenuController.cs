@@ -69,7 +69,7 @@ public class PinnedHandMenuController : MonoBehaviour
     private float dragStartHeightOffset;
     private float dragStartOrbitAngleDegrees;
     private float heightOffset = -0.2f;
-    private Quaternion visualLocalRotation = Quaternion.identity;
+    private Quaternion baseVisualLocalRotation = Quaternion.identity;
     private Canvas[] visibilityCanvases = Array.Empty<Canvas>();
     private CanvasGroup[] visibilityCanvasGroups = Array.Empty<CanvasGroup>();
 
@@ -81,6 +81,9 @@ public class PinnedHandMenuController : MonoBehaviour
     {
         CacheOriginalMenuTransform();
         CacheVisibilityComponents();
+
+        if (VisualFaceTransform != null && VisualFaceTransform != bindings.menuRoot.transform)
+            baseVisualLocalRotation = VisualFaceTransform.localRotation;
     }
 
     private void OnEnable()
@@ -205,7 +208,6 @@ public class PinnedHandMenuController : MonoBehaviour
 
             CacheOriginalMenuTransform();
             CaptureOrbitFromWorldPosition(menuRoot.transform.position);
-            visualLocalRotation = Quaternion.Inverse(menuRoot.transform.rotation) * visualFaceTransform.rotation;
             menuRoot.transform.SetParent(null, true);
             menuRoot.SetActive(true);
             state = MenuState.Pinned;
@@ -213,6 +215,7 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
         }
 
+        RestoreVisualLocalRotation();
         menuRoot.transform.SetParent(originalParent, false);
         menuRoot.transform.localPosition = originalLocalPosition;
         menuRoot.transform.localRotation = originalLocalRotation;
@@ -350,18 +353,18 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
 
         Vector3 visualForward = invertCanvasFacing ? -toUser : toUser;
-        Quaternion desiredVisualRotation = Quaternion.LookRotation(visualForward, Vector3.up);
+        Quaternion faceRotation = Quaternion.LookRotation(visualForward, Vector3.up);
         float handYaw = hand == MenuHand.Left ? pinnedYawDegrees : -pinnedYawDegrees;
+        Quaternion visualTilt = Quaternion.Euler(pinnedPitchDegrees, handYaw, 0f);
 
-        desiredVisualRotation =
-            Quaternion.AngleAxis(handYaw, desiredVisualRotation * Vector3.up) *
-            desiredVisualRotation;
+        if (visualFaceTransform != menuRoot.transform)
+        {
+            visualFaceTransform.localRotation = baseVisualLocalRotation * visualTilt;
+            menuRoot.transform.rotation = faceRotation * Quaternion.Inverse(baseVisualLocalRotation) * Quaternion.Euler(pinnedAdditionalRotationEuler);
+            return;
+        }
 
-        desiredVisualRotation =
-            Quaternion.AngleAxis(pinnedPitchDegrees, desiredVisualRotation * Vector3.right) *
-            desiredVisualRotation;
-
-        menuRoot.transform.rotation = desiredVisualRotation * Quaternion.Inverse(visualLocalRotation) * Quaternion.Euler(pinnedAdditionalRotationEuler);
+        menuRoot.transform.rotation = faceRotation * visualTilt * Quaternion.Euler(pinnedAdditionalRotationEuler);
     }
 
     private void EnsurePinnedMenuVisible()
@@ -420,6 +423,13 @@ public class PinnedHandMenuController : MonoBehaviour
 
         side.Normalize();
         return hand == MenuHand.Left ? -side : side;
+    }
+
+    private void RestoreVisualLocalRotation()
+    {
+        Transform visualFaceTransform = VisualFaceTransform;
+        if (visualFaceTransform != null && visualFaceTransform != bindings.menuRoot.transform)
+            visualFaceTransform.localRotation = baseVisualLocalRotation;
     }
 
 }

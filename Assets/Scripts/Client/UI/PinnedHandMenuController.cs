@@ -44,9 +44,10 @@ public class PinnedHandMenuController : MonoBehaviour
     public float dragVerticalSensitivity = 1f;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
-    public float pinnedPitchDegrees = 8f;
+    public float pinnedPitchDegrees = -4f;
     public float pinnedYawDegrees = 6f;
-    public float verticalFacingSensitivity = 1.6f;
+    public float verticalFacingSensitivity = 1.35f;
+    public float maxAutoPitchDegrees = 14f;
     public bool invertCanvasFacing = true;
     public Vector3 pinnedAdditionalRotationEuler;
     public bool pollDirectControllerInput = true;
@@ -347,16 +348,23 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
 
         Vector3 toUser = bindings.headTransform.position - visualFaceTransform.position;
-        toUser.y *= verticalFacingSensitivity;
         if (toUser.sqrMagnitude < 0.0001f)
             return;
 
-        toUser.Normalize();
+        Vector3 toUserHorizontal = toUser;
+        toUserHorizontal.y = 0f;
+        if (toUserHorizontal.sqrMagnitude < 0.0001f)
+            toUserHorizontal = GetFallbackWorldDirection();
+        else
+            toUserHorizontal.Normalize();
 
-        Vector3 visualForward = invertCanvasFacing ? -toUser : toUser;
+        Vector3 visualForward = invertCanvasFacing ? -toUserHorizontal : toUserHorizontal;
         Quaternion faceRotation = Quaternion.LookRotation(visualForward, Vector3.up);
+        float autoPitchDegrees = -Mathf.Atan2(toUser.y * verticalFacingSensitivity, Mathf.Max(0.001f, new Vector2(toUser.x, toUser.z).magnitude)) * Mathf.Rad2Deg;
+        autoPitchDegrees = Mathf.Clamp(autoPitchDegrees, -maxAutoPitchDegrees, maxAutoPitchDegrees);
+        float totalPitchDegrees = pinnedPitchDegrees + autoPitchDegrees;
         float handYaw = hand == MenuHand.Left ? pinnedYawDegrees : -pinnedYawDegrees;
-        Quaternion visualTilt = Quaternion.Euler(pinnedPitchDegrees, handYaw, 0f);
+        Quaternion visualTilt = Quaternion.Euler(totalPitchDegrees, handYaw, 0f);
 
         if (visualFaceTransform != menuRoot.transform)
         {

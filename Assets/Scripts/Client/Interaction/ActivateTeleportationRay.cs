@@ -1,9 +1,5 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using TvmVr2.Api.Enums;
-using TvmVr2.Client.Centers;
-using TvmVr2.Client.Sequence;
-using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors.Visuals;
 using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
@@ -26,32 +22,14 @@ public class ActivateTeleportationRay : MonoBehaviour
     /// </summary>
     public InputActionProperty leftActivate;
 
-    private UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor rayInteractor;
-    private Sequence sequence;
-    private CenterPool centerPool;
-    private EditingMethodRuntimeSettings methodSettings;
-    private InflateDeflateUI inflateDeflateUi;
     private TeleportationArea[] teleportationAreas;
     private TeleportationAnchor[] teleportationAnchors;
     private XRInteractorLineVisual lineVisual;
-    private bool wasPressed;
-    private bool inflateDeflatePickArmed;
-
-    public InteractionMode CurrentMode =>
-        inflateDeflatePickArmed ? InteractionMode.InflateDeflatePick : InteractionMode.Teleport;
 
     void Awake()
     {
         if (leftTeleportation != null)
-        {
-            rayInteractor = leftTeleportation.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor>();
             lineVisual = leftTeleportation.GetComponent<XRInteractorLineVisual>();
-        }
-
-        sequence = FindFirstObjectByType<Sequence>();
-        centerPool = FindFirstObjectByType<CenterPool>();
-        methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
-        inflateDeflateUi = FindFirstObjectByType<InflateDeflateUI>();
         teleportationAreas = FindObjectsByType<TeleportationArea>(FindObjectsSortMode.None);
         teleportationAnchors = FindObjectsByType<TeleportationAnchor>(FindObjectsSortMode.None);
 
@@ -68,135 +46,7 @@ public class ActivateTeleportationRay : MonoBehaviour
         if (leftTeleportation == null || leftActivate.action == null)
             return;
 
-        bool isPressed = leftActivate.action.ReadValue<float>() > 0.01f;
-
-        if (wasPressed && !isPressed && inflateDeflatePickArmed)
-            TryPickInflateDeflateReferencePoint();
-        else if (isPressed && inflateDeflatePickArmed)
-            UpdateInflateDeflatePreview();
-
-        leftTeleportation.SetActive(isPressed);
-
-        wasPressed = isPressed;
-    }
-
-    public void BeginInflateDeflatePick()
-    {
-        if (methodSettings != null)
-            methodSettings.CurrentMethod = MethodKind.InflateDeflate;
-
-        inflateDeflatePickArmed = true;
-        centerPool?.ClearPreview();
-        SetTeleportTargetsEnabled(false);
-    }
-
-    public void CancelInflateDeflatePick()
-    {
-        inflateDeflatePickArmed = false;
-        centerPool?.ClearPreview();
-        SetTeleportTargetsEnabled(true);
-
-        if (leftTeleportation != null)
-            leftTeleportation.SetActive(false);
-    }
-
-    private void TryPickInflateDeflateReferencePoint()
-    {
-        if (rayInteractor == null || sequence == null)
-            return;
-
-        if (methodSettings != null && methodSettings.CurrentMethod != MethodKind.InflateDeflate)
-            return;
-
-        if (!TryGetCurrentHit(out var hit) || hit.collider == null)
-            return;
-
-        var hitSequence = hit.collider.GetComponentInParent<Sequence>();
-        if (hitSequence != sequence)
-            return;
-
-        inflateDeflatePickArmed = false;
-        centerPool?.ClearPreview();
-        SetTeleportTargetsEnabled(true);
-        inflateDeflateUi?.ShowPickCompleted();
-        sequence.CommitInflateDeflate(hit.point);
-    }
-
-    private void UpdateInflateDeflatePreview()
-    {
-        if (rayInteractor == null || sequence == null)
-            return;
-
-        if (methodSettings != null && methodSettings.CurrentMethod != MethodKind.InflateDeflate)
-        {
-            centerPool?.ClearPreview();
-            return;
-        }
-
-        if (!TryGetCurrentHit(out var hit) || hit.collider == null)
-        {
-            centerPool?.ClearPreview();
-            return;
-        }
-
-        var hitSequence = hit.collider.GetComponentInParent<Sequence>();
-        if (hitSequence != sequence)
-        {
-            centerPool?.ClearPreview();
-            return;
-        }
-
-        centerPool?.PreviewInflateDeflate(hit.point);
-    }
-
-    private bool TryGetCurrentHit(out RaycastHit hit)
-    {
-        hit = default;
-
-        if (rayInteractor == null)
-            return false;
-
-        if (rayInteractor.TryGetCurrent3DRaycastHit(out hit))
-            return true;
-
-        var ray = new Ray(rayInteractor.transform.position, rayInteractor.transform.forward);
-        return Physics.Raycast(ray, out hit, 100f);
-    }
-
-    private void SetTeleportTargetsEnabled(bool enabled)
-    {
-        SetTeleportTargetsEnabled(teleportationAreas, enabled);
-        SetTeleportTargetsEnabled(teleportationAnchors, enabled);
-    }
-
-    private void SetTeleportTargetsEnabled(TeleportationArea[] targets, bool enabled)
-    {
-        if (targets == null)
-            return;
-
-        for (int i = 0; i < targets.Length; i++)
-        {
-            var target = targets[i];
-            if (target == null)
-                continue;
-
-            target.enabled = enabled;
-        }
-    }
-
-    private void SetTeleportTargetsEnabled(TeleportationAnchor[] targets, bool enabled)
-    {
-        if (targets == null)
-            return;
-
-        for (int i = 0; i < targets.Length; i++)
-        {
-            var target = targets[i];
-            if (target == null)
-                continue;
-
-            target.enabled = enabled;
-        }
+        leftTeleportation.SetActive(leftActivate.action.ReadValue<float>() > 0.01f);
     }
 
     private void ConfigureTeleportRayReticle()

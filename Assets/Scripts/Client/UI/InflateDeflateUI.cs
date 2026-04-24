@@ -12,7 +12,6 @@ public class InflateDeflateUI : MonoBehaviour
     public TMP_Text statusText;
 
     private EditingMethodRuntimeSettings target;
-    private ActivateTeleportationRay teleportRay;
     private GameObject transientMessageCanvas;
     private TMP_Text transientMessageText;
     private Coroutine transientMessageRoutine;
@@ -33,7 +32,6 @@ public class InflateDeflateUI : MonoBehaviour
     private void Awake()
     {
         target = FindFirstObjectByType<EditingMethodRuntimeSettings>();
-        teleportRay = FindFirstObjectByType<ActivateTeleportationRay>();
         InitializeTransientMessageCanvas();
 
         if (target != null)
@@ -93,7 +91,7 @@ public class InflateDeflateUI : MonoBehaviour
 
     public void BeginPick()
     {
-        if (target == null || teleportRay == null)
+        if (target == null)
             return;
 
         if (isPickingReferencePoint)
@@ -105,7 +103,6 @@ public class InflateDeflateUI : MonoBehaviour
         target.CurrentMethod = MethodKind.InflateDeflate;
         isPickingReferencePoint = true;
         IsAnyPickActive = true;
-        teleportRay.BeginInflateDeflatePick();
     }
 
     public void CancelPick()
@@ -132,9 +129,6 @@ public class InflateDeflateUI : MonoBehaviour
         if (!isPickingReferencePoint)
             return;
 
-        if (teleportRay != null)
-            teleportRay.CancelInflateDeflatePick();
-
         isPickingReferencePoint = false;
         IsAnyPickActive = false;
     }
@@ -147,7 +141,7 @@ public class InflateDeflateUI : MonoBehaviour
 
     private void SetWorkflowStatus()
     {
-        SetStatus("Set parameters, press Pick Point, then use the left hand ray to aim at the mesh and release the teleport trigger.");
+        SetStatus("Set parameters, press Pick Point, then use the right hand ray to aim at the mesh and release the trigger.");
     }
 
     private void InitializeTransientMessageCanvas()

@@ -35180,11 +35180,11 @@ MonoBehaviour:
   doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
   orbitRadius: 0.55
-  dragDegreesPerMeter: 240
+  dragDegreesPerMeter: 160
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
-  pinnedPitchDegrees: -8
+  pinnedPitchDegrees: -30
   pinnedYawDegrees: 6
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
@@ -50033,11 +50033,11 @@ MonoBehaviour:
   doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
   orbitRadius: 0.55
-  dragDegreesPerMeter: 120
+  dragDegreesPerMeter: 80
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
-  pinnedPitchDegrees: -8
+  pinnedPitchDegrees: -30
   pinnedYawDegrees: 6
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}

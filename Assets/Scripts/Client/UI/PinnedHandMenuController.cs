@@ -1,18 +1,12 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Pins a hand menu near the user after a grab double tap and lets the same grab move it around the user.
 /// </summary>
 public class PinnedHandMenuController : MonoBehaviour
 {
-    private const string XrOriginName = "XR Origin";
-    private const string LeftHandName = "Left Hand";
-    private const string RightHandName = "Right Hand";
-    private const string MethodMenuName = "Method Menu";
-    private const string PlaybackMenuName = "Playback Menu";
-
     public enum MenuHand
     {
         Left,
@@ -26,31 +20,38 @@ public class PinnedHandMenuController : MonoBehaviour
         DraggingPinned
     }
 
-    public GameObject menuRoot;
-    public Transform handTransform;
-    public Transform userRoot;
-    public Transform headTransform;
-    public InputActionProperty grabAction;
-    public InputActionProperty alternateGrabAction;
+    [System.Serializable]
+    public struct HandMenuBindings
+    {
+        public GameObject menuRoot;
+        public Canvas visualCanvas;
+        public Transform handTransform;
+        public Transform userRoot;
+        public Transform headTransform;
+        public InflateDeflateUI inflateDeflateUi;
+        public InputActionProperty grabAction;
+        public InputActionProperty alternateGrabAction;
+    }
+
+    [SerializeField] private HandMenuBindings bindings;
     public MenuHand hand;
     public float pressThreshold = 0.5f;
     public float tapMaxDuration = 0.4f;
     public float doubleClickWindow = 0.6f;
     public float dragStartHoldTime = 0.15f;
     public float orbitRadius = 0.55f;
-    public float dragDegreesPerMeter = 180f;
+    public float dragDegreesPerMeter = 120f;
     public float dragVerticalSensitivity = 1f;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
-    public bool faceHead = true;
-    public bool useFixedPinnedPitch = true;
-    public float pinnedPitchDegrees = -6f;
+    public float pinnedPitchDegrees = -8f;
     public float pinnedYawDegrees = 6f;
     public bool invertCanvasFacing = true;
     public Vector3 pinnedAdditionalRotationEuler;
     public bool pollDirectControllerInput = true;
-    public bool pollTriggerAsFallback = true;
-    public bool debugLogging;
+
+    private Transform HandTransform => bindings.handTransform != null ? bindings.handTransform : transform;
+    private Transform VisualFaceTransform => bindings.visualCanvas != null ? bindings.visualCanvas.transform : bindings.menuRoot != null ? bindings.menuRoot.transform : null;
 
     private Transform originalParent;
     private Vector3 originalLocalPosition;
@@ -68,82 +69,24 @@ public class PinnedHandMenuController : MonoBehaviour
     private float dragStartHeightOffset;
     private float dragStartOrbitAngleDegrees;
     private float heightOffset = -0.2f;
-    private Transform visualFaceTransform;
     private Quaternion visualLocalRotation = Quaternion.identity;
-    private InflateDeflateUI inflateDeflateUi;
+    private Canvas[] visibilityCanvases = Array.Empty<Canvas>();
+    private CanvasGroup[] visibilityCanvasGroups = Array.Empty<CanvasGroup>();
 
     private static bool rightGrabReserved;
 
     public static bool SuppressRightGrabToMove => rightGrabReserved;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void LogPinnedControllersAfterSceneLoad()
-    {
-        var controllers = FindObjectsByType<PinnedHandMenuController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        Debug.Log($"PinnedHandMenuController diagnostic: scene='{SceneManager.GetActiveScene().name}', controllers={controllers.Length}");
-
-        if (controllers.Length == 0)
-        {
-            InstallRuntimeFallbackControllers();
-            controllers = FindObjectsByType<PinnedHandMenuController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            Debug.Log($"PinnedHandMenuController diagnostic: after runtime fallback install, controllers={controllers.Length}");
-        }
-
-        foreach (var controller in controllers)
-        {
-            Debug.Log(
-                $"PinnedHandMenuController diagnostic: hand={controller.hand}, object='{controller.name}', activeSelf={controller.gameObject.activeSelf}, activeInHierarchy={controller.gameObject.activeInHierarchy}, enabled={controller.enabled}, menuRoot='{controller.menuRoot?.name}', grabAction={(controller.grabAction.action != null)}, alternateGrabAction={(controller.alternateGrabAction.action != null)}",
-                controller);
-        }
-    }
-
-    private static void InstallRuntimeFallbackControllers()
-    {
-        InstallRuntimeFallbackController(LeftHandName, MethodMenuName, MenuHand.Left);
-        InstallRuntimeFallbackController(RightHandName, PlaybackMenuName, MenuHand.Right);
-    }
-
-    private static void InstallRuntimeFallbackController(string handName, string menuName, MenuHand menuHand)
-    {
-        Transform handObject = FindSceneTransformByName(handName);
-        Transform menuObject = FindSceneTransformByName(menuName);
-
-        if (handObject == null || menuObject == null)
-        {
-            Debug.LogWarning($"PinnedHandMenuController diagnostic: cannot install {menuHand} fallback, hand='{handObject?.name}', menu='{menuObject?.name}'");
-            return;
-        }
-
-        var controller = handObject.GetComponent<PinnedHandMenuController>();
-        if (controller == null)
-            controller = handObject.gameObject.AddComponent<PinnedHandMenuController>();
-
-        controller.ConfigureRuntimeFallback(menuObject.gameObject, menuHand);
-        Debug.Log($"PinnedHandMenuController diagnostic: installed {menuHand} fallback on '{handObject.name}' for menu '{menuObject.name}'", controller);
-    }
-
-    private static Transform FindSceneTransformByName(string objectName)
-    {
-        foreach (var candidate in FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-        {
-            if (candidate.name == objectName && candidate.gameObject.scene.IsValid())
-                return candidate;
-        }
-
-        return null;
-    }
-
     private void Awake()
     {
-        ResolveMissingReferences();
-        inflateDeflateUi = FindFirstObjectByType<InflateDeflateUI>();
+        CacheOriginalMenuTransform();
+        CacheVisibilityComponents();
     }
 
     private void OnEnable()
     {
-        grabAction.action?.Enable();
-        alternateGrabAction.action?.Enable();
-        Debug.Log($"PinnedHandMenuController[{hand}]: enabled, object='{name}', grabAction={(grabAction.action != null)}, alternateGrabAction={(alternateGrabAction.action != null)}, directPolling={pollDirectControllerInput}", this);
+        bindings.grabAction.action?.Enable();
+        bindings.alternateGrabAction.action?.Enable();
     }
 
     private void OnDisable()
@@ -152,58 +95,10 @@ public class PinnedHandMenuController : MonoBehaviour
             rightGrabReserved = false;
     }
 
-    private void ConfigureRuntimeFallback(GameObject runtimeMenuRoot, MenuHand runtimeHand)
-    {
-        menuRoot = runtimeMenuRoot;
-        hand = runtimeHand;
-        handTransform = transform;
-        visualFaceTransform = null;
-        orbitRadius = 0.55f;
-        pinnedPitchDegrees = -6f;
-        pinnedYawDegrees = 6f;
-        invertCanvasFacing = true;
-        dragDegreesPerMeter = runtimeHand == MenuHand.Left ? 360f : 180f;
-        pinnedAdditionalRotationEuler = Vector3.zero;
-        debugLogging = true;
-        pollDirectControllerInput = true;
-        pollTriggerAsFallback = true;
-        ResolveMissingReferences();
-        CacheOriginalMenuTransform();
-    }
-
-    private void ResolveMissingReferences()
-    {
-        if (handTransform == null)
-            handTransform = transform;
-
-        if (headTransform == null && Camera.main != null)
-            headTransform = Camera.main.transform;
-
-        if (userRoot == null)
-        {
-            Transform xrOrigin = FindSceneTransformByName(XrOriginName);
-            if (xrOrigin != null)
-                userRoot = xrOrigin;
-            else if (headTransform != null)
-                userRoot = ResolveUserRoot(headTransform);
-        }
-
-        CacheOriginalMenuTransform();
-    }
-
     private void Update()
     {
         bool isPressed = IsGrabPressed();
-
-        if (isPressed && !wasPressed)
-            BeginPress();
-
-        if (isPressed)
-            UpdatePress();
-
-        if (!isPressed && wasPressed)
-            EndPress();
-
+        HandlePressState(isPressed, Time.unscaledTime);
         wasPressed = isPressed;
     }
 
@@ -216,32 +111,60 @@ public class PinnedHandMenuController : MonoBehaviour
         EnsurePinnedMenuVisible();
     }
 
-    private void BeginPress()
+    private void HandlePressState(bool isPressed, float now)
     {
-        if (InflateDeflateUI.IsAnyPickActive)
+        if (isPressed && !wasPressed)
         {
-            inflateDeflateUi?.ShowPickModeBlockedMessage();
+            if (InflateDeflateUI.IsAnyPickActive)
+            {
+                bindings.inflateDeflateUi?.ShowPickModeBlockedMessage();
+                pressCanBecomeTap = false;
+                pressBlocked = true;
+                return;
+            }
+
+            pressStartedAt = now;
+            pressCanBecomeTap = true;
+            pressBlocked = false;
+
+            if (hand == MenuHand.Right)
+                rightGrabReserved = true;
+        }
+
+        if (!isPressed)
+        {
+            if (!wasPressed)
+                return;
+
+            if (pressCanBecomeTap)
+            {
+                if (now - lastTapAt <= doubleClickWindow)
+                {
+                    SetPinned(state == MenuState.HandAttached);
+                    lastTapAt = -10f;
+                }
+                else
+                {
+                    lastTapAt = now;
+                }
+            }
+
+            if (state == MenuState.DraggingPinned)
+                state = MenuState.Pinned;
+
             pressCanBecomeTap = false;
-            pressBlocked = true;
+            pressBlocked = false;
+
+            if (hand == MenuHand.Right)
+                rightGrabReserved = false;
+
             return;
         }
 
-        pressStartedAt = Time.unscaledTime;
-        pressCanBecomeTap = true;
-        pressBlocked = false;
-
-        if (hand == MenuHand.Right)
-            rightGrabReserved = true;
-
-        LogDebug("press");
-    }
-
-    private void UpdatePress()
-    {
         if (pressBlocked)
             return;
 
-        float heldFor = Time.unscaledTime - pressStartedAt;
+        float heldFor = now - pressStartedAt;
 
         if (pressCanBecomeTap && heldFor > tapMaxDuration)
             pressCanBecomeTap = false;
@@ -256,89 +179,51 @@ public class PinnedHandMenuController : MonoBehaviour
             rightGrabReserved = false;
     }
 
-    private void EndPress()
-    {
-        if (pressCanBecomeTap)
-            RegisterTap();
-
-        if (state == MenuState.DraggingPinned)
-            state = MenuState.Pinned;
-
-        pressCanBecomeTap = false;
-        pressBlocked = false;
-
-        if (hand == MenuHand.Right)
-            rightGrabReserved = false;
-    }
-
     private void BeginPinnedDrag()
     {
         state = MenuState.DraggingPinned;
         pressCanBecomeTap = false;
 
-        dragStartHandPosition = handTransform != null ? handTransform.position : menuRoot.transform.position;
-        dragBasisYawRotation = GetHeadYawRotation();
+        Transform handTransform = HandTransform;
+        dragStartHandPosition = handTransform != null ? handTransform.position : bindings.menuRoot.transform.position;
+        dragBasisYawRotation = GetYawRotation(bindings.headTransform != null ? bindings.headTransform : bindings.userRoot);
         dragStartOrbitAngleDegrees = orbitAngleDegrees;
         dragStartHeightOffset = heightOffset;
-        LogDebug("drag start");
     }
 
-    private void RegisterTap()
+    private void SetPinned(bool pinned)
     {
-        float now = Time.unscaledTime;
-        if (now - lastTapAt <= doubleClickWindow)
+        GameObject menuRoot = bindings.menuRoot;
+        if (menuRoot == null)
+            return;
+
+        if (pinned)
         {
-            LogDebug("double tap");
-            TogglePinned();
-            lastTapAt = -10f;
+            Transform visualFaceTransform = VisualFaceTransform;
+            if (visualFaceTransform == null)
+                return;
+
+            CacheOriginalMenuTransform();
+            CaptureOrbitFromWorldPosition(menuRoot.transform.position);
+            visualLocalRotation = Quaternion.Inverse(menuRoot.transform.rotation) * visualFaceTransform.rotation;
+            menuRoot.transform.SetParent(null, true);
+            menuRoot.SetActive(true);
+            state = MenuState.Pinned;
+            UpdatePinnedTransform();
             return;
         }
-
-        LogDebug("tap");
-        lastTapAt = now;
-    }
-
-    private void TogglePinned()
-    {
-        if (state == MenuState.HandAttached)
-            PinMenu();
-        else
-            UnpinMenu();
-    }
-
-    private void PinMenu()
-    {
-        if (menuRoot == null)
-            return;
-
-        CacheOriginalMenuTransform();
-        CaptureOrbitFromMenu();
-        CaptureVisualFacingReference();
-
-        menuRoot.transform.SetParent(null, true);
-        menuRoot.SetActive(true);
-        state = MenuState.Pinned;
-        UpdatePinnedTransform();
-        LogDebug("pinned");
-    }
-
-    private void UnpinMenu()
-    {
-        if (menuRoot == null)
-            return;
 
         menuRoot.transform.SetParent(originalParent, false);
         menuRoot.transform.localPosition = originalLocalPosition;
         menuRoot.transform.localRotation = originalLocalRotation;
         menuRoot.SetActive(originalActive);
         state = MenuState.HandAttached;
-        LogDebug("unpinned");
     }
 
     private bool IsGrabPressed()
     {
-        return IsActionPressed(grabAction.action) ||
-               IsActionPressed(alternateGrabAction.action) ||
+        return IsActionPressed(bindings.grabAction.action) ||
+               IsActionPressed(bindings.alternateGrabAction.action) ||
                IsDirectControllerGrabPressed();
     }
 
@@ -376,25 +261,15 @@ public class PinnedHandMenuController : MonoBehaviour
         if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.grip, out float gripValue) && gripValue >= pressThreshold)
             return true;
 
-        if (!pollTriggerAsFallback)
-            return false;
-
         if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.triggerButton, out bool triggerButton) && triggerButton)
             return true;
 
         return device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out float triggerValue) && triggerValue >= pressThreshold;
     }
 
-    private void LogDebug(string message)
-    {
-        if (!debugLogging)
-            return;
-
-        Debug.Log($"PinnedHandMenuController[{hand}]: {message}", this);
-    }
-
     private void CacheOriginalMenuTransform()
     {
+        GameObject menuRoot = bindings.menuRoot;
         if (menuRoot == null)
             return;
 
@@ -404,9 +279,20 @@ public class PinnedHandMenuController : MonoBehaviour
         originalActive = menuRoot.activeSelf;
     }
 
+    private void CacheVisibilityComponents()
+    {
+        GameObject menuRoot = bindings.menuRoot;
+        if (menuRoot == null)
+            return;
+
+        visibilityCanvases = menuRoot.GetComponentsInChildren<Canvas>(true);
+        visibilityCanvasGroups = menuRoot.GetComponentsInChildren<CanvasGroup>(true);
+    }
+
     private void UpdatePinnedPlacementFromDrag()
     {
-        if (handTransform == null || headTransform == null)
+        Transform handTransform = HandTransform;
+        if (handTransform == null || bindings.headTransform == null)
             return;
 
         Vector3 localDelta = Quaternion.Inverse(dragBasisYawRotation) * (handTransform.position - dragStartHandPosition);
@@ -418,44 +304,37 @@ public class PinnedHandMenuController : MonoBehaviour
             maxHeightOffset);
     }
 
-    private void CaptureOrbitFromMenu()
-    {
-        if (menuRoot == null)
-            return;
-
-        CaptureOrbitFromWorldPosition(menuRoot.transform.position);
-    }
-
     private void CaptureOrbitFromWorldPosition(Vector3 worldPosition)
     {
+        Transform headTransform = bindings.headTransform;
         if (headTransform == null)
             return;
 
-        Vector3 localDirection = Quaternion.Inverse(GetUserYawRotation()) * GetHorizontalDirection(worldPosition - headTransform.position);
+        Vector3 localDirection = Quaternion.Inverse(GetYawRotation(bindings.userRoot != null ? bindings.userRoot : headTransform)) * GetHorizontalDirection(worldPosition - headTransform.position);
         orbitAngleDegrees = Mathf.Atan2(localDirection.x, localDirection.z) * Mathf.Rad2Deg;
         heightOffset = Mathf.Clamp(worldPosition.y - headTransform.position.y, minHeightOffset, maxHeightOffset);
     }
 
     private void UpdatePinnedTransform()
     {
+        GameObject menuRoot = bindings.menuRoot;
+        Transform headTransform = bindings.headTransform;
         if (menuRoot == null || headTransform == null)
             return;
 
-        Quaternion userYaw = GetUserYawRotation();
+        Quaternion userYaw = GetYawRotation(bindings.userRoot != null ? bindings.userRoot : headTransform);
         Vector3 localDirection = Quaternion.Euler(0f, orbitAngleDegrees, 0f) * Vector3.forward;
         Vector3 worldDirection = userYaw * localDirection;
         worldDirection.y = 0f;
         worldDirection.Normalize();
         menuRoot.transform.position = headTransform.position + worldDirection * orbitRadius + Vector3.up * heightOffset;
-
-        if (faceHead)
-            RotatePinnedMenuTowardHead(worldDirection);
-        else
-            menuRoot.transform.rotation = userYaw * Quaternion.Euler(pinnedAdditionalRotationEuler);
+        RotatePinnedMenuTowardHead(worldDirection);
     }
 
     private void RotatePinnedMenuTowardHead(Vector3 worldDirectionFromUser)
     {
+        GameObject menuRoot = bindings.menuRoot;
+        Transform headTransform = bindings.headTransform;
         if (menuRoot == null || headTransform == null)
             return;
 
@@ -466,33 +345,31 @@ public class PinnedHandMenuController : MonoBehaviour
             return;
 
         toUser.Normalize();
-        ResolveVisualFaceTransform();
+        Transform visualFaceTransform = VisualFaceTransform;
+        if (visualFaceTransform == null)
+            return;
+
         Vector3 visualForward = invertCanvasFacing ? -toUser : toUser;
         Quaternion desiredVisualRotation = Quaternion.LookRotation(visualForward, Vector3.up);
         float handYaw = hand == MenuHand.Left ? pinnedYawDegrees : -pinnedYawDegrees;
-
-        if (useFixedPinnedPitch)
-            desiredVisualRotation *= Quaternion.Euler(pinnedPitchDegrees, handYaw, 0f);
-        else
-            desiredVisualRotation *= Quaternion.Euler(0f, handYaw, 0f);
-
+        desiredVisualRotation *= Quaternion.Euler(pinnedPitchDegrees, handYaw, 0f);
         menuRoot.transform.rotation = desiredVisualRotation * Quaternion.Inverse(visualLocalRotation) * Quaternion.Euler(pinnedAdditionalRotationEuler);
     }
 
     private void EnsurePinnedMenuVisible()
     {
+        GameObject menuRoot = bindings.menuRoot;
         if (menuRoot == null)
             return;
 
         if (!menuRoot.activeSelf)
             menuRoot.SetActive(true);
 
-        ResolveVisualFaceTransform();
-
+        Transform visualFaceTransform = VisualFaceTransform;
         if (visualFaceTransform != null && !visualFaceTransform.gameObject.activeSelf)
             visualFaceTransform.gameObject.SetActive(true);
 
-        foreach (Canvas canvas in menuRoot.GetComponentsInChildren<Canvas>(true))
+        foreach (Canvas canvas in visibilityCanvases)
         {
             if (!canvas.gameObject.activeSelf)
                 canvas.gameObject.SetActive(true);
@@ -500,36 +377,12 @@ public class PinnedHandMenuController : MonoBehaviour
             canvas.enabled = true;
         }
 
-        foreach (CanvasGroup canvasGroup in menuRoot.GetComponentsInChildren<CanvasGroup>(true))
+        foreach (CanvasGroup canvasGroup in visibilityCanvasGroups)
         {
             canvasGroup.alpha = 1f;
             canvasGroup.interactable = true;
             canvasGroup.blocksRaycasts = true;
         }
-    }
-
-    private void CaptureVisualFacingReference()
-    {
-        ResolveVisualFaceTransform();
-
-        if (menuRoot == null || visualFaceTransform == null)
-            return;
-
-        visualLocalRotation = Quaternion.Inverse(menuRoot.transform.rotation) * visualFaceTransform.rotation;
-
-        if (headTransform == null)
-            return;
-
-        LogDebug($"visual face='{visualFaceTransform.name}'");
-    }
-
-    private void ResolveVisualFaceTransform()
-    {
-        if (visualFaceTransform != null || menuRoot == null)
-            return;
-
-        Canvas canvas = menuRoot.GetComponentInChildren<Canvas>(true);
-        visualFaceTransform = canvas != null ? canvas.transform : menuRoot.transform;
     }
 
     private Vector3 GetHorizontalDirection(Vector3 direction)
@@ -543,20 +396,14 @@ public class PinnedHandMenuController : MonoBehaviour
         return direction;
     }
 
-    private Quaternion GetUserYawRotation()
+    private static Quaternion GetYawRotation(Transform basis)
     {
-        Transform basis = userRoot != null ? userRoot : headTransform;
-        return Quaternion.Euler(0f, basis.eulerAngles.y, 0f);
-    }
-
-    private Quaternion GetHeadYawRotation()
-    {
-        Transform basis = headTransform != null ? headTransform : userRoot;
         return basis != null ? Quaternion.Euler(0f, basis.eulerAngles.y, 0f) : Quaternion.identity;
     }
 
     private Vector3 GetFallbackWorldDirection()
     {
+        Transform headTransform = bindings.headTransform;
         Vector3 side = headTransform != null ? headTransform.right : transform.right;
         side.y = 0f;
 
@@ -567,17 +414,4 @@ public class PinnedHandMenuController : MonoBehaviour
         return hand == MenuHand.Left ? -side : side;
     }
 
-    private static Transform ResolveUserRoot(Transform from)
-    {
-        Transform current = from;
-        while (current != null)
-        {
-            if (current.name == XrOriginName)
-                return current;
-
-            current = current.parent;
-        }
-
-        return from.root;
-    }
 }

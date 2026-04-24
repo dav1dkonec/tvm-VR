@@ -35143,53 +35143,52 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9ac76967ac324bb6a0652deea8d4f7d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  menuRoot: {fileID: 1268694413}
-  handTransform: {fileID: 1276908795}
-  userRoot: {fileID: 1312322102}
-  headTransform: {fileID: 888695949}
-  grabAction:
-    m_UseReference: 1
-    m_Action:
-      m_Name: Left Pinned Method Menu Grab
-      m_Type: 0
-      m_ExpectedControlType: 
-      m_Id: 3217dcc1-bd9c-4182-bcc3-ec025fb2355b
-      m_Processors: 
-      m_Interactions: 
-      m_SingletonActionBindings: []
-      m_Flags: 0
-    m_Reference: {fileID: -6131295136447488360, guid: c348712bda248c246b8c49b3db54643f, type: 3}
-  alternateGrabAction:
-    m_UseReference: 1
-    m_Action:
-      m_Name: Left Pinned Method Menu Alternate Grab
-      m_Type: 0
-      m_ExpectedControlType:
-      m_Id: 1e68bdeb-7923-4a46-a095-29e04921960d
-      m_Processors:
-      m_Interactions:
-      m_SingletonActionBindings: []
-      m_Flags: 0
-    m_Reference: {fileID: -5982496924579745919, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  bindings:
+    menuRoot: {fileID: 1268694413}
+    visualCanvas: {fileID: 2006245538}
+    handTransform: {fileID: 1276908795}
+    userRoot: {fileID: 1312322102}
+    headTransform: {fileID: 888695949}
+    inflateDeflateUi: {fileID: 2006245540}
+    grabAction:
+      m_UseReference: 1
+      m_Action:
+        m_Name: Left Pinned Method Menu Grab
+        m_Type: 0
+        m_ExpectedControlType:
+        m_Id: 3217dcc1-bd9c-4182-bcc3-ec025fb2355b
+        m_Processors:
+        m_Interactions:
+        m_SingletonActionBindings: []
+        m_Flags: 0
+      m_Reference: {fileID: -6131295136447488360, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+    alternateGrabAction:
+      m_UseReference: 1
+      m_Action:
+        m_Name: Left Pinned Method Menu Alternate Grab
+        m_Type: 0
+        m_ExpectedControlType:
+        m_Id: 1e68bdeb-7923-4a46-a095-29e04921960d
+        m_Processors:
+        m_Interactions:
+        m_SingletonActionBindings: []
+        m_Flags: 0
+      m_Reference: {fileID: -5982496924579745919, guid: c348712bda248c246b8c49b3db54643f, type: 3}
   hand: 0
   pressThreshold: 0.5
   tapMaxDuration: 0.4
   doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
   orbitRadius: 0.55
-  dragDegreesPerMeter: 360
+  dragDegreesPerMeter: 240
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
-  faceHead: 1
-  useFixedPinnedPitch: 1
-  pinnedPitchDegrees: -6
+  pinnedPitchDegrees: -8
   pinnedYawDegrees: 6
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
   pollDirectControllerInput: 1
-  pollTriggerAsFallback: 1
-  debugLogging: 1
 --- !u!1 &1287256695
 GameObject:
   m_ObjectHideFlags: 0
@@ -49997,53 +49996,52 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9ac76967ac324bb6a0652deea8d4f7d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  menuRoot: {fileID: 1009174493}
-  handTransform: {fileID: 1768454292}
-  userRoot: {fileID: 1312322102}
-  headTransform: {fileID: 888695949}
-  grabAction:
-    m_UseReference: 1
-    m_Action:
-      m_Name: Right Pinned Playback Menu Grab
-      m_Type: 0
-      m_ExpectedControlType: 
-      m_Id: 82e131a7-864f-462f-bcde-252eec8f98fa
-      m_Processors: 
-      m_Interactions: 
-      m_SingletonActionBindings: []
-      m_Flags: 0
-    m_Reference: {fileID: 83097790271614945, guid: c348712bda248c246b8c49b3db54643f, type: 3}
-  alternateGrabAction:
-    m_UseReference: 1
-    m_Action:
-      m_Name: Right Pinned Playback Menu Alternate Grab
-      m_Type: 0
-      m_ExpectedControlType:
-      m_Id: b6fc4be4-7ed5-4ee4-9c91-33975a454f37
-      m_Processors:
-      m_Interactions:
-      m_SingletonActionBindings: []
-      m_Flags: 0
-    m_Reference: {fileID: 187161793506945269, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  bindings:
+    menuRoot: {fileID: 1009174493}
+    visualCanvas: {fileID: 458748746}
+    handTransform: {fileID: 1768454292}
+    userRoot: {fileID: 1312322102}
+    headTransform: {fileID: 888695949}
+    inflateDeflateUi: {fileID: 2006245540}
+    grabAction:
+      m_UseReference: 1
+      m_Action:
+        m_Name: Right Pinned Playback Menu Grab
+        m_Type: 0
+        m_ExpectedControlType:
+        m_Id: 82e131a7-864f-462f-bcde-252eec8f98fa
+        m_Processors:
+        m_Interactions:
+        m_SingletonActionBindings: []
+        m_Flags: 0
+      m_Reference: {fileID: 83097790271614945, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+    alternateGrabAction:
+      m_UseReference: 1
+      m_Action:
+        m_Name: Right Pinned Playback Menu Alternate Grab
+        m_Type: 0
+        m_ExpectedControlType:
+        m_Id: b6fc4be4-7ed5-4ee4-9c91-33975a454f37
+        m_Processors:
+        m_Interactions:
+        m_SingletonActionBindings: []
+        m_Flags: 0
+      m_Reference: {fileID: 187161793506945269, guid: c348712bda248c246b8c49b3db54643f, type: 3}
   hand: 1
   pressThreshold: 0.5
   tapMaxDuration: 0.4
   doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
   orbitRadius: 0.55
-  dragDegreesPerMeter: 180
+  dragDegreesPerMeter: 120
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
-  faceHead: 1
-  useFixedPinnedPitch: 1
-  pinnedPitchDegrees: -6
+  pinnedPitchDegrees: -8
   pinnedYawDegrees: 6
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
   pollDirectControllerInput: 1
-  pollTriggerAsFallback: 1
-  debugLogging: 1
 --- !u!1 &1772262513
 GameObject:
   m_ObjectHideFlags: 0

@@ -35184,7 +35184,7 @@ MonoBehaviour:
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
-  pinnedPitchDegrees: -4
+  pinnedPitchDegrees: 0
   pinnedYawDegrees: 6
   verticalFacingSensitivity: 1.35
   maxAutoPitchDegrees: 14
@@ -50039,7 +50039,7 @@ MonoBehaviour:
   dragVerticalSensitivity: 1
   minHeightOffset: -0.45
   maxHeightOffset: 0.15
-  pinnedPitchDegrees: -4
+  pinnedPitchDegrees: 0
   pinnedYawDegrees: 6
   verticalFacingSensitivity: 1.35
   maxAutoPitchDegrees: 14

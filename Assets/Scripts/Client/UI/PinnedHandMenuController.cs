@@ -44,7 +44,7 @@ public class PinnedHandMenuController : MonoBehaviour
     public float dragVerticalSensitivity = 1f;
     public float minHeightOffset = -0.45f;
     public float maxHeightOffset = 0.15f;
-    public float pinnedPitchDegrees = -4f;
+    public float pinnedPitchDegrees = 0f;
     public float pinnedYawDegrees = 6f;
     public float verticalFacingSensitivity = 1.35f;
     public float maxAutoPitchDegrees = 14f;
@@ -228,7 +228,6 @@ public class PinnedHandMenuController : MonoBehaviour
     private bool IsGrabPressed()
     {
         return IsActionPressed(bindings.grabAction.action) ||
-               IsActionPressed(bindings.alternateGrabAction.action) ||
                IsDirectControllerGrabPressed();
     }
 
@@ -266,10 +265,7 @@ public class PinnedHandMenuController : MonoBehaviour
         if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.grip, out float gripValue) && gripValue >= pressThreshold)
             return true;
 
-        if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.triggerButton, out bool triggerButton) && triggerButton)
-            return true;
-
-        return device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out float triggerValue) && triggerValue >= pressThreshold;
+        return false;
     }
 
     private void CacheOriginalMenuTransform()
@@ -362,7 +358,7 @@ public class PinnedHandMenuController : MonoBehaviour
         Quaternion faceRotation = Quaternion.LookRotation(visualForward, Vector3.up);
         float autoPitchDegrees = Mathf.Atan2(toUser.y * verticalFacingSensitivity, Mathf.Max(0.001f, new Vector2(toUser.x, toUser.z).magnitude)) * Mathf.Rad2Deg;
         autoPitchDegrees = Mathf.Clamp(autoPitchDegrees, -maxAutoPitchDegrees, maxAutoPitchDegrees);
-        float totalPitchDegrees = pinnedPitchDegrees + autoPitchDegrees;
+        float totalPitchDegrees = autoPitchDegrees;
         float handYaw = hand == MenuHand.Left ? pinnedYawDegrees : -pinnedYawDegrees;
         Quaternion visualTilt = Quaternion.Euler(totalPitchDegrees, handYaw, 0f);
 

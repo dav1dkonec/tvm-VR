@@ -4,16 +4,17 @@ using TvmVr2.Client.Centers;
 using TvmVr2.Client.Sequence;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 public class RightReferencePointRay : MonoBehaviour
 {
     private const float MaxDistance = 8f;
     private const float OriginOffset = 0.04f;
-    private const float StartWidth = 0.004f;
-    private const float EndWidth = 0.0025f;
+    private const float StartWidth = 0.007f;
+    private const float EndWidth = 0.0045f;
 
     private static readonly Color ValidColor = new(0.6862745f, 0.98039216f, 0.88235295f, 0.95f);
-    private static readonly Color InvalidColor = new(0.40392157f, 0.8509804f, 0.7607843f, 0.28f);
+    private static readonly Color InvalidColor = new(0.40392157f, 0.8509804f, 0.7607843f, 0.55f);
 
     public GameObject rightHand;
     public InputActionProperty rightActivate;
@@ -24,6 +25,7 @@ public class RightReferencePointRay : MonoBehaviour
     private CenterPool centerPool;
     private LineRenderer lineRenderer;
     private Material lineMaterial;
+    private Transform aimTransform;
     private bool wasPressed;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -54,6 +56,7 @@ public class RightReferencePointRay : MonoBehaviour
         inflateDeflateUi = UnityEngine.Object.FindFirstObjectByType<InflateDeflateUI>();
         sequence = UnityEngine.Object.FindFirstObjectByType<Sequence>();
         centerPool = UnityEngine.Object.FindFirstObjectByType<CenterPool>();
+        ResolveAimTransform();
 
         CreateLaser();
         SetLaserActive(false);
@@ -75,14 +78,12 @@ public class RightReferencePointRay : MonoBehaviour
             return;
         }
 
+        ResolveAimTransform();
         var isPressed = rightActivate.action.IsPressed();
+        UpdatePreview(showPreview: isPressed);
 
-        if (isPressed)
-            UpdatePreview();
-        else if (wasPressed)
+        if (!isPressed && wasPressed)
             TryCommitSelection();
-        else
-            SetLaserActive(false);
 
         wasPressed = isPressed;
     }
@@ -97,8 +98,6 @@ public class RightReferencePointRay : MonoBehaviour
 
     private void TryCommitSelection()
     {
-        SetLaserActive(false);
-
         if (!TryGetValidSequenceHit(out var hit))
             return;
 
@@ -107,7 +106,7 @@ public class RightReferencePointRay : MonoBehaviour
         sequence.CommitInflateDeflate(hit.point);
     }
 
-    private void UpdatePreview()
+    private void UpdatePreview(bool showPreview)
     {
         SetLaserActive(true);
 
@@ -122,7 +121,7 @@ public class RightReferencePointRay : MonoBehaviour
         var hitSequence = hit.collider != null ? hit.collider.GetComponentInParent<Sequence>() : null;
         var valid = hitSequence == sequence;
 
-        if (valid)
+        if (valid && showPreview)
             centerPool?.PreviewInflateDeflate(hit.point);
         else
             centerPool?.ClearPreview();
@@ -173,9 +172,35 @@ public class RightReferencePointRay : MonoBehaviour
 
     private Ray BuildRay()
     {
-        var origin = rightHand.transform.position + rightHand.transform.forward * OriginOffset;
-        var direction = rightHand.transform.forward;
+        var sourceTransform = aimTransform != null ? aimTransform : rightHand.transform;
+        var origin = sourceTransform.position + sourceTransform.forward * OriginOffset;
+        var direction = sourceTransform.forward;
         return new Ray(origin, direction);
+    }
+
+    private void ResolveAimTransform()
+    {
+        if (rightHand == null)
+            return;
+
+        if (aimTransform != null && aimTransform.gameObject.activeInHierarchy)
+            return;
+
+        var pokeInteractor = rightHand.GetComponentInChildren<XRPokeInteractor>(true);
+        if (pokeInteractor != null && pokeInteractor.attachTransform != null)
+        {
+            aimTransform = pokeInteractor.attachTransform;
+            return;
+        }
+
+        var playbackMenu = rightHand.transform.Find("Playback Menu");
+        if (playbackMenu != null)
+        {
+            aimTransform = playbackMenu;
+            return;
+        }
+
+        aimTransform = rightHand.transform;
     }
 
     private void CreateLaser()
@@ -197,9 +222,9 @@ public class RightReferencePointRay : MonoBehaviour
         lineRenderer.startWidth = StartWidth;
         lineRenderer.endWidth = EndWidth;
 
-        var shader = Shader.Find("Sprites/Default");
+        var shader = Shader.Find("Universal Render Pipeline/Unlit");
         if (shader == null)
-            shader = Shader.Find("Universal Render Pipeline/Unlit");
+            shader = Shader.Find("Sprites/Default");
         if (shader == null)
             shader = Shader.Find("Hidden/Internal-Colored");
 

@@ -23,6 +23,7 @@ using Stopwatch = System.Diagnostics.Stopwatch;
 /// </summary>
 public class Sequence : MonoBehaviour, ICenterSelectionListener
 {
+    private TvmEditingMasterInflateDeflateAdapter inflateDeflateAdapter;
     private SequenceLoader sequenceLoader;
     private SequenceSaver sequenceSaver;
     private SequencePlaybackController playbackController;
@@ -135,9 +136,10 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             }
         }
 
+        inflateDeflateAdapter = new TvmEditingMasterInflateDeflateAdapter();
         editingCore = new EditingCore(
             null,
-            new TvmEditingMasterInflateDeflateAdapter());
+            inflateDeflateAdapter);
 
         mesh = new Mesh();
         mesh.MarkDynamic();
@@ -470,6 +472,97 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         }
     }
 
+    public async void ApplyInflateDeflateDebug(
+        int frameIndex,
+        int centerIndex,
+        float radius,
+        float strength,
+        InflateDeflateMode mode)
+    {
+        if (frames == null || frames.Length == 0)
+        {
+            Debug.LogWarning("Sequence: No sequence is loaded.");
+            return;
+        }
+
+        if (frameIndex < 0 || frameIndex >= frames.Length || frames[frameIndex] == null)
+        {
+            Debug.LogWarning($"Sequence: Debug apply frame index {frameIndex} is out of range.");
+            return;
+        }
+
+        if (frames[frameIndex].centers == null || centerIndex < 0 || centerIndex >= frames[frameIndex].centers.Length)
+        {
+            Debug.LogWarning($"Sequence: Debug apply center index {centerIndex} is out of range.");
+            return;
+        }
+
+        if (radius <= 0f || strength <= 0f)
+        {
+            Debug.LogWarning("Sequence: Debug apply requires positive radius and strength.");
+            return;
+        }
+
+        var pl = playing;
+        Pause();
+        busyStateController.Enter(leftHand, rightHand, waitCanvas);
+
+        var waitText = waitCanvas != null ? waitCanvas.GetComponentInChildren<TMP_Text>() : null;
+        var previousWaitText = waitText != null ? waitText.text : string.Empty;
+        if (waitText != null)
+            waitText.text = "applying inflate/deflate debug edit...";
+
+        try
+        {
+            var referencePoint = frames[frameIndex].centers[centerIndex];
+            Debug.Log(
+                $"InflateDeflateDebugApply: frame={frameIndex}, center={centerIndex}, " +
+                $"radius={radius:F2}, strength={strength:F2}, mode={mode}.");
+
+            var succeeded = await Task.Run(() =>
+            {
+                if (editingCore == null)
+                    return false;
+
+                var result = editingCore.Execute(
+                    new InflateDeflateRequest
+                    {
+                        SequenceId = loadedName ?? string.Empty,
+                        FrameIndex = frameIndex,
+                        ReferencePoint = new Point3Data(referencePoint.X, referencePoint.Y, referencePoint.Z),
+                        Radius = radius,
+                        Strength = strength,
+                        Mode = mode
+                    },
+                    BuildRuntimeContext(frames, frameIndex, radius, strength, mode));
+
+                if (!result.Succeeded)
+                    Debug.LogError($"Sequence: {result.ErrorMessage}");
+
+                return result.Succeeded;
+            });
+
+            if (!succeeded)
+                return;
+
+            currentFrame = frameIndex;
+            centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
+            RedrawMesh();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Sequence: InflateDeflate debug apply failed with exception: {ex}");
+        }
+        finally
+        {
+            if (waitText != null)
+                waitText.text = previousWaitText;
+
+            busyStateController.Exit(leftHand, rightHand, waitCanvas);
+            if (pl) Play();
+        }
+    }
+
     public async void RunInflateDeflateQuickProfile(
         int frameIndex,
         int centerIndex,
@@ -505,6 +598,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         iterations = Mathf.Max(1, iterations);
 
         var pl = playing;
+        var originalCurrentFrame = currentFrame;
         Pause();
         busyStateController.Enter(leftHand, rightHand, waitCanvas);
 
@@ -516,7 +610,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         var originalFrames = FrameSnapshot.Clone(frames);
         var profiles = new System.Collections.Generic.List<InflateDeflateQuickProfile>(iterations);
         var mapper = new InflateDeflateInputMapper();
-        var adapter = new TvmEditingMasterInflateDeflateAdapter();
+        var adapter = inflateDeflateAdapter ?? new TvmEditingMasterInflateDeflateAdapter();
 
         try
         {
@@ -590,14 +684,15 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         }
         catch (Exception ex)
         {
-            frames = originalFrames;
-            currentFrame = frameIndex;
-            centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
-            RedrawMesh();
             Debug.LogError($"Sequence: InflateDeflate quick profile failed with exception: {ex}");
         }
         finally
         {
+            frames = originalFrames;
+            currentFrame = Mathf.Clamp(originalCurrentFrame, 0, frames.Length - 1);
+            centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
+            RedrawMesh();
+
             if (waitText != null)
                 waitText.text = previousWaitText;
 

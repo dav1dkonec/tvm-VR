@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Threading.Tasks;
 using TVMEditor.Editing.AffinityCalculation;
 using TVMEditor.Structures;
+using Stopwatch = System.Diagnostics.Stopwatch;
 
 namespace TVMEditor.Editing.SurfaceDeformation
 {
@@ -17,6 +18,7 @@ namespace TVMEditor.Editing.SurfaceDeformation
         public float Shape { get; set; } = 2f;
         public bool ResampleMesh { get; set; } = false;
         public IAffinityCalculation AffinityCalculation { get; set; }
+        public List<CustomSurfaceDeformationCallProfile> CallProfiles { get; } = new List<CustomSurfaceDeformationCallProfile>();
 
         private Dictionary<int, List<int[]>> Centers = new Dictionary<int, List<int[]>>();
         private Dictionary<int, List<float[]>> Weights = new Dictionary<int, List<float[]>>();
@@ -26,16 +28,37 @@ namespace TVMEditor.Editing.SurfaceDeformation
             AffinityCalculation = affinityCalculation;
         }
 
+        public void ResetProfiling()
+        {
+            lock (CallProfiles)
+            {
+                CallProfiles.Clear();
+            }
+        }
+
         public TriangleMesh DeformSurface(Vector3[] vertices, TVMEditor.Structures.Face[] faces, Vector3[] oldCenters, Vector3[] newCenters, int frameIndex, DualQuaternion[] transformations)
         {
-            if (!Centers.ContainsKey(frameIndex))
+            var profile = new CustomSurfaceDeformationCallProfile
+            {
+                FrameIndex = frameIndex,
+                UsedCachedWeights = Centers.ContainsKey(frameIndex)
+            };
+            var totalTimer = Stopwatch.StartNew();
+            var stageTimer = Stopwatch.StartNew();
+
+            if (!profile.UsedCachedWeights)
+            {
                 ComputeWeights(vertices, oldCenters, frameIndex);
+            }
+            stageTimer.Stop();
+            profile.ComputeWeightsMs = stageTimer.Elapsed.TotalMilliseconds;
 
             var centersArray = Centers[frameIndex];
             var weightsArray = Weights[frameIndex];
             var verticesList = new List<Vector3>();
             var vertexTransformations = new Dictionary<int, DualQuaternion>();
 
+            stageTimer.Restart();
             for (var v = 0; v < vertices.Length; v++)
             {
                 var weightedTransformation = DualQuaternion.Zero();
@@ -49,9 +72,15 @@ namespace TVMEditor.Editing.SurfaceDeformation
                 verticesList.Add(weightedTransformation.Normalize().Transform(vertices[v]));
                 vertexTransformations[v] = weightedTransformation.Normalize();
             }
+            stageTimer.Stop();
+            profile.BlendVerticesMs = stageTimer.Elapsed.TotalMilliseconds;
 
             if (!ResampleMesh)
             {
+                totalTimer.Stop();
+                profile.TotalMs = totalTimer.Elapsed.TotalMilliseconds;
+                RecordProfile(profile);
+
                 return new TriangleMesh
                 {
                     Vertices = verticesList.ToArray(),
@@ -59,6 +88,7 @@ namespace TVMEditor.Editing.SurfaceDeformation
                 };
             }
 
+            stageTimer.Restart();
             var kdTree = new KdTree<float, int>(3, new FloatMath());
             for (var c = 0; c < oldCenters.Length; c++)
             {
@@ -146,6 +176,12 @@ namespace TVMEditor.Editing.SurfaceDeformation
                     oppositeVertices.Remove(edgeToSplit);
                 }
             }
+
+            stageTimer.Stop();
+            profile.ResampleMs = stageTimer.Elapsed.TotalMilliseconds;
+            totalTimer.Stop();
+            profile.TotalMs = totalTimer.Elapsed.TotalMilliseconds;
+            RecordProfile(profile);
 
             return new TriangleMesh { Vertices = verticesList.ToArray(), Faces = newFaces.ToArray() };
         }
@@ -303,6 +339,14 @@ namespace TVMEditor.Editing.SurfaceDeformation
             }
 
             return (mostAffineCenters, weights1);
+        }
+
+        private void RecordProfile(CustomSurfaceDeformationCallProfile profile)
+        {
+            lock (CallProfiles)
+            {
+                CallProfiles.Add(profile);
+            }
         }
     }
 }

@@ -14449,8 +14449,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7007aefd20ac142a6ef07b7aa58df6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   sequence: {fileID: 1982043956}
 --- !u!222 &370905398
 CanvasRenderer:
@@ -16141,8 +16141,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7007aefd20ac142a6ef07b7aa58df6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   sequence: {fileID: 1982043956}
 --- !u!222 &514080405
 CanvasRenderer:
@@ -23998,8 +23998,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e7b4aba60eaf12b409b5a4465f7ec2ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   sequence: {fileID: 1982043956}
   playIcon: {fileID: 21300000, guid: 144632e770dffcd4c8ff3828f9f591dc, type: 3}
   pauseIcon: {fileID: 21300000, guid: 680b3b1ce106e7f4598042201efe669d, type: 3}
@@ -52613,6 +52613,7 @@ GameObject:
   - component: {fileID: 1982043957}
   - component: {fileID: 1982043959}
   - component: {fileID: 1982043960}
+  - component: {fileID: 1982043961}
   m_Layer: 8
   m_Name: Sequence
   m_TagString: Untagged
@@ -52793,6 +52794,26 @@ MonoBehaviour:
   InflateRadius: 0.1
   InflateStrength: 0.2
   InflateMode: 0
+--- !u!114 &1982043961
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1982043952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44e04fc8029a467ba8f9498c94ef6ad8, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  sequence: {fileID: 1982043956}
+  useCurrentFrame: 1
+  frameIndex: 0
+  centerIndex: 0
+  radius: 0.2
+  strength: 0.1
+  mode: 0
+  iterations: 1
 --- !u!1 &1982742693
 GameObject:
   m_ObjectHideFlags: 0
@@ -54491,8 +54512,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7007aefd20ac142a6ef07b7aa58df6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   sequence: {fileID: 1982043956}
 --- !u!1 &2021422923
 GameObject:

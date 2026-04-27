@@ -7,6 +7,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
     public sealed class InflateDeflateMethodInput : IMethodInput
     {
         public MethodKind MethodKind => MethodKind.InflateDeflate;
+        public string SequenceId { get; set; } = string.Empty;
         public Frame[] Frames { get; set; }
         public int FrameIndex { get; set; }
         public Vector3 ReferencePoint { get; set; }

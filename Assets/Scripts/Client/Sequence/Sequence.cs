@@ -15,6 +15,8 @@ using TvmVr2.Client.Sequence;
 using TvmVr2.Core;
 using TvmVr2.Core.Methods.BasicTranslate;
 using TvmVr2.Core.Methods.InflateDeflate;
+using TvmVr2.Core.Methods.InflateDeflate.Profiling;
+using Stopwatch = System.Diagnostics.Stopwatch;
 
 /// <summary>
 /// Manages the loading, playback, editing and saving of the sequence
@@ -468,17 +470,168 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         }
     }
 
+    public async void RunInflateDeflateQuickProfile(
+        int frameIndex,
+        int centerIndex,
+        float radius,
+        float strength,
+        InflateDeflateMode mode,
+        int iterations = 1)
+    {
+        if (frames == null || frames.Length == 0)
+        {
+            Debug.LogWarning("Sequence: No sequence is loaded.");
+            return;
+        }
+
+        if (frameIndex < 0 || frameIndex >= frames.Length || frames[frameIndex] == null)
+        {
+            Debug.LogWarning($"Sequence: Quick profile frame index {frameIndex} is out of range.");
+            return;
+        }
+
+        if (frames[frameIndex].centers == null || centerIndex < 0 || centerIndex >= frames[frameIndex].centers.Length)
+        {
+            Debug.LogWarning($"Sequence: Quick profile center index {centerIndex} is out of range.");
+            return;
+        }
+
+        if (radius <= 0f || strength <= 0f)
+        {
+            Debug.LogWarning("Sequence: Quick profile requires positive radius and strength.");
+            return;
+        }
+
+        iterations = Mathf.Max(1, iterations);
+
+        var pl = playing;
+        Pause();
+        busyStateController.Enter(leftHand, rightHand, waitCanvas);
+
+        var waitText = waitCanvas != null ? waitCanvas.GetComponentInChildren<TMP_Text>() : null;
+        var previousWaitText = waitText != null ? waitText.text : string.Empty;
+        if (waitText != null)
+            waitText.text = "profiling inflate/deflate...";
+
+        var originalFrames = FrameSnapshot.Clone(frames);
+        var profiles = new System.Collections.Generic.List<InflateDeflateQuickProfile>(iterations);
+        var mapper = new InflateDeflateInputMapper();
+        var adapter = new TvmEditingMasterInflateDeflateAdapter();
+
+        try
+        {
+            for (var iteration = 0; iteration < iterations; iteration++)
+            {
+                var iterationFrames = FrameSnapshot.Clone(originalFrames);
+                var referencePoint = iterationFrames[frameIndex].centers[centerIndex];
+                Debug.Log($"InflateDeflateQuickProfiler: starting iteration {iteration + 1}/{iterations}.");
+                var request = new InflateDeflateRequest
+                {
+                    SequenceId = loadedName ?? string.Empty,
+                    FrameIndex = frameIndex,
+                    ReferencePoint = new Point3Data(referencePoint.X, referencePoint.Y, referencePoint.Z),
+                    Radius = radius,
+                    Strength = strength,
+                    Mode = mode
+                };
+
+                var runtimeContext = BuildRuntimeContext(iterationFrames, frameIndex, radius, strength, mode);
+                Debug.Log("InflateDeflateQuickProfiler: running test in phase ResolveEffectors.");
+                var mapTimer = Stopwatch.StartNew();
+                var input = mapper.Map(request, runtimeContext);
+                mapTimer.Stop();
+
+                Debug.Log("InflateDeflateQuickProfiler: running test in phase AdapterExecute.");
+                var execution = await Task.Run(() =>
+                {
+                    var result = adapter.ExecuteProfiled(input, out var profile);
+                    return (result, profile);
+                });
+
+                var profile = execution.profile ?? new InflateDeflateQuickProfile();
+                profile.Iteration = iteration + 1;
+                profile.FrameIndex = frameIndex;
+                profile.CenterIndex = centerIndex;
+                profile.ResolveEffectorsMs = mapTimer.Elapsed.TotalMilliseconds;
+                profile.CoreTotalMs = profile.ResolveEffectorsMs + profile.AdapterTotalMs;
+                profile.Success = execution.result != null && execution.result.Success;
+                profile.ErrorMessage = execution.result?.ErrorMessage ?? profile.ErrorMessage;
+
+                if (!profile.Success)
+                {
+                    profiles.Add(profile);
+                    Debug.LogError(profile.ToLogString("InflateDeflate Quick Profile Failed"));
+                    frames = originalFrames;
+                    currentFrame = frameIndex;
+                    centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
+                    RedrawMesh();
+                    return;
+                }
+
+                Debug.Log("InflateDeflateQuickProfiler: running test in phase UnityApply.");
+                var unityApplyTimer = Stopwatch.StartNew();
+                frames = iterationFrames;
+                currentFrame = frameIndex;
+                centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
+                RedrawMesh();
+                unityApplyTimer.Stop();
+
+                profile.UnityApplyMs = unityApplyTimer.Elapsed.TotalMilliseconds;
+                profile.TotalMs = profile.CoreTotalMs + profile.UnityApplyMs;
+                profiles.Add(profile);
+
+                Debug.Log(profile.ToLogString("InflateDeflate Quick Profile"));
+                Debug.Log($"InflateDeflateQuickProfiler: iteration {iteration + 1}/{iterations} completed.");
+            }
+
+            var average = InflateDeflateQuickProfile.Average(profiles);
+            Debug.Log("InflateDeflateQuickProfiler: all iterations completed. Printing average profile.");
+            Debug.Log(average.ToLogString("InflateDeflate Quick Profile Average"));
+        }
+        catch (Exception ex)
+        {
+            frames = originalFrames;
+            currentFrame = frameIndex;
+            centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
+            RedrawMesh();
+            Debug.LogError($"Sequence: InflateDeflate quick profile failed with exception: {ex}");
+        }
+        finally
+        {
+            if (waitText != null)
+                waitText.text = previousWaitText;
+
+            busyStateController.Exit(leftHand, rightHand, waitCanvas);
+            if (pl) Play();
+        }
+    }
+
     private SequenceRuntimeContext BuildRuntimeContext()
+    {
+        return BuildRuntimeContext(
+            frames,
+            currentFrame,
+            methodSettings != null ? methodSettings.InflateRadius : 0.08f,
+            methodSettings != null ? methodSettings.InflateStrength : 0.02f,
+            methodSettings != null ? methodSettings.InflateMode : InflateDeflateMode.Inflate);
+    }
+
+    private SequenceRuntimeContext BuildRuntimeContext(
+        Frame[] runtimeFrames,
+        int runtimeFrameIndex,
+        float inflateRadius,
+        float inflateStrength,
+        InflateDeflateMode inflateMode)
     {
         return new SequenceRuntimeContext
         {
-            Frames = frames,
+            Frames = runtimeFrames,
             SequenceId = loadedName ?? string.Empty,
             LoadedName = loadedName ?? string.Empty,
-            CurrentFrameIndex = currentFrame,
-            FrameCount = frames?.Length ?? 0,
-            CenterCount = frames != null && frames.Length > 0 && frames[currentFrame] != null
-                ? frames[currentFrame].centers.Length
+            CurrentFrameIndex = runtimeFrameIndex,
+            FrameCount = runtimeFrames?.Length ?? 0,
+            CenterCount = runtimeFrames != null && runtimeFrames.Length > 0 && runtimeFrames[runtimeFrameIndex] != null
+                ? runtimeFrames[runtimeFrameIndex].centers.Length
                 : 0,
             BasicTranslate = new BasicTranslateRuntimeConfiguration
             {
@@ -488,9 +641,9 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             },
             InflateDeflate = new InflateDeflateRuntimeConfiguration
             {
-                Radius = methodSettings != null ? methodSettings.InflateRadius : 0.08f,
-                Strength = methodSettings != null ? methodSettings.InflateStrength : 0.02f,
-                Mode = methodSettings != null ? methodSettings.InflateMode : InflateDeflateMode.Inflate
+                Radius = inflateRadius,
+                Strength = inflateStrength,
+                Mode = inflateMode
             }
         };
     }

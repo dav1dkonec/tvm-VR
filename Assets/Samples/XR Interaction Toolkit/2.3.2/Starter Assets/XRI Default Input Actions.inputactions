@@ -852,15 +852,37 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "One Modifier",
                     "id": "0123e5fd-aec0-4ab3-b201-2e6c65d2b93e",
+                    "path": "OneModifier",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Thumbstick",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "c0596dd2-497c-48a6-844c-b7ba0c5a2b32",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Thumbstick",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "81196858-c6ca-481f-921a-a343f574759f",
                     "path": "<XRController>{LeftHand}/{Primary2DAxis}",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Thumbstick",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
                 }
             ]
         },
@@ -1221,70 +1243,180 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "One Modifier",
                     "id": "8ed313a6-c966-4669-8a62-4bb2319d485b",
-                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "path": "OneModifier",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2,ScaleVector2(y=0),StickDeadzone",
+                    "processors": "ScaleVector2(y=0),StickDeadzone",
                     "groups": "",
                     "action": "Rotate Manipulation",
-                    "isComposite": false,
+                    "isComposite": true,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "7b30ca4b-9f98-4a44-9af5-a89412d5cdc8",
+                    "name": "modifier",
+                    "id": "e656a19c-50c9-48f0-a712-45874e0e0394",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Rotate Manipulation",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "441e4819-2007-4e43-b81a-2ecc870693d3",
                     "path": "<XRController>{LeftHand}/{Primary2DAxis}",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Rotate Manipulation",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "One Modifier",
+                    "id": "7b30ca4b-9f98-4a44-9af5-a89412d5cdc8",
+                    "path": "OneModifier",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "UI Scroll",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "ee55da3f-72d2-456f-8655-771ec0449fc2",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
                     "groups": "",
                     "action": "UI Scroll",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "d7ab14f0-860d-490c-b67e-65fed87b4e15",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "UI Scroll",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 },
                 {
                     "name": "",
                     "id": "8f872fc5-75dc-49e5-9bbd-f2e4d4498c65",
                     "path": "<XRController>{LeftHand}/{Primary2DAxisClick}",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2",
+                    "processors": "",
                     "groups": "",
                     "action": "Scale Toggle",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "One Modifier",
                     "id": "b21d690b-51fc-413f-a887-08a2a39af3fc",
-                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "path": "OneModifier",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2,ScaleVector2(x=0),StickDeadzone",
+                    "processors": "ScaleVector2(x=0),StickDeadzone",
+                    "groups": "",
+                    "action": "Scale Over Time",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "dc62d310-281a-49de-b71f-941eaf1a572d",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
                     "groups": "",
                     "action": "Scale Over Time",
                     "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "980ddfa9-9437-4c0d-9e35-86ca3ba0bbb3",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Scale Over Time",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "One Modifier",
+                    "id": "5fe0ed53-b4d3-4cd8-b567-397a7d1e1c6a",
+                    "path": "OneModifier",
+                    "interactions": "",
+                    "processors": "StickDeadzone",
+                    "groups": "",
+                    "action": "Manipulation",
+                    "isComposite": true,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "5fe0ed53-b4d3-4cd8-b567-397a7d1e1c6a",
-                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "name": "modifier",
+                    "id": "00a7a661-0dca-440f-b088-1556948e21e2",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxisClick}",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2,StickDeadzone",
+                    "processors": "",
                     "groups": "",
                     "action": "Manipulation",
                     "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "1e452755-8f59-4ee1-a4e1-d2bc5b6a5863",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Manipulation",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "One Modifier",
+                    "id": "370f21e3-a80b-4b07-990b-299c2da0929a",
+                    "path": "OneModifier",
+                    "interactions": "",
+                    "processors": "ScaleVector2(x=0),StickDeadzone",
+                    "groups": "",
+                    "action": "Translate Manipulation",
+                    "isComposite": true,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "370f21e3-a80b-4b07-990b-299c2da0929a",
-                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "name": "modifier",
+                    "id": "4adfb533-e770-4a81-ba00-76c43e58f560",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxisClick}",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2,ScaleVector2(x=0),StickDeadzone",
+                    "processors": "",
                     "groups": "",
                     "action": "Translate Manipulation",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "c8bec1ef-9f20-41af-8881-831e96c18943",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Translate Manipulation",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 }
             ]
         },
@@ -1297,7 +1429,7 @@
                     "type": "Value",
                     "id": "a21db72c-4843-4839-b4d0-3ce8d287cb86",
                     "expectedControlType": "Vector2",
-                    "processors": "TouchpadClickGateVector2",
+                    "processors": "",
                     "interactions": "",
                     "initialStateCheck": true
                 },
@@ -1349,15 +1481,37 @@
             ],
             "bindings": [
                 {
-                    "name": "",
+                    "name": "One Modifier",
                     "id": "8da6ed3a-f621-49fe-8c76-1f6b7d7754d6",
-                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "path": "OneModifier",
                     "interactions": "Sector(directions=1)",
                     "processors": "",
                     "groups": "",
                     "action": "Teleport Mode",
-                    "isComposite": false,
+                    "isComposite": true,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "24a23f4b-810e-43b8-ba9f-c9fff850627d",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Teleport Mode",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "1d162989-a44f-4d32-b135-a1034ab9ac2b",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Teleport Mode",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 },
                 {
                     "name": "",
@@ -1371,48 +1525,114 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "One Modifier",
                     "id": "99cb7ad1-51ec-4611-af68-92a85f2c17d6",
-                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "path": "OneModifier",
                     "interactions": "Sector(directions=12,sweepBehavior=1),Sector(directions=2,sweepBehavior=2)",
                     "processors": "",
                     "groups": "",
                     "action": "Turn",
-                    "isComposite": false,
+                    "isComposite": true,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "8e383b1a-270f-4c20-819b-89a59cffb498",
+                    "name": "modifier",
+                    "id": "e46001d6-0305-43bd-ae8d-306f23ae8698",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Turn",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "2be47508-3b9c-48fa-8b54-095d6cd75b71",
                     "path": "<XRController>{LeftHand}/{Primary2DAxis}",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2,StickDeadzone",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Turn",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "One Modifier",
+                    "id": "8e383b1a-270f-4c20-819b-89a59cffb498",
+                    "path": "OneModifier",
+                    "interactions": "",
+                    "processors": "StickDeadzone",
+                    "groups": "",
+                    "action": "Move",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "6a8bd01f-6b97-47b4-98d8-f5762d13531c",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
                     "groups": "",
                     "action": "Move",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "e4f4923f-14ad-4556-b60a-5ad25957292d",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Move",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 },
                 {
                     "name": "",
                     "id": "9e2fa814-8cbd-4c65-a60d-a1503f30ffd8",
                     "path": "<XRController>{LeftHand}/{GripButton}",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2",
+                    "processors": "",
                     "groups": "",
                     "action": "Grab Move",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "One Modifier",
                     "id": "a46b49d0-0754-4dac-a9a5-a822e10751f2",
-                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "path": "OneModifier",
                     "interactions": "Sector(directions=12,sweepBehavior=1),Sector(directions=2,sweepBehavior=2)",
                     "processors": "",
                     "groups": "",
                     "action": "Snap Turn",
-                    "isComposite": false,
+                    "isComposite": true,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "db03ae26-8ac1-479e-bb9f-7dd4a2952e77",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Snap Turn",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "519c1844-9b37-4da4-b24d-f79f234529c8",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Snap Turn",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 }
             ]
         },
@@ -1945,15 +2165,37 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "One Modifier",
                     "id": "709cc921-f3b0-4dc8-88d4-7787b8a3ced1",
+                    "path": "OneModifier",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Thumbstick",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "4766855d-45ed-46da-8158-56efd309e53d",
+                    "path": "<XRController>{RightHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Thumbstick",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "ec572b6d-f2eb-452d-b75a-c4726981459b",
                     "path": "<XRController>{RightHand}/{Primary2DAxis}",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Thumbstick",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
                 }
             ]
         },
@@ -2314,70 +2556,180 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "One Modifier",
                     "id": "5c0fa06c-b670-477f-a95d-eb3b4880e439",
-                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "path": "OneModifier",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2,ScaleVector2(y=0),StickDeadzone",
+                    "processors": "ScaleVector2(y=0),StickDeadzone",
                     "groups": "",
                     "action": "Rotate Manipulation",
-                    "isComposite": false,
+                    "isComposite": true,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "af6fd279-2f48-4f51-8e9d-29b0b9d926f8",
+                    "name": "modifier",
+                    "id": "fcdd23a0-3585-4af2-974e-95f13b8b6253",
+                    "path": "<XRController>{RightHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Rotate Manipulation",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "907c120b-008d-4231-8a70-573794575eb4",
                     "path": "<XRController>{RightHand}/{Primary2DAxis}",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Rotate Manipulation",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "One Modifier",
+                    "id": "af6fd279-2f48-4f51-8e9d-29b0b9d926f8",
+                    "path": "OneModifier",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "UI Scroll",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "0620fe20-410e-4354-b428-95b4e9c76c60",
+                    "path": "<XRController>{RightHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
                     "groups": "",
                     "action": "UI Scroll",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "2a7bafd4-9760-4a73-9552-fa2036a5e098",
+                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "UI Scroll",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 },
                 {
                     "name": "",
                     "id": "d8258e49-f7cc-44d7-bc27-77c2161e2005",
                     "path": "<XRController>{RightHand}/{Primary2DAxisClick}",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2",
+                    "processors": "",
                     "groups": "",
                     "action": "Scale Toggle",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "One Modifier",
                     "id": "ef10c39a-2987-41bb-bb80-0e476240adaa",
-                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "path": "OneModifier",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2,ScaleVector2(x=0),StickDeadzone",
+                    "processors": "ScaleVector2(x=0),StickDeadzone",
+                    "groups": "",
+                    "action": "Scale Over Time",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "501c4535-5dd5-41d3-ba26-c929ea1edf3e",
+                    "path": "<XRController>{RightHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
                     "groups": "",
                     "action": "Scale Over Time",
                     "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "43252e2d-e031-4e7c-9fd1-d94cbf009a6f",
+                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Scale Over Time",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "One Modifier",
+                    "id": "c4b46d7d-8231-4672-83f9-75af565faf57",
+                    "path": "OneModifier",
+                    "interactions": "",
+                    "processors": "StickDeadzone",
+                    "groups": "",
+                    "action": "Manipulation",
+                    "isComposite": true,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "c4b46d7d-8231-4672-83f9-75af565faf57",
-                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "name": "modifier",
+                    "id": "22a0ef75-611b-4c87-b5cc-4fda55fe7729",
+                    "path": "<XRController>{RightHand}/{Primary2DAxisClick}",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2,StickDeadzone",
+                    "processors": "",
                     "groups": "",
                     "action": "Manipulation",
                     "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "5ad71288-7b9a-4cc3-b2c1-dc502bf5bceb",
+                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Manipulation",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "One Modifier",
+                    "id": "4caf4e8d-13e5-4bd6-8f42-b6b99c315ad0",
+                    "path": "OneModifier",
+                    "interactions": "",
+                    "processors": "ScaleVector2(x=0),StickDeadzone",
+                    "groups": "",
+                    "action": "Translate Manipulation",
+                    "isComposite": true,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "4caf4e8d-13e5-4bd6-8f42-b6b99c315ad0",
-                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "name": "modifier",
+                    "id": "7dcf1cca-361f-4ea4-858d-2e803449c665",
+                    "path": "<XRController>{RightHand}/{Primary2DAxisClick}",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2,ScaleVector2(x=0),StickDeadzone",
+                    "processors": "",
                     "groups": "",
                     "action": "Translate Manipulation",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "77202ab8-003e-42ba-91bd-86aaf8bb99f9",
+                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Translate Manipulation",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 }
             ]
         },
@@ -2390,7 +2742,7 @@
                     "type": "Value",
                     "id": "a6c7231d-c55d-4dd4-9e87-877bb5522ef5",
                     "expectedControlType": "Vector2",
-                    "processors": "TouchpadClickGateVector2",
+                    "processors": "",
                     "interactions": "",
                     "initialStateCheck": true
                 },
@@ -2451,15 +2803,37 @@
             ],
             "bindings": [
                 {
-                    "name": "",
+                    "name": "One Modifier",
                     "id": "62690862-4688-4010-975b-b3d9c6062157",
-                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "path": "OneModifier",
                     "interactions": "Sector(directions=1)",
                     "processors": "",
                     "groups": "",
                     "action": "Teleport Mode",
-                    "isComposite": false,
+                    "isComposite": true,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "81a17c3c-161c-454c-8c04-02d004c759a2",
+                    "path": "<XRController>{RightHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Teleport Mode",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "d524a509-a4f5-4cf5-82a9-7a3bdfbb9317",
+                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Teleport Mode",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 },
                 {
                     "name": "",
@@ -2473,48 +2847,114 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "One Modifier",
                     "id": "d6c08c3d-3d41-4695-994d-1ac9016a5a9e",
-                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "path": "OneModifier",
                     "interactions": "Sector(directions=12,sweepBehavior=1),Sector(directions=2,sweepBehavior=2)",
                     "processors": "",
                     "groups": "",
                     "action": "Turn",
-                    "isComposite": false,
+                    "isComposite": true,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "022046aa-be71-4288-859d-6dd42844f6e6",
+                    "name": "modifier",
+                    "id": "452d2136-6e08-4a0b-a926-3e74dab70aba",
+                    "path": "<XRController>{RightHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Turn",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "b65fced4-44b2-4274-8d24-1823b8c5e724",
                     "path": "<XRController>{RightHand}/{Primary2DAxis}",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2,StickDeadzone",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Turn",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "One Modifier",
+                    "id": "022046aa-be71-4288-859d-6dd42844f6e6",
+                    "path": "OneModifier",
+                    "interactions": "",
+                    "processors": "StickDeadzone",
+                    "groups": "",
+                    "action": "Move",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "5e16c3d4-7324-44f4-a534-3612157ca1f5",
+                    "path": "<XRController>{RightHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
                     "groups": "",
                     "action": "Move",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "7db7734b-40af-41da-a083-e1c71270f6bd",
+                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Move",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 },
                 {
                     "name": "",
                     "id": "7ecb549e-ab98-4a4b-b979-38068fe3b811",
                     "path": "<XRController>{RightHand}/{GripButton}",
                     "interactions": "",
-                    "processors": "TouchpadClickGateVector2",
+                    "processors": "",
                     "groups": "",
                     "action": "Grab Move",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "One Modifier",
                     "id": "31d838df-4d4e-4c16-a373-b9c07d9d2e2a",
-                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "path": "OneModifier",
                     "interactions": "Sector(directions=12,sweepBehavior=1),Sector(directions=2,sweepBehavior=2)",
                     "processors": "",
                     "groups": "",
                     "action": "Snap Turn",
-                    "isComposite": false,
+                    "isComposite": true,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "44677698-937c-4ad7-a88a-7b3d40d88202",
+                    "path": "<XRController>{RightHand}/{Primary2DAxisClick}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Snap Turn",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "7caec52e-8595-46fc-8132-d256d5463d1f",
+                    "path": "<XRController>{RightHand}/{Primary2DAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Snap Turn",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 },
                 {
                     "name": "",

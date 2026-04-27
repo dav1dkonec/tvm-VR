@@ -24,6 +24,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
             return new InflateDeflateMethodInput
             {
+                SequenceId = runtimeContext?.SequenceId ?? string.Empty,
                 Frames = runtimeContext?.Frames,
                 FrameIndex = request.FrameIndex,
                 ReferencePoint = referencePoint,

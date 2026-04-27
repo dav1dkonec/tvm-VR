@@ -69,6 +69,9 @@ public class InflateDeflatePickUI : MonoBehaviour
 
         lastPickVisualState = pickActive;
 
+        if (pickPointButton != null)
+            pickPointButton.interactable = !pickActive;
+
         if (pickPointText != null)
             pickPointText.color = pickActive ? PickActiveColor : pickPointDefaultTextColor;
     }

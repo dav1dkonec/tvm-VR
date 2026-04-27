@@ -101,6 +101,7 @@ public class InflateDeflateUI : MonoBehaviour
         }
 
         target.CurrentMethod = MethodKind.InflateDeflate;
+        RightReferencePointRay.EnsureExists();
         isPickingReferencePoint = true;
         IsAnyPickActive = true;
     }

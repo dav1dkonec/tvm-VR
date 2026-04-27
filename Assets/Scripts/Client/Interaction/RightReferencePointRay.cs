@@ -4,6 +4,7 @@ using TvmVr2.Client.Centers;
 using TvmVr2.Client.Sequence;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 public class RightReferencePointRay : MonoBehaviour
@@ -31,16 +32,30 @@ public class RightReferencePointRay : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
+        EnsureExists();
+    }
+
+    public static RightReferencePointRay EnsureExists()
+    {
+        var existing = UnityEngine.Object.FindFirstObjectByType<RightReferencePointRay>();
+        if (existing != null)
+        {
+            existing.RefreshSceneReferences();
+            return existing;
+        }
+
         var grabToMove = UnityEngine.Object.FindFirstObjectByType<GrabToMove>();
         var handObject = grabToMove != null ? grabToMove.rightHand : GameObject.Find("Right Hand");
-        if (handObject == null || handObject.GetComponent<RightReferencePointRay>() != null)
-            return;
+        if (handObject == null)
+            return null;
 
-        var component = handObject.AddComponent<RightReferencePointRay>();
+        var component = handObject.GetComponent<RightReferencePointRay>();
+        if (component == null)
+            component = handObject.AddComponent<RightReferencePointRay>();
+
         component.rightHand = handObject;
-
-        if (grabToMove != null)
-            component.rightActivate = grabToMove.rightSelect;
+        component.RefreshSceneReferences();
+        return component;
     }
 
     private void Awake()
@@ -48,15 +63,7 @@ public class RightReferencePointRay : MonoBehaviour
         if (rightHand == null)
             rightHand = gameObject;
 
-        var grabToMove = UnityEngine.Object.FindFirstObjectByType<GrabToMove>();
-        if (rightActivate.action == null && grabToMove != null)
-            rightActivate = grabToMove.rightSelect;
-
-        methodSettings = UnityEngine.Object.FindFirstObjectByType<EditingMethodRuntimeSettings>();
-        inflateDeflateUi = UnityEngine.Object.FindFirstObjectByType<InflateDeflateUI>();
-        sequence = UnityEngine.Object.FindFirstObjectByType<Sequence>();
-        centerPool = UnityEngine.Object.FindFirstObjectByType<CenterPool>();
-        ResolveAimTransform();
+        RefreshSceneReferences();
 
         CreateLaser();
         SetLaserActive(false);
@@ -64,6 +71,8 @@ public class RightReferencePointRay : MonoBehaviour
 
     private void Update()
     {
+        RefreshSceneReferences();
+
         if (!IsPickModeActive())
         {
             wasPressed = false;
@@ -72,14 +81,14 @@ public class RightReferencePointRay : MonoBehaviour
             return;
         }
 
-        if (rightActivate.action == null || rightHand == null)
+        if (rightHand == null)
         {
             SetLaserActive(false);
             return;
         }
 
         ResolveAimTransform();
-        var isPressed = rightActivate.action.IsPressed();
+        var isPressed = rightActivate.action != null && rightActivate.action.IsPressed();
         UpdatePreview(showPreview: isPressed);
 
         if (!isPressed && wasPressed)
@@ -178,6 +187,47 @@ public class RightReferencePointRay : MonoBehaviour
         return new Ray(origin, direction);
     }
 
+    private void RefreshSceneReferences()
+    {
+        if (rightHand == null)
+        {
+            var grabToMove = UnityEngine.Object.FindFirstObjectByType<GrabToMove>();
+            if (grabToMove != null && grabToMove.rightHand != null)
+                rightHand = grabToMove.rightHand;
+            else
+                rightHand = GameObject.Find("Right Hand");
+        }
+
+        if (methodSettings == null)
+            methodSettings = UnityEngine.Object.FindFirstObjectByType<EditingMethodRuntimeSettings>();
+
+        if (inflateDeflateUi == null)
+            inflateDeflateUi = UnityEngine.Object.FindFirstObjectByType<InflateDeflateUI>();
+
+        if (sequence == null)
+            sequence = UnityEngine.Object.FindFirstObjectByType<Sequence>();
+
+        if (centerPool == null)
+            centerPool = UnityEngine.Object.FindFirstObjectByType<CenterPool>();
+
+        if (rightActivate.action == null && rightHand != null)
+        {
+            var actionBasedController = rightHand.GetComponent<ActionBasedController>();
+            if (actionBasedController != null && actionBasedController.activateAction.action != null)
+            {
+                rightActivate = actionBasedController.activateAction;
+            }
+            else
+            {
+                var grabToMove = UnityEngine.Object.FindFirstObjectByType<GrabToMove>();
+                if (grabToMove != null && grabToMove.rightSelect.action != null)
+                    rightActivate = grabToMove.rightSelect;
+            }
+        }
+
+        ResolveAimTransform();
+    }
+
     private void ResolveAimTransform()
     {
         if (rightHand == null)
@@ -218,13 +268,15 @@ public class RightReferencePointRay : MonoBehaviour
         lineRenderer.receiveShadows = false;
         lineRenderer.textureMode = LineTextureMode.Stretch;
         lineRenderer.alignment = LineAlignment.View;
+        lineRenderer.numCornerVertices = 4;
         lineRenderer.numCapVertices = 6;
         lineRenderer.startWidth = StartWidth;
         lineRenderer.endWidth = EndWidth;
+        lineRenderer.sortingOrder = 1000;
 
-        var shader = Shader.Find("Universal Render Pipeline/Unlit");
+        var shader = Shader.Find("Sprites/Default");
         if (shader == null)
-            shader = Shader.Find("Sprites/Default");
+            shader = Shader.Find("Universal Render Pipeline/Unlit");
         if (shader == null)
             shader = Shader.Find("Hidden/Internal-Colored");
 
@@ -236,6 +288,10 @@ public class RightReferencePointRay : MonoBehaviour
 
         lineMaterial = new Material(shader);
         lineMaterial.hideFlags = HideFlags.DontSave;
+        if (lineMaterial.HasProperty("_BaseColor"))
+            lineMaterial.SetColor("_BaseColor", Color.white);
+        if (lineMaterial.HasProperty("_Color"))
+            lineMaterial.SetColor("_Color", Color.white);
         lineRenderer.sharedMaterial = lineMaterial;
         lineRenderer.enabled = false;
     }

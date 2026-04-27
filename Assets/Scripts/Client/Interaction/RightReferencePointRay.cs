@@ -12,12 +12,14 @@ public class RightReferencePointRay : MonoBehaviour
     private const float OriginOffset = 0.04f;
     private const float StartWidth = 0.007f;
     private const float EndWidth = 0.0045f;
+    private const float PressThreshold = 0.15f;
 
     private static readonly Color ValidColor = new(0.6862745f, 0.98039216f, 0.88235295f, 0.95f);
     private static readonly Color InvalidColor = new(0.40392157f, 0.8509804f, 0.7607843f, 0.55f);
 
     public GameObject rightHand;
     public InputActionProperty rightActivate;
+    public InputActionProperty rightActivateValue;
 
     private EditingMethodRuntimeSettings methodSettings;
     private InflateDeflateUI inflateDeflateUi;
@@ -87,7 +89,7 @@ public class RightReferencePointRay : MonoBehaviour
         }
 
         ResolveAimTransform();
-        var isPressed = rightActivate.action != null && rightActivate.action.IsPressed();
+        var isPressed = IsActivationPressed();
         UpdatePreview();
 
         if (isPressed && !wasPressed)
@@ -215,14 +217,20 @@ public class RightReferencePointRay : MonoBehaviour
         if (centerPool == null)
             centerPool = UnityEngine.Object.FindFirstObjectByType<CenterPool>();
 
-        if (rightActivate.action == null && rightHand != null)
+        if (rightHand != null)
         {
             var actionBasedController = rightHand.GetComponent<ActionBasedController>();
-            if (actionBasedController != null && actionBasedController.activateAction.action != null)
+            if (rightActivate.action == null && actionBasedController != null && actionBasedController.activateAction.action != null)
             {
                 rightActivate = actionBasedController.activateAction;
             }
-            else
+
+            if (rightActivateValue.action == null && actionBasedController != null && actionBasedController.activateActionValue.action != null)
+            {
+                rightActivateValue = actionBasedController.activateActionValue;
+            }
+
+            if (rightActivate.action == null)
             {
                 var grabToMove = UnityEngine.Object.FindFirstObjectByType<GrabToMove>();
                 if (grabToMove != null && grabToMove.rightSelect.action != null)
@@ -231,6 +239,43 @@ public class RightReferencePointRay : MonoBehaviour
         }
 
         ResolveAimTransform();
+    }
+
+    private bool IsActivationPressed()
+    {
+        if (IsButtonActionPressed(rightActivate.action))
+            return true;
+
+        if (IsAxisActionPressed(rightActivateValue.action))
+            return true;
+
+        return false;
+    }
+
+    private static bool IsButtonActionPressed(InputAction action)
+    {
+        if (action == null)
+            return false;
+
+        if (action.WasPressedThisFrame() || action.IsPressed())
+            return true;
+
+        return IsAxisActionPressed(action);
+    }
+
+    private static bool IsAxisActionPressed(InputAction action)
+    {
+        if (action == null)
+            return false;
+
+        try
+        {
+            return action.ReadValue<float>() > PressThreshold;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     private void ResolveAimTransform()

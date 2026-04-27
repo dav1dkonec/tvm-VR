@@ -5,7 +5,6 @@ using TvmVr2.Client.Sequence;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
-using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 public class RightReferencePointRay : MonoBehaviour
 {
@@ -89,7 +88,7 @@ public class RightReferencePointRay : MonoBehaviour
 
         ResolveAimTransform();
         var isPressed = rightActivate.action != null && rightActivate.action.IsPressed();
-        UpdatePreview(showPreview: isPressed);
+        UpdatePreview();
 
         if (!isPressed && wasPressed)
             TryCommitSelection();
@@ -115,7 +114,7 @@ public class RightReferencePointRay : MonoBehaviour
         sequence.CommitInflateDeflate(hit.point);
     }
 
-    private void UpdatePreview(bool showPreview)
+    private void UpdatePreview()
     {
         SetLaserActive(true);
 
@@ -130,7 +129,7 @@ public class RightReferencePointRay : MonoBehaviour
         var hitSequence = hit.collider != null ? hit.collider.GetComponentInParent<Sequence>() : null;
         var valid = hitSequence == sequence;
 
-        if (valid && showPreview)
+        if (valid)
             centerPool?.PreviewInflateDeflate(hit.point);
         else
             centerPool?.ClearPreview();
@@ -182,8 +181,14 @@ public class RightReferencePointRay : MonoBehaviour
     private Ray BuildRay()
     {
         var sourceTransform = aimTransform != null ? aimTransform : rightHand.transform;
-        var origin = sourceTransform.position + sourceTransform.forward * OriginOffset;
         var direction = sourceTransform.forward;
+        if (Vector3.Dot(direction.normalized, Vector3.up) > 0.55f)
+            direction = sourceTransform.up;
+        if (Vector3.Dot(direction.normalized, Vector3.up) > 0.55f)
+            direction = -sourceTransform.right;
+
+        direction = direction.normalized;
+        var origin = sourceTransform.position + direction * OriginOffset;
         return new Ray(origin, direction);
     }
 
@@ -232,16 +237,6 @@ public class RightReferencePointRay : MonoBehaviour
     {
         if (rightHand == null)
             return;
-
-        if (aimTransform != null && aimTransform.gameObject.activeInHierarchy)
-            return;
-
-        var pokeInteractor = rightHand.GetComponentInChildren<XRPokeInteractor>(true);
-        if (pokeInteractor != null && pokeInteractor.attachTransform != null)
-        {
-            aimTransform = pokeInteractor.attachTransform;
-            return;
-        }
 
         var playbackMenu = rightHand.transform.Find("Playback Menu");
         if (playbackMenu != null)

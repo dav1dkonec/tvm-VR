@@ -35187,7 +35187,8 @@ MonoBehaviour:
   pinnedPitchDegrees: 0
   pinnedYawDegrees: 6
   verticalFacingSensitivity: 1.35
-  maxAutoPitchDegrees: 14
+  maxUpwardAutoPitchDegrees: 14
+  maxDownwardAutoPitchDegrees: 18
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
   pollDirectControllerInput: 1
@@ -50042,7 +50043,8 @@ MonoBehaviour:
   pinnedPitchDegrees: 0
   pinnedYawDegrees: 6
   verticalFacingSensitivity: 1.35
-  maxAutoPitchDegrees: 14
+  maxUpwardAutoPitchDegrees: 14
+  maxDownwardAutoPitchDegrees: 18
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
   pollDirectControllerInput: 1

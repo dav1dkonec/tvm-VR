@@ -47,7 +47,8 @@ public class PinnedHandMenuController : MonoBehaviour
     public float pinnedPitchDegrees = 0f;
     public float pinnedYawDegrees = 6f;
     public float verticalFacingSensitivity = 1.35f;
-    public float maxAutoPitchDegrees = 14f;
+    public float maxUpwardAutoPitchDegrees = 14f;
+    public float maxDownwardAutoPitchDegrees = 18f;
     public bool invertCanvasFacing = true;
     public Vector3 pinnedAdditionalRotationEuler;
     public bool pollDirectControllerInput = true;
@@ -357,7 +358,9 @@ public class PinnedHandMenuController : MonoBehaviour
         Vector3 visualForward = invertCanvasFacing ? -toUserHorizontal : toUserHorizontal;
         Quaternion faceRotation = Quaternion.LookRotation(visualForward, Vector3.up);
         float autoPitchDegrees = Mathf.Atan2(toUser.y * verticalFacingSensitivity, Mathf.Max(0.001f, new Vector2(toUser.x, toUser.z).magnitude)) * Mathf.Rad2Deg;
-        autoPitchDegrees = Mathf.Clamp(autoPitchDegrees, -maxAutoPitchDegrees, maxAutoPitchDegrees);
+        autoPitchDegrees = autoPitchDegrees >= 0f
+            ? Mathf.Min(autoPitchDegrees, maxUpwardAutoPitchDegrees)
+            : Mathf.Max(autoPitchDegrees, -maxDownwardAutoPitchDegrees);
         float totalPitchDegrees = autoPitchDegrees;
         float handYaw = hand == MenuHand.Left ? pinnedYawDegrees : -pinnedYawDegrees;
         Quaternion visualTilt = Quaternion.Euler(totalPitchDegrees, handYaw, 0f);

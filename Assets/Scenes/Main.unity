@@ -35182,7 +35182,7 @@ MonoBehaviour:
   orbitRadius: 0.55
   dragDegreesPerMeter: 160
   dragVerticalSensitivity: 1
-  minHeightOffset: -0.3
+  minHeightOffset: -0.33
   maxHeightOffset: 0.15
   defaultPinnedHeightOffset: 0
   pinnedPitchDegrees: 0
@@ -50039,7 +50039,7 @@ MonoBehaviour:
   orbitRadius: 0.55
   dragDegreesPerMeter: 80
   dragVerticalSensitivity: 1
-  minHeightOffset: -0.3
+  minHeightOffset: -0.33
   maxHeightOffset: 0.15
   defaultPinnedHeightOffset: 0
   pinnedPitchDegrees: 0

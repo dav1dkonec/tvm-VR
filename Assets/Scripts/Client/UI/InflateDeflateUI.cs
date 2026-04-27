@@ -142,7 +142,7 @@ public class InflateDeflateUI : MonoBehaviour
 
     private void SetWorkflowStatus()
     {
-        SetStatus("Set parameters, press Pick Point, then use the right hand ray to aim at the mesh and release the trigger.");
+        SetStatus("Set parameters, press Pick Point, then use the right hand ray to aim at the mesh and press the trigger.");
     }
 
     private void InitializeTransientMessageCanvas()

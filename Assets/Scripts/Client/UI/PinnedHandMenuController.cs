@@ -42,7 +42,7 @@ public class PinnedHandMenuController : MonoBehaviour
     public float orbitRadius = 0.55f;
     public float dragDegreesPerMeter = 80f;
     public float dragVerticalSensitivity = 1f;
-    public float minHeightOffset = -0.45f;
+    public float minHeightOffset = -0.35f;
     public float maxHeightOffset = 0.15f;
     public float pinnedPitchDegrees = 0f;
     public float pinnedYawDegrees = 6f;

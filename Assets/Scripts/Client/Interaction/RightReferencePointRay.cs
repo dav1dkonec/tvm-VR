@@ -90,7 +90,7 @@ public class RightReferencePointRay : MonoBehaviour
         var isPressed = rightActivate.action != null && rightActivate.action.IsPressed();
         UpdatePreview();
 
-        if (!isPressed && wasPressed)
+        if (isPressed && !wasPressed)
             TryCommitSelection();
 
         wasPressed = isPressed;

@@ -20,6 +20,7 @@ public class RightReferencePointRay : MonoBehaviour
     public GameObject rightHand;
     public InputActionProperty rightActivate;
     public InputActionProperty rightActivateValue;
+    public bool pollDirectControllerInput = true;
 
     private EditingMethodRuntimeSettings methodSettings;
     private InflateDeflateUI inflateDeflateUi;
@@ -230,12 +231,6 @@ public class RightReferencePointRay : MonoBehaviour
                 rightActivateValue = actionBasedController.activateActionValue;
             }
 
-            if (rightActivate.action == null)
-            {
-                var grabToMove = UnityEngine.Object.FindFirstObjectByType<GrabToMove>();
-                if (grabToMove != null && grabToMove.rightSelect.action != null)
-                    rightActivate = grabToMove.rightSelect;
-            }
         }
 
         ResolveAimTransform();
@@ -249,7 +244,7 @@ public class RightReferencePointRay : MonoBehaviour
         if (IsAxisActionPressed(rightActivateValue.action))
             return true;
 
-        return false;
+        return IsDirectControllerTriggerPressed();
     }
 
     private static bool IsButtonActionPressed(InputAction action)
@@ -276,6 +271,24 @@ public class RightReferencePointRay : MonoBehaviour
         {
             return false;
         }
+    }
+
+    private bool IsDirectControllerTriggerPressed()
+    {
+        if (!pollDirectControllerInput)
+            return false;
+
+        var device = UnityEngine.XR.InputDevices.GetDeviceAtXRNode(UnityEngine.XR.XRNode.RightHand);
+        if (!device.isValid)
+            return false;
+
+        if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.triggerButton, out bool triggerButton) && triggerButton)
+            return true;
+
+        if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out float triggerValue) && triggerValue >= PressThreshold)
+            return true;
+
+        return false;
     }
 
     private void ResolveAimTransform()

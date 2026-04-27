@@ -42,8 +42,9 @@ public class PinnedHandMenuController : MonoBehaviour
     public float orbitRadius = 0.55f;
     public float dragDegreesPerMeter = 80f;
     public float dragVerticalSensitivity = 1f;
-    public float minHeightOffset = -0.25f;
+    public float minHeightOffset = -0.3f;
     public float maxHeightOffset = 0.15f;
+    public float defaultPinnedHeightOffset = 0f;
     public float pinnedPitchDegrees = 0f;
     public float pinnedYawDegrees = 6f;
     public float verticalFacingSensitivity = 1.35f;
@@ -211,6 +212,7 @@ public class PinnedHandMenuController : MonoBehaviour
 
             CacheOriginalMenuTransform();
             CaptureOrbitFromWorldPosition(menuRoot.transform.position);
+            heightOffset = Mathf.Clamp(defaultPinnedHeightOffset, minHeightOffset, maxHeightOffset);
             menuRoot.transform.SetParent(null, true);
             menuRoot.SetActive(true);
             state = MenuState.Pinned;

@@ -3,6 +3,7 @@ using TMPro;
 using TvmVr2.Api.Enums;
 using TvmVr2.Client.Sequence;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class InflateDeflateUI : MonoBehaviour
 {
@@ -86,6 +87,7 @@ public class InflateDeflateUI : MonoBehaviour
 
     public void ShowPickModeBlockedMessage()
     {
+        EventSystem.current?.SetSelectedGameObject(null);
         ShowTransientMessage("Select a point or cancel first.");
     }
 
@@ -102,6 +104,7 @@ public class InflateDeflateUI : MonoBehaviour
 
         target.CurrentMethod = MethodKind.InflateDeflate;
         RightReferencePointRay.EnsureExists();
+        EventSystem.current?.SetSelectedGameObject(null);
         isPickingReferencePoint = true;
         IsAnyPickActive = true;
     }
@@ -109,6 +112,7 @@ public class InflateDeflateUI : MonoBehaviour
     public void CancelPick()
     {
         CancelPickSilently();
+        EventSystem.current?.SetSelectedGameObject(null);
     }
 
     public void ShowPickFailed(string message)
@@ -123,6 +127,7 @@ public class InflateDeflateUI : MonoBehaviour
     {
         isPickingReferencePoint = false;
         IsAnyPickActive = false;
+        EventSystem.current?.SetSelectedGameObject(null);
     }
 
     private void CancelPickSilently()

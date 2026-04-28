@@ -230,10 +230,12 @@ public class PinnedHandMenuController : MonoBehaviour
 
     private bool IsGrabPressed()
     {
-        if (TryGetDirectControllerGrabState(out bool directPressed))
-            return directPressed;
+        bool actionPressed = IsActionPressed(bindings.grabAction.action);
 
-        return IsActionPressed(bindings.grabAction.action);
+        if (TryGetDirectControllerGrabState(out bool directPressed))
+            return actionPressed && directPressed;
+
+        return actionPressed;
     }
 
     private bool IsActionPressed(InputAction action)

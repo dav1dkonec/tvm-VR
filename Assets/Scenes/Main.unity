@@ -11696,7 +11696,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -0.0056}
+  m_AnchoredPosition: {x: 0, y: -0.02}
   m_SizeDelta: {x: 180, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2102000104
@@ -15010,7 +15010,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0.03}
+  m_AnchoredPosition: {x: 0, y: 0.05}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &407378065
@@ -18223,7 +18223,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.196, y: 0.116}
+  m_AnchoredPosition: {x: -0.196, y: 0.128}
   m_SizeDelta: {x: 0.068, y: 0.068}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &214080402
@@ -21112,7 +21112,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0.03}
+  m_AnchoredPosition: {x: 0, y: 0.05}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &742833628
@@ -35762,18 +35762,6 @@ MonoBehaviour:
         m_SingletonActionBindings: []
         m_Flags: 0
       m_Reference: {fileID: -6131295136447488360, guid: c348712bda248c246b8c49b3db54643f, type: 3}
-    alternateGrabAction:
-      m_UseReference: 1
-      m_Action:
-        m_Name: Left Pinned Method Menu Alternate Grab
-        m_Type: 0
-        m_ExpectedControlType:
-        m_Id: 1e68bdeb-7923-4a46-a095-29e04921960d
-        m_Processors:
-        m_Interactions:
-        m_SingletonActionBindings: []
-        m_Flags: 0
-      m_Reference: {fileID: -5982496924579745919, guid: c348712bda248c246b8c49b3db54643f, type: 3}
   hand: 0
   pressThreshold: 0.5
   tapMaxDuration: 0.4
@@ -40863,7 +40851,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -0.0056}
+  m_AnchoredPosition: {x: 0, y: -0.02}
   m_SizeDelta: {x: 180, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2103000104
@@ -51013,18 +51001,6 @@ MonoBehaviour:
         m_SingletonActionBindings: []
         m_Flags: 0
       m_Reference: {fileID: 83097790271614945, guid: c348712bda248c246b8c49b3db54643f, type: 3}
-    alternateGrabAction:
-      m_UseReference: 1
-      m_Action:
-        m_Name: Right Pinned Playback Menu Alternate Grab
-        m_Type: 0
-        m_ExpectedControlType:
-        m_Id: b6fc4be4-7ed5-4ee4-9c91-33975a454f37
-        m_Processors:
-        m_Interactions:
-        m_SingletonActionBindings: []
-        m_Flags: 0
-      m_Reference: {fileID: 187161793506945269, guid: c348712bda248c246b8c49b3db54643f, type: 3}
   hand: 1
   pressThreshold: 0.5
   tapMaxDuration: 0.4

@@ -30,7 +30,6 @@ public class PinnedHandMenuController : MonoBehaviour
         public Transform headTransform;
         public InflateDeflateUI inflateDeflateUi;
         public InputActionProperty grabAction;
-        public InputActionProperty alternateGrabAction;
     }
 
     [SerializeField] private HandMenuBindings bindings;
@@ -93,7 +92,6 @@ public class PinnedHandMenuController : MonoBehaviour
     private void OnEnable()
     {
         bindings.grabAction.action?.Enable();
-        bindings.alternateGrabAction.action?.Enable();
     }
 
     private void OnDisable()

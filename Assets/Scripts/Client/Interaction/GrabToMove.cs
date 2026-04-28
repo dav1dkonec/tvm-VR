@@ -42,7 +42,7 @@ public class GrabToMove : MonoBehaviour
             return;
         }
 
-        if (StickyHandMenuToggle.SuppressRightGrabToMove || PinnedHandMenuController.SuppressRightGrabToMove)
+        if (PinnedHandMenuController.SuppressRightGrabToMove)
         {
             wasDownR = false;
             return;

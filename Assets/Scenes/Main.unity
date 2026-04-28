@@ -51025,6 +51025,25 @@ MonoBehaviour:
         m_SingletonActionBindings: []
         m_Flags: 0
       m_Reference: {fileID: 187161793506945269, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  hand: 1
+  pressThreshold: 0.5
+  tapMaxDuration: 0.4
+  doubleClickWindow: 0.6
+  dragStartHoldTime: 0.15
+  orbitRadius: 0.55
+  dragDegreesPerMeter: 80
+  dragVerticalSensitivity: 1
+  minHeightOffset: -0.33
+  maxHeightOffset: 0.15
+  defaultPinnedHeightOffset: 0
+  pinnedPitchDegrees: 0
+  pinnedYawDegrees: 6
+  verticalFacingSensitivity: 1.35
+  maxUpwardAutoPitchDegrees: 14
+  maxDownwardAutoPitchDegrees: 18
+  invertCanvasFacing: 1
+  pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
+  pollDirectControllerInput: 1
 --- !u!114 &1768454295
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -51068,25 +51087,6 @@ MonoBehaviour:
   candidateSurfaceBackBias: 0.02
   touchpadNavigationCooldown: 0.2
   touchpadNavigationDeadzone: 0.45
-  hand: 1
-  pressThreshold: 0.5
-  tapMaxDuration: 0.4
-  doubleClickWindow: 0.6
-  dragStartHoldTime: 0.15
-  orbitRadius: 0.55
-  dragDegreesPerMeter: 80
-  dragVerticalSensitivity: 1
-  minHeightOffset: -0.33
-  maxHeightOffset: 0.15
-  defaultPinnedHeightOffset: 0
-  pinnedPitchDegrees: 0
-  pinnedYawDegrees: 6
-  verticalFacingSensitivity: 1.35
-  maxUpwardAutoPitchDegrees: 14
-  maxDownwardAutoPitchDegrees: 18
-  invertCanvasFacing: 1
-  pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
-  pollDirectControllerInput: 1
 --- !u!1 &1772262513
 GameObject:
   m_ObjectHideFlags: 0

@@ -106,7 +106,10 @@ public class InflateDeflateUI : MonoBehaviour
             centerPool = FindFirstObjectByType<CenterPool>();
 
         if (selectedReferenceCenter != null)
+        {
             centerPool?.PreviewInflateDeflate(selectedReferenceCenter.transform.position, selectedReferenceCenter.centerIndex);
+            selectedReferenceCenter.RefreshPersistentSelectedVisual();
+        }
         else
             centerPool?.ClearPreview();
     }

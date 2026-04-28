@@ -63,6 +63,11 @@ public class CenterUI : MonoBehaviour
     [ColorUsage(true, true)]
     public Color normalColor;
 
+    [ColorUsage(true, true)]
+    public Color persistentSelectedColor = new(2.25f, 0.15f, 0.15f, 1f);
+
+    [SerializeField] private float persistentSelectedEmissionIntensity = 2.4f;
+
     private EditingMethodRuntimeSettings methodSettings;
     private bool isPersistentSelected;
 
@@ -85,7 +90,10 @@ public class CenterUI : MonoBehaviour
     {
         if (Sequence.playing || !IsCenterInteractionMethodActive()) return;
 
-        ApplyHighlightColor();
+        if (isPersistentSelected)
+            ApplyPersistentSelectedVisual();
+        else
+            ApplyHighlightColor();
 
         foreach (var l in hoverListeners)
         {
@@ -101,7 +109,9 @@ public class CenterUI : MonoBehaviour
     {
         if (Sequence.playing || !IsCenterInteractionMethodActive()) return;
 
-        if (!isPersistentSelected && meshRenderer.material != selectedMaterial)
+        if (isPersistentSelected)
+            ApplyPersistentSelectedVisual();
+        else if (meshRenderer.material != selectedMaterial)
             ApplyNormalColor();
 
         foreach (var l in hoverListeners)
@@ -178,10 +188,18 @@ public class CenterUI : MonoBehaviour
     public void SetPersistentSelected(bool selected)
     {
         isPersistentSelected = selected;
-        meshRenderer.material = selected ? selectedMaterial : normalMaterial;
+        meshRenderer.material = normalMaterial;
 
-        if (!selected)
+        if (selected)
+            ApplyPersistentSelectedVisual();
+        else
             ApplyNormalColor();
+    }
+
+    public void RefreshPersistentSelectedVisual()
+    {
+        if (isPersistentSelected)
+            ApplyPersistentSelectedVisual();
     }
 
     private bool IsCenterInteractionMethodActive()
@@ -228,10 +246,29 @@ public class CenterUI : MonoBehaviour
         if (normalMaterial == null)
             return;
 
+        if (normalMaterial.HasProperty("_EmissionColor"))
+            normalMaterial.SetColor("_EmissionColor", normalColor);
+
         if (normalMaterial.HasProperty("_BaseColor"))
             normalMaterial.SetColor("_BaseColor", normalColor);
         else if (normalMaterial.HasProperty("_Color"))
             normalMaterial.SetColor("_Color", normalColor);
+    }
+
+    private void ApplyPersistentSelectedVisual()
+    {
+        if (normalMaterial == null)
+            return;
+
+        var emissionColor = persistentSelectedColor * persistentSelectedEmissionIntensity;
+
+        if (normalMaterial.HasProperty("_EmissionColor"))
+            normalMaterial.SetColor("_EmissionColor", emissionColor);
+
+        if (normalMaterial.HasProperty("_BaseColor"))
+            normalMaterial.SetColor("_BaseColor", persistentSelectedColor);
+        else if (normalMaterial.HasProperty("_Color"))
+            normalMaterial.SetColor("_Color", persistentSelectedColor);
     }
 
 }

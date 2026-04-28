@@ -11,9 +11,6 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class CenterPool : MonoBehaviour, ICenterHoverListener
 {
     private const float InflateStrengthPreviewReference = 0.5f;
-    private const float InflateStrengthPreviewMinimum = 0.22f;
-    private const float InflatePreviewMinimumVisibleIntensity = 0.4f;
-    private const float InflatePreviewEmissionMultiplier = 1.45f;
 
     /// <summary>
     /// Center game object prefab
@@ -207,10 +204,7 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
             return;
         }
 
-        var strengthFactor = Mathf.Lerp(
-            InflateStrengthPreviewMinimum,
-            1f,
-            Mathf.Clamp01(strength / InflateStrengthPreviewReference));
+        var strengthFactor = Mathf.Clamp01(strength / InflateStrengthPreviewReference);
 
         CenterUI activeCenter = null;
 
@@ -231,10 +225,7 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
             }
 
             var falloff = Mathf.Pow(1f - (distance / radius), 0.65f);
-            var visibleIntensity = Mathf.Lerp(
-                InflatePreviewMinimumVisibleIntensity,
-                1f,
-                falloff * strengthFactor);
+            var visibleIntensity = falloff * strengthFactor;
             ApplyPreviewIntensity(targetCenter, visibleIntensity);
         }
 
@@ -286,18 +277,13 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
             return;
 
         var previewColor = Color.Lerp(center.normalColor, center.highlightedColor, Mathf.Clamp01(intensity));
-        ApplyColor(center, previewColor, Mathf.Lerp(1f, InflatePreviewEmissionMultiplier, Mathf.Clamp01(intensity)));
+        ApplyColor(center, previewColor);
     }
 
     private static void ApplyColor(CenterUI center, Color color)
     {
-        ApplyColor(center, color, 1f);
-    }
-
-    private static void ApplyColor(CenterUI center, Color color, float emissionMultiplier)
-    {
         if (center.normalMaterial.HasProperty("_EmissionColor"))
-            center.normalMaterial.SetColor("_EmissionColor", color * emissionMultiplier);
+            center.normalMaterial.SetColor("_EmissionColor", color);
 
         if (center.normalMaterial.HasProperty("_BaseColor"))
             center.normalMaterial.SetColor("_BaseColor", color);

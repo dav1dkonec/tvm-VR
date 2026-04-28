@@ -11,6 +11,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class CenterPool : MonoBehaviour, ICenterHoverListener
 {
     private const float InflateStrengthPreviewReference = 0.5f;
+    private const float PreviewEmissionMultiplier = 1.12f;
 
     /// <summary>
     /// Center game object prefab
@@ -277,13 +278,18 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
             return;
 
         var previewColor = Color.Lerp(center.normalColor, center.highlightedColor, Mathf.Clamp01(intensity));
-        ApplyColor(center, previewColor);
+        ApplyColor(center, previewColor, PreviewEmissionMultiplier);
     }
 
     private static void ApplyColor(CenterUI center, Color color)
     {
+        ApplyColor(center, color, 1f);
+    }
+
+    private static void ApplyColor(CenterUI center, Color color, float emissionMultiplier)
+    {
         if (center.normalMaterial.HasProperty("_EmissionColor"))
-            center.normalMaterial.SetColor("_EmissionColor", color);
+            center.normalMaterial.SetColor("_EmissionColor", color * emissionMultiplier);
 
         if (center.normalMaterial.HasProperty("_BaseColor"))
             center.normalMaterial.SetColor("_BaseColor", color);

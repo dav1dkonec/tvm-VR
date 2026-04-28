@@ -170,7 +170,10 @@ public class MethodSelectionUI : MonoBehaviour
             inflateDeflateButton.onClick.AddListener(SelectInflateDeflate);
 
         if (loopSequenceButton != null)
+        {
+            loopSequenceButton.interactable = true;
             loopSequenceButton.onClick.AddListener(SelectLoopSequence);
+        }
 
         if (dropdownRoot == null)
             return;

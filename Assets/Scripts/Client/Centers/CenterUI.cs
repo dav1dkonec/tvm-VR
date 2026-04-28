@@ -64,9 +64,9 @@ public class CenterUI : MonoBehaviour
     public Color normalColor;
 
     [ColorUsage(true, true)]
-    public Color persistentSelectedColor = new(3f, 0.08f, 0.08f, 1f);
+    public Color persistentSelectedColor = new(4f, 0.06f, 0.06f, 1f);
 
-    [SerializeField] private float persistentSelectedEmissionIntensity = 3.4f;
+    [SerializeField] private float persistentSelectedEmissionIntensity = 4.2f;
 
     private EditingMethodRuntimeSettings methodSettings;
     private bool isPersistentSelected;

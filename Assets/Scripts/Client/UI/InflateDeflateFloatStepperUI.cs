@@ -18,6 +18,13 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
     public TMP_Text text;
     public Button minus;
     public Button plus;
+    public Slider slider;
+    public float radiusMinValue = 0.02f;
+    public float radiusMaxValue = 0.30f;
+    public float strengthMinValue = 0.01f;
+    public float strengthMaxValue = 0.40f;
+
+    private bool suppressSliderCallback;
 
     private void Awake()
     {
@@ -32,11 +39,22 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
 
         if (plus != null)
             plus.onClick.AddListener(Increase);
+
+        if (slider != null)
+        {
+            slider.onValueChanged.RemoveListener(HandleSliderValueChanged);
+            slider.onValueChanged.AddListener(HandleSliderValueChanged);
+        }
     }
 
     private void Start()
     {
-        UpdateText();
+        SyncVisuals();
+    }
+
+    private void OnEnable()
+    {
+        SyncVisuals();
     }
 
     public void Decrease()
@@ -60,24 +78,84 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
         if (target == null)
             return;
 
-        if (parameterKind == ParameterKind.Radius)
-            target.SetInflateRadius(target.InflateRadius + delta);
-        else
-            target.SetInflateStrength(target.InflateStrength + delta);
-
-        UpdateText();
+        SetValue(GetCurrentValue() + delta);
     }
 
-    private void UpdateText()
+    private void HandleSliderValueChanged(float value)
     {
-        if (text == null || target == null)
+        if (suppressSliderCallback)
             return;
 
-        var value = parameterKind == ParameterKind.Radius
+        if (controller != null && !controller.CanChangeParameters())
+        {
+            SyncVisuals();
+            return;
+        }
+
+        SetValue(value);
+    }
+
+    private void SetValue(float value)
+    {
+        if (target == null)
+            return;
+
+        GetRange(out float minValue, out float maxValue);
+        value = Mathf.Clamp(value, minValue, maxValue);
+
+        if (parameterKind == ParameterKind.Radius)
+            target.SetInflateRadius(value);
+        else
+            target.SetInflateStrength(value);
+
+        SyncVisuals();
+    }
+
+    private float GetCurrentValue()
+    {
+        if (target == null)
+            return 0f;
+
+        return parameterKind == ParameterKind.Radius
             ? target.InflateRadius
             : target.InflateStrength;
-
-        text.text = $"{value:0.00}";
-        text.raycastTarget = false;
     }
+
+    private void SyncVisuals()
+    {
+        if (target == null)
+            return;
+
+        float value = GetCurrentValue();
+
+        if (text != null)
+        {
+            text.text = $"{value:0.00}";
+            text.raycastTarget = false;
+        }
+
+        if (slider != null)
+        {
+            GetRange(out float minValue, out float maxValue);
+            suppressSliderCallback = true;
+            slider.minValue = minValue;
+            slider.maxValue = maxValue;
+            slider.SetValueWithoutNotify(Mathf.Clamp(value, minValue, maxValue));
+            suppressSliderCallback = false;
+        }
+    }
+
+    private void GetRange(out float minValue, out float maxValue)
+    {
+        if (parameterKind == ParameterKind.Radius)
+        {
+            minValue = radiusMinValue;
+            maxValue = radiusMaxValue;
+            return;
+        }
+
+        minValue = strengthMinValue;
+        maxValue = strengthMaxValue;
+    }
+
 }

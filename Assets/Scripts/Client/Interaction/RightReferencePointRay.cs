@@ -130,7 +130,7 @@ public class RightReferencePointRay : MonoBehaviour
             HandleTouchpadCandidateNavigation();
             if (TryGetActiveCandidate(out var activeCandidate))
             {
-                centerPool?.PreviewInflateDeflate(activeCandidate.WorldPosition);
+                centerPool?.PreviewInflateDeflate(activeCandidate.WorldPosition, activeCandidate.CenterIndex);
                 valid = true;
             }
             else

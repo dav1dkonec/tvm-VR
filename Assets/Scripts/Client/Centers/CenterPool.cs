@@ -162,6 +162,11 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
 
     public void PreviewInflateDeflate(Vector3 referencePoint)
     {
+        PreviewInflateDeflate(referencePoint, -1);
+    }
+
+    public void PreviewInflateDeflate(Vector3 referencePoint, int activeCenterIndex)
+    {
         if (centers == null || centers.Length == 0)
             return;
 
@@ -181,11 +186,16 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
             1f,
             Mathf.Clamp01(strength / InflateStrengthPreviewReference));
 
+        CenterUI activeCenter = null;
+
         for (int i = 0; i < centers.Length; i++)
         {
             var targetCenter = centers[i];
             if (targetCenter == null)
                 continue;
+
+            if (targetCenter.centerIndex == activeCenterIndex)
+                activeCenter = targetCenter;
 
             var distance = Vector3.Distance(referencePoint, targetCenter.transform.position);
             if (distance > radius)
@@ -201,6 +211,9 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
                 falloff * strengthFactor);
             ApplyPreviewIntensity(targetCenter, visibleIntensity);
         }
+
+        if (activeCenter != null)
+            ApplyPreviewIntensity(activeCenter, 1f);
     }
 
     public void ClearPreview()

@@ -230,8 +230,10 @@ public class PinnedHandMenuController : MonoBehaviour
 
     private bool IsGrabPressed()
     {
-        return IsActionPressed(bindings.grabAction.action) ||
-               IsDirectControllerGrabPressed();
+        if (TryGetDirectControllerGrabState(out bool directPressed))
+            return directPressed;
+
+        return IsActionPressed(bindings.grabAction.action);
     }
 
     private bool IsActionPressed(InputAction action)
@@ -252,8 +254,10 @@ public class PinnedHandMenuController : MonoBehaviour
         }
     }
 
-    private bool IsDirectControllerGrabPressed()
+    private bool TryGetDirectControllerGrabState(out bool isPressed)
     {
+        isPressed = false;
+
         if (!pollDirectControllerInput)
             return false;
 
@@ -263,12 +267,18 @@ public class PinnedHandMenuController : MonoBehaviour
             return false;
 
         if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.gripButton, out bool gripButton) && gripButton)
+        {
+            isPressed = true;
             return true;
+        }
 
         if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.grip, out float gripValue) && gripValue >= pressThreshold)
+        {
+            isPressed = true;
             return true;
+        }
 
-        return false;
+        return true;
     }
 
     private void CacheOriginalMenuTransform()

@@ -120,14 +120,6 @@ public class PinnedHandMenuController : MonoBehaviour
     {
         if (isPressed && !wasPressed)
         {
-            if (InflateDeflateUI.IsAnyPickActive)
-            {
-                bindings.inflateDeflateUi?.ShowPickModeBlockedMessage();
-                pressCanBecomeTap = false;
-                pressBlocked = true;
-                return;
-            }
-
             pressStartedAt = now;
             pressCanBecomeTap = true;
             pressBlocked = false;

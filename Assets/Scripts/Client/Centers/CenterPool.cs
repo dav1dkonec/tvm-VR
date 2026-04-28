@@ -11,9 +11,9 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class CenterPool : MonoBehaviour, ICenterHoverListener
 {
     private const float InflateStrengthPreviewReference = 0.5f;
-    private const float InflateStrengthPreviewMinimum = 0.3f;
-    private const float InflatePreviewMinimumVisibleIntensity = 0.55f;
-    private const float InflatePreviewEmissionMultiplier = 2.35f;
+    private const float InflateStrengthPreviewMinimum = 0.22f;
+    private const float InflatePreviewMinimumVisibleIntensity = 0.4f;
+    private const float InflatePreviewEmissionMultiplier = 1.45f;
 
     /// <summary>
     /// Center game object prefab

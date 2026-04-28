@@ -30,20 +30,6 @@ public class MethodSelectionUI : MonoBehaviour
     private GameObject surfaceNeighborsObject;
     private GameObject commitObject;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void Bootstrap()
-    {
-        var canvasObject = GameObject.Find("Method Canvas");
-        if (canvasObject == null)
-            return;
-
-        if (canvasObject.GetComponent<MethodSelectionUI>() == null)
-            canvasObject.AddComponent<MethodSelectionUI>();
-
-        if (canvasObject.GetComponent<InflateDeflateUI>() == null)
-            canvasObject.AddComponent<InflateDeflateUI>();
-    }
-
     private void Start()
     {
         target = FindFirstObjectByType<EditingMethodRuntimeSettings>();

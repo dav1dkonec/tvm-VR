@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TvmVr2.Api.Enums;
 using TvmVr2.Client.Centers;
 using TvmVr2.Client.Sequence;
@@ -8,6 +9,13 @@ using UnityEngine.XR.Interaction.Toolkit;
 
 public class RightReferencePointRay : MonoBehaviour
 {
+    private enum TouchSector
+    {
+        None,
+        Up,
+        Down
+    }
+
     private const float MaxDistance = 8f;
     private const float OriginOffset = 0.04f;
     private const float StartWidth = 0.007f;
@@ -21,6 +29,11 @@ public class RightReferencePointRay : MonoBehaviour
     public InputActionProperty rightActivate;
     public InputActionProperty rightActivateValue;
     public bool pollDirectControllerInput = true;
+    public float selectionTubeRadius = 0.06f;
+    public float maxCandidateDepthBeyondSurface = 0.45f;
+    public float candidateSurfaceBackBias = 0.02f;
+    public float touchpadNavigationCooldown = 0.2f;
+    public float touchpadNavigationDeadzone = 0.45f;
 
     private EditingMethodRuntimeSettings methodSettings;
     private InflateDeflateUI inflateDeflateUi;
@@ -30,35 +43,11 @@ public class RightReferencePointRay : MonoBehaviour
     private Material lineMaterial;
     private Transform aimTransform;
     private bool wasPressed;
-
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void Bootstrap()
-    {
-        EnsureExists();
-    }
-
-    public static RightReferencePointRay EnsureExists()
-    {
-        var existing = UnityEngine.Object.FindFirstObjectByType<RightReferencePointRay>();
-        if (existing != null)
-        {
-            existing.RefreshSceneReferences();
-            return existing;
-        }
-
-        var grabToMove = UnityEngine.Object.FindFirstObjectByType<GrabToMove>();
-        var handObject = grabToMove != null ? grabToMove.rightHand : GameObject.Find("Right Hand");
-        if (handObject == null)
-            return null;
-
-        var component = handObject.GetComponent<RightReferencePointRay>();
-        if (component == null)
-            component = handObject.AddComponent<RightReferencePointRay>();
-
-        component.rightHand = handObject;
-        component.RefreshSceneReferences();
-        return component;
-    }
+    private List<InflateDeflateRayCandidate> rayCandidates = new();
+    private int activeCandidateIndex;
+    private int activeCenterIndex = -1;
+    private TouchSector currentTouchSector;
+    private float lastTouchNavigationTime = -10f;
 
     private void Awake()
     {
@@ -78,6 +67,7 @@ public class RightReferencePointRay : MonoBehaviour
         if (!IsPickModeActive())
         {
             wasPressed = false;
+            ResetCandidateSelection();
             centerPool?.ClearPreview();
             SetLaserActive(false);
             return;
@@ -109,12 +99,12 @@ public class RightReferencePointRay : MonoBehaviour
 
     private void TryCommitSelection()
     {
-        if (!TryGetValidSequenceHit(out var hit))
+        if (!TryGetValidSequenceHit(out _, out var activeCandidate))
             return;
 
         centerPool?.ClearPreview();
         inflateDeflateUi?.ShowPickCompleted();
-        sequence.CommitInflateDeflate(hit.point);
+        sequence.CommitInflateDeflate(activeCandidate.WorldPosition);
     }
 
     private void UpdatePreview()
@@ -124,25 +114,43 @@ public class RightReferencePointRay : MonoBehaviour
         var ray = BuildRay();
         if (!TryGetClosestSceneHit(ray, out var hit))
         {
+            ResetCandidateSelection();
             centerPool?.ClearPreview();
             UpdateLaserVisual(ray.origin, ray.origin + ray.direction * MaxDistance, InvalidColor);
             return;
         }
 
         var hitSequence = hit.collider != null ? hit.collider.GetComponentInParent<Sequence>() : null;
-        var valid = hitSequence == sequence;
+        bool validSurface = hitSequence == sequence;
+        bool valid = false;
 
-        if (valid)
-            centerPool?.PreviewInflateDeflate(hit.point);
+        if (validSurface)
+        {
+            UpdateRayCandidates(ray, hit.distance);
+            HandleTouchpadCandidateNavigation();
+            if (TryGetActiveCandidate(out var activeCandidate))
+            {
+                centerPool?.PreviewInflateDeflate(activeCandidate.WorldPosition);
+                valid = true;
+            }
+            else
+            {
+                centerPool?.ClearPreview();
+            }
+        }
         else
+        {
+            ResetCandidateSelection();
             centerPool?.ClearPreview();
+        }
 
         UpdateLaserVisual(ray.origin, hit.point, valid ? ValidColor : InvalidColor);
     }
 
-    private bool TryGetValidSequenceHit(out RaycastHit hit)
+    private bool TryGetValidSequenceHit(out RaycastHit hit, out InflateDeflateRayCandidate activeCandidate)
     {
         hit = default;
+        activeCandidate = default;
 
         if (sequence == null)
             return false;
@@ -152,7 +160,11 @@ public class RightReferencePointRay : MonoBehaviour
             return false;
 
         var hitSequence = hit.collider.GetComponentInParent<Sequence>();
-        return hitSequence == sequence;
+        if (hitSequence != sequence)
+            return false;
+
+        UpdateRayCandidates(ray, hit.distance);
+        return TryGetActiveCandidate(out activeCandidate);
     }
 
     private bool TryGetClosestSceneHit(Ray ray, out RaycastHit hit)
@@ -289,6 +301,103 @@ public class RightReferencePointRay : MonoBehaviour
             return true;
 
         return false;
+    }
+
+    private void UpdateRayCandidates(Ray ray, float surfaceDistance)
+    {
+        int previousCenterIndex = activeCenterIndex;
+        float minDistance = Mathf.Max(0f, surfaceDistance - candidateSurfaceBackBias);
+        float maxDistance = Mathf.Min(MaxDistance, surfaceDistance + maxCandidateDepthBeyondSurface);
+        rayCandidates = InflateDeflateRayCandidateSelector.SelectCandidates(
+            ray,
+            centerPool != null ? centerPool.centers : null,
+            minDistance,
+            maxDistance,
+            selectionTubeRadius);
+
+        if (rayCandidates.Count == 0)
+        {
+            activeCandidateIndex = 0;
+            activeCenterIndex = -1;
+            return;
+        }
+
+        int preservedIndex = rayCandidates.FindIndex(candidate => candidate.CenterIndex == previousCenterIndex);
+        activeCandidateIndex = preservedIndex >= 0 ? preservedIndex : 0;
+        activeCenterIndex = rayCandidates[activeCandidateIndex].CenterIndex;
+    }
+
+    private bool TryGetActiveCandidate(out InflateDeflateRayCandidate activeCandidate)
+    {
+        if (rayCandidates == null || rayCandidates.Count == 0)
+        {
+            activeCandidate = default;
+            activeCenterIndex = -1;
+            return false;
+        }
+
+        activeCandidateIndex = Mathf.Clamp(activeCandidateIndex, 0, rayCandidates.Count - 1);
+        activeCandidate = rayCandidates[activeCandidateIndex];
+        activeCenterIndex = activeCandidate.CenterIndex;
+        return true;
+    }
+
+    private void HandleTouchpadCandidateNavigation()
+    {
+        if (rayCandidates == null || rayCandidates.Count <= 1)
+        {
+            currentTouchSector = TouchSector.None;
+            return;
+        }
+
+        TouchSector nextSector = GetCurrentTouchSector();
+        if (nextSector == TouchSector.None)
+        {
+            currentTouchSector = TouchSector.None;
+            return;
+        }
+
+        if (currentTouchSector != TouchSector.None)
+            return;
+
+        if (Time.unscaledTime - lastTouchNavigationTime < touchpadNavigationCooldown)
+            return;
+
+        activeCandidateIndex = nextSector == TouchSector.Up
+            ? Mathf.Min(activeCandidateIndex + 1, rayCandidates.Count - 1)
+            : Mathf.Max(activeCandidateIndex - 1, 0);
+        activeCenterIndex = rayCandidates[activeCandidateIndex].CenterIndex;
+        currentTouchSector = nextSector;
+        lastTouchNavigationTime = Time.unscaledTime;
+    }
+
+    private TouchSector GetCurrentTouchSector()
+    {
+        if (!pollDirectControllerInput)
+            return TouchSector.None;
+
+        var device = UnityEngine.XR.InputDevices.GetDeviceAtXRNode(UnityEngine.XR.XRNode.RightHand);
+        if (!device.isValid)
+            return TouchSector.None;
+
+        if (!device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.primary2DAxisTouch, out bool isTouched) || !isTouched)
+            return TouchSector.None;
+
+        if (!device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.primary2DAxis, out Vector2 axis))
+            return TouchSector.None;
+
+        if (Mathf.Abs(axis.y) < touchpadNavigationDeadzone || Mathf.Abs(axis.y) <= Mathf.Abs(axis.x))
+            return TouchSector.None;
+
+        return axis.y > 0f ? TouchSector.Up : TouchSector.Down;
+    }
+
+    private void ResetCandidateSelection()
+    {
+        rayCandidates.Clear();
+        activeCandidateIndex = 0;
+        activeCenterIndex = -1;
+        currentTouchSector = TouchSector.None;
     }
 
     private void ResolveAimTransform()

@@ -103,7 +103,7 @@ public class InflateDeflateUI : MonoBehaviour
         }
 
         target.CurrentMethod = MethodKind.InflateDeflate;
-        RightReferencePointRay.EnsureExists();
+        HideTransientMessage();
         EventSystem.current?.SetSelectedGameObject(null);
         isPickingReferencePoint = true;
         IsAnyPickActive = true;
@@ -112,6 +112,7 @@ public class InflateDeflateUI : MonoBehaviour
     public void CancelPick()
     {
         CancelPickSilently();
+        HideTransientMessage();
         EventSystem.current?.SetSelectedGameObject(null);
     }
 
@@ -119,6 +120,7 @@ public class InflateDeflateUI : MonoBehaviour
     {
         isPickingReferencePoint = false;
         IsAnyPickActive = false;
+        HideTransientMessage();
         if (!string.IsNullOrWhiteSpace(message))
             Debug.LogWarning(message);
     }
@@ -127,6 +129,7 @@ public class InflateDeflateUI : MonoBehaviour
     {
         isPickingReferencePoint = false;
         IsAnyPickActive = false;
+        HideTransientMessage();
         EventSystem.current?.SetSelectedGameObject(null);
     }
 
@@ -183,5 +186,17 @@ public class InflateDeflateUI : MonoBehaviour
         yield return new WaitForSecondsRealtime(TransientMessageDuration);
         transientMessageCanvas.SetActive(false);
         transientMessageRoutine = null;
+    }
+
+    private void HideTransientMessage()
+    {
+        if (transientMessageRoutine != null)
+        {
+            StopCoroutine(transientMessageRoutine);
+            transientMessageRoutine = null;
+        }
+
+        if (transientMessageCanvas != null)
+            transientMessageCanvas.SetActive(false);
     }
 }

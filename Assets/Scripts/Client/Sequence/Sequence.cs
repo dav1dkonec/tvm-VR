@@ -113,6 +113,8 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     /// Name of most recently loaded sequence
     /// </summary>
     public string loadedName;
+    public bool HasPendingEdits { get; private set; }
+    public event Action<bool> PendingEditsChanged;
 
     /// <summary>
     /// Initialization
@@ -241,6 +243,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         loadedPath = sequencePath;
         loadedName = sequenceName;
         saveButton.interactable = true;
+        SetPendingEdits(false);
 
         if (pl) Play();
     }
@@ -280,6 +283,29 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
 
         if (!saveResult.Success)
             Debug.LogError(saveResult.ErrorMessage);
+    }
+
+    public void ReloadLoadedSequence()
+    {
+        if (InflateDeflateUI.BlockIfPickActive())
+            return;
+
+        if (string.IsNullOrWhiteSpace(loadedPath) || string.IsNullOrWhiteSpace(loadedName))
+        {
+            Debug.LogWarning("Sequence: No loaded sequence is available for reload.");
+            return;
+        }
+
+        Load(loadedPath, loadedName);
+    }
+
+    private void SetPendingEdits(bool value)
+    {
+        if (HasPendingEdits == value)
+            return;
+
+        HasPendingEdits = value;
+        PendingEditsChanged?.Invoke(value);
     }
 
     /// <summary>
@@ -363,6 +389,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
 
         centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
         RedrawMesh();
+        SetPendingEdits(true);
 
         busyStateController.Exit(leftHand, rightHand, waitCanvas);
         if (pl) Play();
@@ -460,6 +487,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
 
             centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
             RedrawMesh();
+            SetPendingEdits(true);
         }
         catch (Exception ex)
         {
@@ -548,6 +576,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             currentFrame = frameIndex;
             centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
             RedrawMesh();
+            SetPendingEdits(true);
         }
         catch (Exception ex)
         {

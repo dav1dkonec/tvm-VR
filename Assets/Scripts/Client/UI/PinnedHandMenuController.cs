@@ -280,7 +280,7 @@ public class PinnedHandMenuController : MonoBehaviour
             return true;
         }
 
-        return true;
+        return false;
     }
 
     private void CacheOriginalMenuTransform()

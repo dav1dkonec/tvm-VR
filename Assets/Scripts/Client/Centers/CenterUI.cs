@@ -64,6 +64,7 @@ public class CenterUI : MonoBehaviour
     public Color normalColor;
 
     private EditingMethodRuntimeSettings methodSettings;
+    private bool isPersistentSelected;
 
     /// <summary>
     /// Initialization
@@ -82,7 +83,7 @@ public class CenterUI : MonoBehaviour
     /// <param name="e">Hover event</param>
     public void OnHoverEnter(HoverEnterEventArgs e)
     {
-        if (Sequence.playing || !IsBasicTranslateActive()) return;
+        if (Sequence.playing || !IsCenterInteractionMethodActive()) return;
 
         ApplyHighlightColor();
 
@@ -98,9 +99,9 @@ public class CenterUI : MonoBehaviour
     /// <param name="e">Hover event</param>
     public void OnHoverExit(HoverExitEventArgs e)
     {
-        if (Sequence.playing || !IsBasicTranslateActive()) return;
+        if (Sequence.playing || !IsCenterInteractionMethodActive()) return;
 
-        if (meshRenderer.material != selectedMaterial)
+        if (!isPersistentSelected && meshRenderer.material != selectedMaterial)
             ApplyNormalColor();
 
         foreach (var l in hoverListeners)
@@ -115,7 +116,18 @@ public class CenterUI : MonoBehaviour
     /// <param name="e">Selection event</param>
     public void OnSelectEnter(SelectEnterEventArgs e)
     {
-        if (Sequence.playing || !IsBasicTranslateActive()) return;
+        if (Sequence.playing || !IsCenterInteractionMethodActive()) return;
+
+        if (IsInflateDeflateActive())
+        {
+            foreach (var l in selectionListeners)
+            {
+                l.Notify(this, true);
+            }
+
+            ReleaseSelection(e);
+            return;
+        }
 
         activeSelectionCount++;
         meshRenderer.material = selectedMaterial;
@@ -131,7 +143,10 @@ public class CenterUI : MonoBehaviour
     /// <param name="e">Selection event</param>
     public void OnSelectExit(SelectExitEventArgs e)
     {
-        if (Sequence.playing || !IsBasicTranslateActive()) return;
+        if (Sequence.playing || !IsCenterInteractionMethodActive()) return;
+
+        if (IsInflateDeflateActive())
+            return;
 
         activeSelectionCount = Mathf.Max(0, activeSelectionCount - 1);
         meshRenderer.material = normalMaterial;
@@ -160,12 +175,41 @@ public class CenterUI : MonoBehaviour
         hoverListeners.Add(l);
     }
 
-    private bool IsBasicTranslateActive()
+    public void SetPersistentSelected(bool selected)
+    {
+        isPersistentSelected = selected;
+        meshRenderer.material = selected ? selectedMaterial : normalMaterial;
+
+        if (!selected)
+            ApplyNormalColor();
+    }
+
+    private bool IsCenterInteractionMethodActive()
     {
         if (methodSettings == null)
             methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
 
-        return methodSettings == null || methodSettings.CurrentMethod == MethodKind.BasicTranslate;
+        if (methodSettings == null)
+            return true;
+
+        return methodSettings.CurrentMethod == MethodKind.BasicTranslate
+            || methodSettings.CurrentMethod == MethodKind.InflateDeflate;
+    }
+
+    private bool IsInflateDeflateActive()
+    {
+        if (methodSettings == null)
+            methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
+
+        return methodSettings != null && methodSettings.CurrentMethod == MethodKind.InflateDeflate;
+    }
+
+    private static void ReleaseSelection(SelectEnterEventArgs args)
+    {
+        if (args?.manager == null || args.interactorObject == null || args.interactableObject == null)
+            return;
+
+        args.manager.SelectExit(args.interactorObject, args.interactableObject);
     }
 
     private void ApplyHighlightColor()

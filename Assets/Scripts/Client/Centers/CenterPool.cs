@@ -29,6 +29,7 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
     /// </summary>
     public CenterUI[] centers;
     private EditingMethodRuntimeSettings methodSettings;
+    private InflateDeflateUI inflateDeflateUi;
 
     /// <summary>
     /// Initializes the centers and animates them
@@ -36,6 +37,7 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
     void Start()
     {
         methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
+        inflateDeflateUi = FindFirstObjectByType<InflateDeflateUI>();
         CenterUI.RegisterListener(this);
         Idle();
     }
@@ -133,6 +135,32 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
 
     public void Notify(CenterUI center, bool hovering)
     {
+        if (methodSettings == null)
+            methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
+
+        if (methodSettings != null && methodSettings.CurrentMethod == MethodKind.InflateDeflate)
+        {
+            if (inflateDeflateUi == null)
+                inflateDeflateUi = FindFirstObjectByType<InflateDeflateUI>();
+
+            if (inflateDeflateUi != null && inflateDeflateUi.HasSelectedReferenceCenter)
+            {
+                inflateDeflateUi.RefreshSelectionPreview();
+                return;
+            }
+
+            if (!hovering)
+            {
+                ClearPreview();
+                return;
+            }
+
+            if (center != null)
+                PreviewInflateDeflate(center.transform.position, center.centerIndex);
+
+            return;
+        }
+
         if (!hovering)
         {
             ClearPreview();
@@ -141,9 +169,6 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
 
         if (center == null)
             return;
-
-        if (methodSettings == null)
-            methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
 
         var sigma = methodSettings != null ? methodSettings.CenterSigma : 1f;
         var from = center.transform.position;

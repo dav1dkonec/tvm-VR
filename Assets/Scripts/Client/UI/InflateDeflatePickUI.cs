@@ -1,78 +1,54 @@
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class InflateDeflatePickUI : MonoBehaviour
 {
-    private static readonly Color PickActiveColor = new(0.49019608f, 1f, 0.8784314f, 1f);
-
     public InflateDeflateUI controller;
     public Button pickPointButton;
     public Button cancelButton;
-
-    private TMP_Text pickPointText;
-    private Color pickPointDefaultTextColor;
-    private bool lastPickVisualState;
 
     private void Awake()
     {
         if (controller == null)
             controller = FindFirstObjectByType<InflateDeflateUI>();
 
-        CachePickPointVisuals();
-
         if (pickPointButton != null)
-            pickPointButton.onClick.AddListener(BeginPick);
+            pickPointButton.onClick.AddListener(ApplySelection);
 
         if (cancelButton != null)
-            cancelButton.onClick.AddListener(CancelPick);
+            cancelButton.onClick.AddListener(CancelSelection);
     }
 
     private void Start()
     {
-        UpdatePickPointVisualState(force: true);
+        UpdateButtonState();
     }
 
     private void Update()
     {
-        UpdatePickPointVisualState(force: false);
+        UpdateButtonState();
     }
 
-    public void BeginPick()
+    public void ApplySelection()
     {
-        if (controller != null)
-            controller.BeginPick();
+        controller?.ApplySelectedCenter();
+        UpdateButtonState();
     }
 
-    public void CancelPick()
+    public void CancelSelection()
     {
-        if (controller != null)
-            controller.CancelPick();
+        controller?.CancelSelection();
+        UpdateButtonState();
     }
 
-    private void CachePickPointVisuals()
+    private void UpdateButtonState()
     {
-        if (pickPointButton == null)
-            return;
-
-        pickPointText = pickPointButton.GetComponentInChildren<TMP_Text>(true);
-
-        if (pickPointText != null)
-            pickPointDefaultTextColor = pickPointText.color;
-    }
-
-    private void UpdatePickPointVisualState(bool force)
-    {
-        var pickActive = controller != null && controller.IsPickingReferencePoint;
-        if (!force && pickActive == lastPickVisualState)
-            return;
-
-        lastPickVisualState = pickActive;
+        var hasSelection = controller != null && controller.HasSelectedReferenceCenter;
 
         if (pickPointButton != null)
-            pickPointButton.interactable = !pickActive;
+            pickPointButton.interactable = hasSelection;
 
-        if (pickPointText != null)
-            pickPointText.color = pickActive ? PickActiveColor : pickPointDefaultTextColor;
+        if (cancelButton != null)
+            cancelButton.interactable = hasSelection;
     }
 }

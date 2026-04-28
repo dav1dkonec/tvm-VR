@@ -59,17 +59,11 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
 
     public void Decrease()
     {
-        if (controller != null && !controller.CanChangeParameters())
-            return;
-
         ChangeValue(-step);
     }
 
     public void Increase()
     {
-        if (controller != null && !controller.CanChangeParameters())
-            return;
-
         ChangeValue(step);
     }
 
@@ -85,12 +79,6 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
     {
         if (suppressSliderCallback)
             return;
-
-        if (controller != null && !controller.CanChangeParameters())
-        {
-            SyncVisuals();
-            return;
-        }
 
         SetValue(value);
     }
@@ -109,6 +97,7 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
             target.SetInflateStrength(value);
 
         SyncVisuals();
+        controller?.RefreshSelectionPreview();
     }
 
     private float GetCurrentValue()

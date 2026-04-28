@@ -19,6 +19,7 @@ public class MethodSelectionUI : MonoBehaviour
     private EditingMethodRuntimeSettings target;
     private InflateDeflateUI inflateDeflateUi;
     private CenterPool centerPool;
+    private global::Sequence sequence;
     private TMP_Text methodLabelText;
     private Button basicTranslateButton;
     private Button inflateDeflateButton;
@@ -35,6 +36,7 @@ public class MethodSelectionUI : MonoBehaviour
         target = FindFirstObjectByType<EditingMethodRuntimeSettings>();
         inflateDeflateUi = GetComponent<InflateDeflateUI>();
         centerPool = FindFirstObjectByType<CenterPool>();
+        sequence = FindFirstObjectByType<global::Sequence>();
 
         var root = ResolveUiRoot();
         if (root == null)
@@ -83,6 +85,16 @@ public class MethodSelectionUI : MonoBehaviour
         ApplyMethodVisibility();
     }
 
+    public void SelectLoopSequence()
+    {
+        if (inflateDeflateUi != null && !inflateDeflateUi.CanChangeMethod())
+            return;
+
+        dropdownVisible = false;
+        ApplyMethodVisibility();
+        sequence?.ShowTransientWaitMessage("not implemented yet.");
+    }
+
     private void ApplyMethodVisibility()
     {
         var isInflate = target != null && target.CurrentMethod == MethodKind.InflateDeflate;
@@ -91,7 +103,7 @@ public class MethodSelectionUI : MonoBehaviour
         SetObjectActive(kabschNeighborsObject, !isInflate);
         SetObjectActive(surfaceNeighborsObject, !isInflate);
         SetObjectActive(commitObject, !isInflate);
-        centerPool?.SetInteractionEnabled(!isInflate);
+        centerPool?.SetInteractionEnabled(target == null || target.CurrentMethod != MethodKind.LoopSequence);
 
         if (inflateDeflateUi != null)
             inflateDeflateUi.SetVisible(isInflate);
@@ -121,10 +133,10 @@ public class MethodSelectionUI : MonoBehaviour
         if (target == null)
             return;
 
-        var isInflate = target.CurrentMethod == MethodKind.InflateDeflate;
-        SetButtonVisualState(basicTranslateButton, !isInflate);
-        SetButtonVisualState(inflateDeflateButton, isInflate);
-        SetDisabledButtonVisualState(loopSequenceButton);
+        var method = target.CurrentMethod;
+        SetButtonVisualState(basicTranslateButton, method == MethodKind.BasicTranslate);
+        SetButtonVisualState(inflateDeflateButton, method == MethodKind.InflateDeflate);
+        SetButtonVisualState(loopSequenceButton, method == MethodKind.LoopSequence);
     }
 
     private void CacheBasicTranslateObjects(RectTransform root)
@@ -158,7 +170,7 @@ public class MethodSelectionUI : MonoBehaviour
             inflateDeflateButton.onClick.AddListener(SelectInflateDeflate);
 
         if (loopSequenceButton != null)
-            loopSequenceButton.interactable = false;
+            loopSequenceButton.onClick.AddListener(SelectLoopSequence);
 
         if (dropdownRoot == null)
             return;
@@ -192,20 +204,6 @@ public class MethodSelectionUI : MonoBehaviour
         {
             label.fontStyle = FontStyles.Normal;
             label.color = selected ? SelectedMethodTextColor : Color.white;
-        }
-    }
-
-    private static void SetDisabledButtonVisualState(Selectable button)
-    {
-        if (button == null || button.targetGraphic == null)
-            return;
-
-        button.targetGraphic.color = TransparentColor;
-        var label = button.GetComponentInChildren<TMP_Text>(true);
-        if (label != null)
-        {
-            label.fontStyle = FontStyles.Normal;
-            label.color = new Color(1f, 1f, 1f, 0.65f);
         }
     }
 

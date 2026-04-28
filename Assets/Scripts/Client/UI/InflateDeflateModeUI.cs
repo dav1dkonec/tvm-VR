@@ -48,26 +48,22 @@ public class InflateDeflateModeUI : MonoBehaviour
 
     public void SetInflateMode()
     {
-        if (controller != null && !controller.CanChangeParameters())
-            return;
-
         if (target == null)
             return;
 
         target.SetInflateMode(0);
         UpdateVisualState();
+        controller?.RefreshSelectionPreview();
     }
 
     public void SetDeflateMode()
     {
-        if (controller != null && !controller.CanChangeParameters())
-            return;
-
         if (target == null)
             return;
 
         target.SetInflateMode(1);
         UpdateVisualState();
+        controller?.RefreshSelectionPreview();
     }
 
     private void UpdateVisualState()

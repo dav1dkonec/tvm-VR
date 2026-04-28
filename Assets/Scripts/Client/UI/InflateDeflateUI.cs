@@ -1,39 +1,33 @@
-using System.Collections;
-using TMPro;
 using TvmVr2.Api.Enums;
+using TvmVr2.Client.Centers;
 using TvmVr2.Client.Sequence;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 public class InflateDeflateUI : MonoBehaviour
 {
-    private const float TransientMessageDuration = 2f;
-
     public GameObject panelObject;
-    public TMP_Text statusText;
 
     private EditingMethodRuntimeSettings target;
-    private GameObject transientMessageCanvas;
-    private TMP_Text transientMessageText;
-    private Coroutine transientMessageRoutine;
-    private bool isPickingReferencePoint;
+    private Sequence sequence;
+    private CenterPool centerPool;
+    private CenterUI selectedReferenceCenter;
 
     public static bool IsAnyPickActive { get; private set; }
-    public bool IsPickingReferencePoint => isPickingReferencePoint;
+    public bool IsPickingReferencePoint => false;
+    public bool HasSelectedReferenceCenter => selectedReferenceCenter != null;
+    public CenterUI SelectedReferenceCenter => selectedReferenceCenter;
 
     public static bool BlockIfPickActive()
     {
-        if (!IsAnyPickActive)
-            return false;
-
-        Object.FindFirstObjectByType<InflateDeflateUI>()?.ShowPickModeBlockedMessage();
-        return true;
+        return false;
     }
 
     private void Awake()
     {
         target = FindFirstObjectByType<EditingMethodRuntimeSettings>();
-        InitializeTransientMessageCanvas();
+        sequence = FindFirstObjectByType<Sequence>();
+        centerPool = FindFirstObjectByType<CenterPool>();
+        IsAnyPickActive = false;
 
         if (target != null)
         {
@@ -45,14 +39,7 @@ public class InflateDeflateUI : MonoBehaviour
 
     private void Start()
     {
-        SetWorkflowStatus();
         SetVisible(target != null && target.CurrentMethod == MethodKind.InflateDeflate);
-    }
-
-    private void OnDisable()
-    {
-        if (isPickingReferencePoint)
-            IsAnyPickActive = false;
     }
 
     public void SetVisible(bool visible)
@@ -61,142 +48,74 @@ public class InflateDeflateUI : MonoBehaviour
             panelObject.SetActive(visible);
 
         if (!visible)
-            CancelPickSilently();
+            CancelSelection();
 
         if (visible)
-            SetWorkflowStatus();
+            RefreshSelectionPreview();
     }
 
     public bool CanChangeParameters()
     {
-        if (!isPickingReferencePoint)
-            return true;
-
-        ShowPickModeBlockedMessage();
-        return false;
+        return true;
     }
 
     public bool CanChangeMethod()
     {
-        if (!isPickingReferencePoint)
-            return true;
-
-        ShowPickModeBlockedMessage();
-        return false;
+        return true;
     }
 
-    public void ShowPickModeBlockedMessage()
+    public void SelectReferenceCenter(CenterUI center)
     {
-        EventSystem.current?.SetSelectedGameObject(null);
-        ShowTransientMessage("Select a point or cancel first.");
-    }
-
-    public void BeginPick()
-    {
-        if (target == null)
+        if (center == null || target == null || target.CurrentMethod != MethodKind.InflateDeflate)
             return;
 
-        if (isPickingReferencePoint)
+        if (selectedReferenceCenter == center)
         {
-            ShowPickModeBlockedMessage();
+            RefreshSelectionPreview();
             return;
         }
 
-        target.CurrentMethod = MethodKind.InflateDeflate;
-        HideTransientMessage();
-        EventSystem.current?.SetSelectedGameObject(null);
-        isPickingReferencePoint = true;
-        IsAnyPickActive = true;
+        ClearSelectedCenterVisual();
+        selectedReferenceCenter = center;
+        selectedReferenceCenter.SetPersistentSelected(true);
+        RefreshSelectionPreview();
     }
 
-    public void CancelPick()
+    public void CancelSelection()
     {
-        CancelPickSilently();
-        HideTransientMessage();
-        EventSystem.current?.SetSelectedGameObject(null);
+        ClearSelectedCenterVisual();
+        centerPool?.ClearPreview();
     }
 
-    public void ShowPickFailed(string message)
+    public void ApplySelectedCenter()
     {
-        isPickingReferencePoint = false;
-        IsAnyPickActive = false;
-        HideTransientMessage();
-        if (!string.IsNullOrWhiteSpace(message))
-            Debug.LogWarning(message);
-    }
-
-    public void ShowPickCompleted()
-    {
-        isPickingReferencePoint = false;
-        IsAnyPickActive = false;
-        HideTransientMessage();
-        EventSystem.current?.SetSelectedGameObject(null);
-    }
-
-    private void CancelPickSilently()
-    {
-        if (!isPickingReferencePoint)
+        if (selectedReferenceCenter == null || sequence == null || target == null || target.CurrentMethod != MethodKind.InflateDeflate)
             return;
 
-        isPickingReferencePoint = false;
-        IsAnyPickActive = false;
+        var referencePoint = selectedReferenceCenter.transform.position;
+        CancelSelection();
+        sequence.CommitInflateDeflate(referencePoint);
     }
 
-    private void SetStatus(string message)
+    public void RefreshSelectionPreview()
     {
-        if (statusText != null)
-            statusText.text = message;
-    }
-
-    private void SetWorkflowStatus()
-    {
-        SetStatus("Set parameters, press Pick Point, then use the right hand ray to aim at the mesh and press the trigger.");
-    }
-
-    private void InitializeTransientMessageCanvas()
-    {
-        var sequence = FindFirstObjectByType<Sequence>();
-        if (sequence == null || sequence.waitCanvas == null)
+        if (target == null || target.CurrentMethod != MethodKind.InflateDeflate)
             return;
 
-        transientMessageCanvas = Instantiate(sequence.waitCanvas, sequence.waitCanvas.transform.parent);
-        transientMessageCanvas.name = "Transient Interaction Message";
-        transientMessageText = transientMessageCanvas.GetComponentInChildren<TMP_Text>(true);
-        transientMessageCanvas.SetActive(false);
+        if (centerPool == null)
+            centerPool = FindFirstObjectByType<CenterPool>();
+
+        if (selectedReferenceCenter != null)
+            centerPool?.PreviewInflateDeflate(selectedReferenceCenter.transform.position, selectedReferenceCenter.centerIndex);
+        else
+            centerPool?.ClearPreview();
     }
 
-    private void ShowTransientMessage(string message)
+    private void ClearSelectedCenterVisual()
     {
-        if (transientMessageCanvas == null || transientMessageText == null)
-        {
-            Debug.Log(message);
-            return;
-        }
+        if (selectedReferenceCenter != null)
+            selectedReferenceCenter.SetPersistentSelected(false);
 
-        if (transientMessageRoutine != null)
-            StopCoroutine(transientMessageRoutine);
-
-        transientMessageRoutine = StartCoroutine(ShowTransientMessageRoutine(message));
-    }
-
-    private IEnumerator ShowTransientMessageRoutine(string message)
-    {
-        transientMessageText.text = message;
-        transientMessageCanvas.SetActive(true);
-        yield return new WaitForSecondsRealtime(TransientMessageDuration);
-        transientMessageCanvas.SetActive(false);
-        transientMessageRoutine = null;
-    }
-
-    private void HideTransientMessage()
-    {
-        if (transientMessageRoutine != null)
-        {
-            StopCoroutine(transientMessageRoutine);
-            transientMessageRoutine = null;
-        }
-
-        if (transientMessageCanvas != null)
-            transientMessageCanvas.SetActive(false);
+        selectedReferenceCenter = null;
     }
 }

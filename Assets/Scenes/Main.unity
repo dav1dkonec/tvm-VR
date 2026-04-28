@@ -2249,7 +2249,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: cancel
+  m_text: Cancel
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: f7b304c805eca774ea1255b529c08743, type: 2}
   m_sharedMaterial: {fileID: -8684908308487678112, guid: f7b304c805eca774ea1255b529c08743, type: 2}
@@ -14504,7 +14504,7 @@ GameObject:
   - component: {fileID: 370905395}
   - component: {fileID: 370905397}
   m_Layer: 0
-  m_Name: Inflate Pick Point
+  m_Name: Inflate Apply
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -33568,7 +33568,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1231749143
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -49870,7 +49870,6 @@ GameObject:
   - component: {fileID: 1768454292}
   - component: {fileID: 1768454293}
   - component: {fileID: 1768454294}
-  - component: {fileID: 1768454295}
   m_Layer: 0
   m_Name: Right Hand
   m_TagString: Untagged
@@ -50171,49 +50170,6 @@ MonoBehaviour:
   invertCanvasFacing: 1
   pinnedAdditionalRotationEuler: {x: 0, y: 0, z: 0}
   pollDirectControllerInput: 1
---- !u!114 &1768454295
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1768454291}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0b5430900e4144a568ad0679ddf7d52b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  rightHand: {fileID: 1768454291}
-  rightActivate:
-    m_UseReference: 1
-    m_Action:
-      m_Name: Activate
-      m_Type: 0
-      m_ExpectedControlType: 
-      m_Id: ed3be3cd-637e-48d6-ae4b-dd97305eaa40
-      m_Processors: 
-      m_Interactions: 
-      m_SingletonActionBindings: []
-      m_Flags: 0
-    m_Reference: {fileID: 187161793506945269, guid: c348712bda248c246b8c49b3db54643f, type: 3}
-  rightActivateValue:
-    m_UseReference: 1
-    m_Action:
-      m_Name: Activate Action Value
-      m_Type: 0
-      m_ExpectedControlType: 
-      m_Id: af4d694a-0159-4acb-bf36-7b78c35a10d5
-      m_Processors: 
-      m_Interactions: 
-      m_SingletonActionBindings: []
-      m_Flags: 0
-    m_Reference: {fileID: -1758520528963094988, guid: c348712bda248c246b8c49b3db54643f, type: 3}
-  pollDirectControllerInput: 1
-  selectionTubeRadius: 0.06
-  maxCandidateDepthBeyondSurface: 0.45
-  candidateSurfaceBackBias: 0.02
-  touchpadNavigationCooldown: 0.2
-  touchpadNavigationDeadzone: 0.45
 --- !u!1 &1772262513
 GameObject:
   m_ObjectHideFlags: 0
@@ -54013,7 +53969,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   panelObject: {fileID: 1715542430}
-  statusText: {fileID: 1231749143}
 --- !u!1 &2017492217
 GameObject:
   m_ObjectHideFlags: 0
@@ -54910,7 +54865,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: pick point
+  m_text: Apply
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: f7b304c805eca774ea1255b529c08743, type: 2}
   m_sharedMaterial: {fileID: -8684908308487678112, guid: f7b304c805eca774ea1255b529c08743, type: 2}

@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 /// <summary>
 /// Pins a hand menu near the user after a grab double tap and lets the same grab move it around the user.
@@ -29,7 +28,6 @@ public class PinnedHandMenuController : MonoBehaviour
         public Transform userRoot;
         public Transform headTransform;
         public InflateDeflateUI inflateDeflateUi;
-        public InputActionProperty grabAction;
     }
 
     [SerializeField] private HandMenuBindings bindings;
@@ -87,11 +85,6 @@ public class PinnedHandMenuController : MonoBehaviour
 
         if (VisualFaceTransform != null && VisualFaceTransform != bindings.menuRoot.transform)
             baseVisualLocalRotation = VisualFaceTransform.localRotation;
-    }
-
-    private void OnEnable()
-    {
-        bindings.grabAction.action?.Enable();
     }
 
     private void OnDisable()
@@ -220,32 +213,13 @@ public class PinnedHandMenuController : MonoBehaviour
 
     private bool IsGrabPressed()
     {
-        InputAction action = bindings.grabAction.action;
-        if (action != null && IsActionPressed(action))
-            return true;
+        if (CenterUI.HasActiveSelection)
+            return false;
 
         if (TryGetDirectControllerGrabState(out bool directPressed))
             return directPressed;
 
         return false;
-    }
-
-    private bool IsActionPressed(InputAction action)
-    {
-        if (action == null)
-            return false;
-
-        try
-        {
-            if (action.IsPressed())
-                return true;
-
-            return action.ReadValue<float>() >= pressThreshold;
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     private bool TryGetDirectControllerGrabState(out bool isPressed)

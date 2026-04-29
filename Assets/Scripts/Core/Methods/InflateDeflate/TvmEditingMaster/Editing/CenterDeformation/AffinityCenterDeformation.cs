@@ -32,8 +32,15 @@ namespace TVMEditor.Editing.CenterDeformation
                     weightSum += w;
                 }
 
-                weightedDifference /= weightSum;
-                weightedDifference = weightedDifference.Normalize();
+                if (!float.IsFinite(weightSum) || weightSum <= 1e-8f)
+                {
+                    weightedDifference = DualQuaternion.Identity();
+                }
+                else
+                {
+                    weightedDifference /= weightSum;
+                    weightedDifference = weightedDifference.Normalize();
+                }
                 newTransformations[i] = weightedDifference;
                 newCenters[i] = weightedDifference.Transform(centers[i]);
             }

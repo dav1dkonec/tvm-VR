@@ -32,7 +32,11 @@ namespace TVMEditor.Structures
 
         public DualQuaternion Normalize()
         {
-            return this * (1 / Norm());
+            var norm = Norm();
+            if (!float.IsFinite(norm) || norm <= 1e-8f)
+                return Identity();
+
+            return this * (1f / norm);
         }
 
         public Vector3 TranslationVector

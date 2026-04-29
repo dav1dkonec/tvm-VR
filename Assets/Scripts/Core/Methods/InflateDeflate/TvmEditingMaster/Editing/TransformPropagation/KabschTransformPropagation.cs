@@ -1,8 +1,11 @@
 using MathNet.Numerics.LinearAlgebra.Single;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
 using TVMEditor.Editing.AffinityCalculation;
 using TVMEditor.Extensions;
 using TVMEditor.Math;
@@ -17,9 +20,10 @@ namespace TVMEditor.Editing.TransformPropagation
         private TimeAttenuation TimeAttenuationFunction { get; set; } = TimeAttenuation.None;
         private float TimeAttenuationShape { get; set; } = 1f;
         private bool MultiplyByAffinity { get; set; } = true;
+        private readonly object neighborIndicesLock = new object();
         private int[,] NeighborIndices { get; set; }
-        private Dictionary<int, float[,]> NeighborWeights { get; set; } = new Dictionary<int, float[,]>();
-        private Dictionary<int, float[]> NeighborWeightsSums { get; set; } = new Dictionary<int, float[]>();
+        private ConcurrentDictionary<int, float[,]> NeighborWeights { get; set; } = new ConcurrentDictionary<int, float[,]>();
+        private ConcurrentDictionary<int, float[]> NeighborWeightsSums { get; set; } = new ConcurrentDictionary<int, float[]>();
 
         public IAffinityCalculation AffinityCalculation { get; set; }
 
@@ -33,8 +37,7 @@ namespace TVMEditor.Editing.TransformPropagation
             var result = new Vector3[centers.Length][];
             propagatedTransformations = new DualQuaternion[centers.Length][];
 
-            if (NeighborIndices == null && AffinityCalculation != null)
-                PrepareNeighborIndices();
+            EnsureNeighborIndicesPrepared();
 
             for (var f = 0; f < centers.Length; f++)
             {
@@ -55,6 +58,40 @@ namespace TVMEditor.Editing.TransformPropagation
         public bool FrameIsAffected(int editedFrameIndex, int frameIndex)
         {
             return GetTimeAttenuation(editedFrameIndex, frameIndex) > 1e-3;
+        }
+
+        public void PrecomputeAllFrames(Vector3[][] centers, int maxDegreeOfParallelism, CancellationToken cancellationToken)
+        {
+            if (centers == null || centers.Length == 0)
+                return;
+
+            EnsureNeighborIndicesPrepared();
+
+            var parallelOptions = new ParallelOptions
+            {
+                CancellationToken = cancellationToken,
+                MaxDegreeOfParallelism = Math.Max(1, maxDegreeOfParallelism)
+            };
+
+            Parallel.For(0, centers.Length, parallelOptions, frameIndex =>
+            {
+                if (NeighborsPrecomputed(frameIndex))
+                    return;
+
+                PrecomputeNeighbors(frameIndex, centers[frameIndex]);
+            });
+        }
+
+        private void EnsureNeighborIndicesPrepared()
+        {
+            if (NeighborIndices != null || AffinityCalculation == null)
+                return;
+
+            lock (neighborIndicesLock)
+            {
+                if (NeighborIndices == null)
+                    PrepareNeighborIndices();
+            }
         }
 
         private void PrepareNeighborIndices()
@@ -150,6 +187,8 @@ namespace TVMEditor.Editing.TransformPropagation
 
                 return propagatedCenters;
             }
+
+            EnsureNeighborIndicesPrepared();
 
             if (!NeighborsPrecomputed(deformedFrameIndex))
                 PrecomputeNeighbors(deformedFrameIndex, oldCenters);

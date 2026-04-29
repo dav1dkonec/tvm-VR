@@ -1,6 +1,7 @@
 using System.Text;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 using TvmVr2.Core.Abstractions;
 using TvmVr2.Core.Common;
 using TvmVr2.Core.Methods.InflateDeflate.Profiling;
@@ -17,6 +18,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
     public sealed class TvmEditingMasterInflateDeflateAdapter
     {
         private readonly object _contextLock = new object();
+        private readonly SemaphoreSlim _operationGate = new SemaphoreSlim(1, 1);
         private CachedExecutionContext _cachedExecutionContext;
 
         public IMethodResult Execute(InflateDeflateMethodInput input)
@@ -27,6 +29,82 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         public MethodExecutionResult ExecuteProfiled(InflateDeflateMethodInput input, out InflateDeflateQuickProfile profile)
         {
             return ExecuteInternal(input, out profile);
+        }
+
+        public InflateDeflateCacheWarmupProfile WarmCache(InflateDeflateMethodInput input, int maxDegreeOfParallelism, CancellationToken cancellationToken)
+        {
+            var profile = new InflateDeflateCacheWarmupProfile
+            {
+                FrameCount = input?.Frames?.Length ?? 0,
+                MaxDegreeOfParallelism = System.Math.Max(1, maxDegreeOfParallelism)
+            };
+
+            if (input == null)
+            {
+                profile.Success = false;
+                profile.ErrorMessage = "InflateDeflate warmup input is missing.";
+                return profile;
+            }
+
+            if (input.Frames == null || input.Frames.Length == 0)
+            {
+                profile.Success = false;
+                profile.ErrorMessage = "InflateDeflate warmup frames are missing.";
+                return profile;
+            }
+
+            var totalTimer = Stopwatch.StartNew();
+            _operationGate.Wait(cancellationToken);
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var executionContext = GetOrCreateExecutionContext(input);
+                var centers = input.Frames.Select(frame => frame.centers).ToArray();
+
+                var stageTimer = Stopwatch.StartNew();
+                if (executionContext.AffinityCalculation.GetCentersAffinity() == null)
+                    executionContext.AffinityCalculation.CalculateCentersAffinity(centers);
+                stageTimer.Stop();
+                profile.AffinityMs = stageTimer.Elapsed.TotalMilliseconds;
+
+                cancellationToken.ThrowIfCancellationRequested();
+                stageTimer.Restart();
+                executionContext.SurfaceDeformation.PrecomputeAllFrames(
+                    input.Frames.Select(frame => frame.vertices).ToArray(),
+                    centers,
+                    profile.MaxDegreeOfParallelism,
+                    cancellationToken);
+                stageTimer.Stop();
+                profile.SurfaceWeightsMs = stageTimer.Elapsed.TotalMilliseconds;
+
+                cancellationToken.ThrowIfCancellationRequested();
+                stageTimer.Restart();
+                executionContext.TransformPropagation.PrecomputeAllFrames(
+                    centers,
+                    profile.MaxDegreeOfParallelism,
+                    cancellationToken);
+                stageTimer.Stop();
+                profile.KabschNeighborsMs = stageTimer.Elapsed.TotalMilliseconds;
+
+                totalTimer.Stop();
+                profile.TotalMs = totalTimer.Elapsed.TotalMilliseconds;
+                profile.Success = true;
+                return profile;
+            }
+            catch (OperationCanceledException)
+            {
+                totalTimer.Stop();
+                profile.TotalMs = totalTimer.Elapsed.TotalMilliseconds;
+                profile.WasCanceled = true;
+                profile.Success = false;
+                profile.ErrorMessage = "InflateDeflate cache warmup was canceled.";
+                return profile;
+            }
+            finally
+            {
+                _operationGate.Release();
+            }
         }
 
         private MethodExecutionResult ExecuteInternal(InflateDeflateMethodInput input, out InflateDeflateQuickProfile profile)
@@ -84,48 +162,56 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             stageTimer.Stop();
             profile.PrepareTransformsMs = stageTimer.Elapsed.TotalMilliseconds;
 
-            var executionContext = GetOrCreateExecutionContext(input);
-
-            UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase Deform.");
-            stageTimer.Restart();
-            executionContext.MeshEditor.Deform(
-                sequence,
-                centers,
-                input.SelectedCenterIndices,
-                transformations,
-                input.FrameIndex,
-                out var deformedSequence,
-                out var deformedCenters,
-                out var deformProfile);
-            stageTimer.Stop();
-            profile.DeformMs = stageTimer.Elapsed.TotalMilliseconds;
-            profile.DeformCloneInputsMs = deformProfile.CloneInputsMs;
-            profile.DeformResolveNewPositionsMs = deformProfile.ResolveNewPositionsMs;
-            profile.DeformAffinityMs = deformProfile.AffinityMs;
-            profile.DeformCenterDeformationMs = deformProfile.CenterDeformationMs;
-            profile.DeformEditedSurfaceMs = deformProfile.EditedSurfaceMs;
-            profile.DeformPropagateTransformsMs = deformProfile.PropagateTransformsMs;
-            profile.DeformPropagateSurfaceMs = deformProfile.PropagateSurfaceMs;
-            profile.DeformPropagateTotalMs = deformProfile.PropagateTotalMs;
-            profile.DeformPropagatedSurfaceFrames = deformProfile.PropagatedSurfaceFrames;
-            profile.DeformSurfaceEditedComputeWeightsMs = deformProfile.SurfaceEditedComputeWeightsMs;
-            profile.DeformSurfaceEditedBlendVerticesMs = deformProfile.SurfaceEditedBlendVerticesMs;
-            profile.DeformSurfaceEditedResampleMs = deformProfile.SurfaceEditedResampleMs;
-            profile.DeformSurfaceEditedUsedCachedWeights = deformProfile.SurfaceEditedUsedCachedWeights;
-            profile.DeformSurfacePropagatedComputeWeightsMs = deformProfile.SurfacePropagatedComputeWeightsMs;
-            profile.DeformSurfacePropagatedBlendVerticesMs = deformProfile.SurfacePropagatedBlendVerticesMs;
-            profile.DeformSurfacePropagatedResampleMs = deformProfile.SurfacePropagatedResampleMs;
-            profile.DeformSurfacePropagatedCacheMisses = deformProfile.SurfacePropagatedCacheMisses;
-
-            UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase WriteBack.");
-            stageTimer.Restart();
-            for (var i = 0; i < input.Frames.Length; i++)
+            _operationGate.Wait();
+            try
             {
-                input.Frames[i].centers = deformedCenters[i];
-                input.Frames[i].vertices = deformedSequence.Meshes[i].Vertices;
+                var executionContext = GetOrCreateExecutionContext(input);
+
+                UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase Deform.");
+                stageTimer.Restart();
+                executionContext.MeshEditor.Deform(
+                    sequence,
+                    centers,
+                    input.SelectedCenterIndices,
+                    transformations,
+                    input.FrameIndex,
+                    out var deformedSequence,
+                    out var deformedCenters,
+                    out var deformProfile);
+                stageTimer.Stop();
+                profile.DeformMs = stageTimer.Elapsed.TotalMilliseconds;
+                profile.DeformCloneInputsMs = deformProfile.CloneInputsMs;
+                profile.DeformResolveNewPositionsMs = deformProfile.ResolveNewPositionsMs;
+                profile.DeformAffinityMs = deformProfile.AffinityMs;
+                profile.DeformCenterDeformationMs = deformProfile.CenterDeformationMs;
+                profile.DeformEditedSurfaceMs = deformProfile.EditedSurfaceMs;
+                profile.DeformPropagateTransformsMs = deformProfile.PropagateTransformsMs;
+                profile.DeformPropagateSurfaceMs = deformProfile.PropagateSurfaceMs;
+                profile.DeformPropagateTotalMs = deformProfile.PropagateTotalMs;
+                profile.DeformPropagatedSurfaceFrames = deformProfile.PropagatedSurfaceFrames;
+                profile.DeformSurfaceEditedComputeWeightsMs = deformProfile.SurfaceEditedComputeWeightsMs;
+                profile.DeformSurfaceEditedBlendVerticesMs = deformProfile.SurfaceEditedBlendVerticesMs;
+                profile.DeformSurfaceEditedResampleMs = deformProfile.SurfaceEditedResampleMs;
+                profile.DeformSurfaceEditedUsedCachedWeights = deformProfile.SurfaceEditedUsedCachedWeights;
+                profile.DeformSurfacePropagatedComputeWeightsMs = deformProfile.SurfacePropagatedComputeWeightsMs;
+                profile.DeformSurfacePropagatedBlendVerticesMs = deformProfile.SurfacePropagatedBlendVerticesMs;
+                profile.DeformSurfacePropagatedResampleMs = deformProfile.SurfacePropagatedResampleMs;
+                profile.DeformSurfacePropagatedCacheMisses = deformProfile.SurfacePropagatedCacheMisses;
+
+                UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase WriteBack.");
+                stageTimer.Restart();
+                for (var i = 0; i < input.Frames.Length; i++)
+                {
+                    input.Frames[i].centers = deformedCenters[i];
+                    input.Frames[i].vertices = deformedSequence.Meshes[i].Vertices;
+                }
+                stageTimer.Stop();
+                profile.WriteBackMs = stageTimer.Elapsed.TotalMilliseconds;
             }
-            stageTimer.Stop();
-            profile.WriteBackMs = stageTimer.Elapsed.TotalMilliseconds;
+            finally
+            {
+                _operationGate.Release();
+            }
 
             profile.AdapterTotalMs = profile.PrepareSequenceMs
                 + profile.PrepareTransformsMs
@@ -186,17 +272,22 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                     return _cachedExecutionContext;
 
                 var affinityCalculation = new DistanceDirectionAffinityCalculation();
+                var surfaceDeformation = new CustomSurfaceDeformation(affinityCalculation);
+                var transformPropagation = new KabschTransformPropagation(affinityCalculation);
                 var meshEditor = new MeshEditor(
                     affinityCalculation,
                     new AffinityCenterDeformation(affinityCalculation),
                     null,
-                    new CustomSurfaceDeformation(affinityCalculation),
-                    new KabschTransformPropagation(affinityCalculation));
+                    surfaceDeformation,
+                    transformPropagation);
 
                 _cachedExecutionContext = new CachedExecutionContext
                 {
                     CacheKey = cacheKey,
-                    MeshEditor = meshEditor
+                    MeshEditor = meshEditor,
+                    AffinityCalculation = affinityCalculation,
+                    SurfaceDeformation = surfaceDeformation,
+                    TransformPropagation = transformPropagation
                 };
 
                 return _cachedExecutionContext;
@@ -233,6 +324,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         {
             public string CacheKey { get; set; }
             public MeshEditor MeshEditor { get; set; }
+            public DistanceDirectionAffinityCalculation AffinityCalculation { get; set; }
+            public CustomSurfaceDeformation SurfaceDeformation { get; set; }
+            public KabschTransformPropagation TransformPropagation { get; set; }
         }
     }
 }

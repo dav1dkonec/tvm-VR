@@ -1,8 +1,10 @@
 using KdTree;
 using KdTree.Math;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 using TVMEditor.Editing.AffinityCalculation;
 using TVMEditor.Structures;
@@ -20,8 +22,7 @@ namespace TVMEditor.Editing.SurfaceDeformation
         public IAffinityCalculation AffinityCalculation { get; set; }
         public List<CustomSurfaceDeformationCallProfile> CallProfiles { get; } = new List<CustomSurfaceDeformationCallProfile>();
 
-        private Dictionary<int, List<int[]>> Centers = new Dictionary<int, List<int[]>>();
-        private Dictionary<int, List<float[]>> Weights = new Dictionary<int, List<float[]>>();
+        private readonly ConcurrentDictionary<int, FrameWeightCache> frameWeightCaches = new ConcurrentDictionary<int, FrameWeightCache>();
 
         public CustomSurfaceDeformation(IAffinityCalculation affinityCalculation)
         {
@@ -36,25 +37,51 @@ namespace TVMEditor.Editing.SurfaceDeformation
             }
         }
 
+        public void PrecomputeAllFrames(Vector3[][] verticesPerFrame, Vector3[][] centersPerFrame, int maxDegreeOfParallelism, CancellationToken cancellationToken)
+        {
+            if (verticesPerFrame == null || centersPerFrame == null)
+                return;
+
+            var frameCount = System.Math.Min(verticesPerFrame.Length, centersPerFrame.Length);
+            if (frameCount == 0)
+                return;
+
+            var frameIndices = Enumerable.Range(0, frameCount);
+            var parallelOptions = new ParallelOptions
+            {
+                CancellationToken = cancellationToken,
+                MaxDegreeOfParallelism = System.Math.Max(1, maxDegreeOfParallelism)
+            };
+
+            Parallel.ForEach(frameIndices, parallelOptions, frameIndex =>
+            {
+                if (frameWeightCaches.ContainsKey(frameIndex))
+                    return;
+
+                ComputeWeights(verticesPerFrame[frameIndex], centersPerFrame[frameIndex], frameIndex, parallelizeVertices: false, cancellationToken);
+            });
+        }
+
         public TriangleMesh DeformSurface(Vector3[] vertices, TVMEditor.Structures.Face[] faces, Vector3[] oldCenters, Vector3[] newCenters, int frameIndex, DualQuaternion[] transformations)
         {
             var profile = new CustomSurfaceDeformationCallProfile
             {
                 FrameIndex = frameIndex,
-                UsedCachedWeights = Centers.ContainsKey(frameIndex)
+                UsedCachedWeights = frameWeightCaches.ContainsKey(frameIndex)
             };
             var totalTimer = Stopwatch.StartNew();
             var stageTimer = Stopwatch.StartNew();
 
             if (!profile.UsedCachedWeights)
             {
-                ComputeWeights(vertices, oldCenters, frameIndex);
+                ComputeWeights(vertices, oldCenters, frameIndex, parallelizeVertices: true, CancellationToken.None);
             }
             stageTimer.Stop();
             profile.ComputeWeightsMs = stageTimer.Elapsed.TotalMilliseconds;
 
-            var centersArray = Centers[frameIndex];
-            var weightsArray = Weights[frameIndex];
+            var frameCache = frameWeightCaches[frameIndex];
+            var centersArray = frameCache.Centers;
+            var weightsArray = frameCache.Weights;
             var verticesList = new List<Vector3>();
             var vertexTransformations = new Dictionary<int, DualQuaternion>();
 
@@ -151,8 +178,8 @@ namespace TVMEditor.Editing.SurfaceDeformation
                         var affinity = AffinityCalculation.GetCentersAffinity();
                         var affinityThreshold = 0.1;
                         var (vertexIndices, vertexWeights) = ComputeCustomWeightsForVertex(kdTree, vertices, oldMid, affinity, affinityThreshold, oldCenters);
-                        Centers[frameIndex].Add(vertexIndices);
-                        Weights[frameIndex].Add(vertexWeights);
+                        frameCache.Centers.Add(vertexIndices);
+                        frameCache.Weights.Add(vertexWeights);
                         var newMid = TransformPoint(oldMid, midPointIndex, frameIndex, transformations, out var transform);
                         vertexTransformations.Add(midPointIndex, transform);
                         edgesMidPoints[edgeToSplit.Unoriented()] = midPointIndex;
@@ -188,11 +215,12 @@ namespace TVMEditor.Editing.SurfaceDeformation
 
         public DualQuaternion[] ComputeDeformations(Vector3[] vertices, TVMEditor.Structures.Face[] faces, Vector3[] oldCenters, Vector3[] newCenters, int frameIndex, DualQuaternion[] transformations)
         {
-            if (!Centers.ContainsKey(frameIndex))
-                ComputeWeights(vertices, oldCenters, frameIndex);
+            if (!frameWeightCaches.ContainsKey(frameIndex))
+                ComputeWeights(vertices, oldCenters, frameIndex, parallelizeVertices: true, CancellationToken.None);
 
-            var centersArray = Centers[frameIndex];
-            var weightsArray = Weights[frameIndex];
+            var frameCache = frameWeightCaches[frameIndex];
+            var centersArray = frameCache.Centers;
+            var weightsArray = frameCache.Weights;
             var verticesList = new List<Vector3>();
             var vertexTransformations = new Dictionary<int, DualQuaternion>();
 
@@ -230,11 +258,12 @@ namespace TVMEditor.Editing.SurfaceDeformation
 
         private Vector3 TransformPoint(Vector3 point, int pointIndex, int frameIndex, DualQuaternion[] transformations, out DualQuaternion transform)
         {
+            var frameCache = frameWeightCaches[frameIndex];
             var weightedTransformation = DualQuaternion.Zero();
-            for (var c = 0; c < Centers[frameIndex][pointIndex].Length; c++)
+            for (var c = 0; c < frameCache.Centers[pointIndex].Length; c++)
             {
-                var centerIndex = Centers[frameIndex][pointIndex][c];
-                var weight = Weights[frameIndex][pointIndex][c];
+                var centerIndex = frameCache.Centers[pointIndex][c];
+                var weight = frameCache.Weights[pointIndex][c];
                 weightedTransformation += weight * transformations[centerIndex];
             }
 
@@ -242,8 +271,11 @@ namespace TVMEditor.Editing.SurfaceDeformation
             return transform.Transform(point);
         }
 
-        private void ComputeWeights(Vector3[] vertices, Vector3[] oldCenters, int frameIndex)
+        private FrameWeightCache ComputeWeights(Vector3[] vertices, Vector3[] oldCenters, int frameIndex, bool parallelizeVertices, CancellationToken cancellationToken)
         {
+            if (frameWeightCaches.TryGetValue(frameIndex, out var existingCache))
+                return existingCache;
+
             var indices = new int[vertices.Length][];
             var weights = new float[vertices.Length][];
             var kdTree = new KdTree<float, int>(3, new FloatMath());
@@ -256,18 +288,34 @@ namespace TVMEditor.Editing.SurfaceDeformation
             var affinity = AffinityCalculation.GetCentersAffinity();
             var affinityThreshold = 0.1;
 
-            Parallel.For(0, vertices.Length, v =>
+            if (parallelizeVertices)
             {
-                var (vertexIndices, vertexWeights) = ComputeCustomWeightsForVertex(kdTree, vertices, vertices[v], affinity, affinityThreshold, oldCenters);
-                indices[v] = vertexIndices;
-                weights[v] = vertexWeights;
-            });
+                var parallelOptions = new ParallelOptions
+                {
+                    CancellationToken = cancellationToken
+                };
 
-            lock (this)
-            {
-                Centers[frameIndex] = indices.ToList();
-                Weights[frameIndex] = weights.ToList();
+                Parallel.For(0, vertices.Length, parallelOptions, v =>
+                {
+                    var (vertexIndices, vertexWeights) = ComputeCustomWeightsForVertex(kdTree, vertices, vertices[v], affinity, affinityThreshold, oldCenters);
+                    indices[v] = vertexIndices;
+                    weights[v] = vertexWeights;
+                });
             }
+            else
+            {
+                for (var v = 0; v < vertices.Length; v++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var (vertexIndices, vertexWeights) = ComputeCustomWeightsForVertex(kdTree, vertices, vertices[v], affinity, affinityThreshold, oldCenters);
+                    indices[v] = vertexIndices;
+                    weights[v] = vertexWeights;
+                }
+            }
+
+            var cache = new FrameWeightCache(indices.ToList(), weights.ToList());
+            frameWeightCaches[frameIndex] = cache;
+            return cache;
         }
 
         private (int[], float[]) ComputeCustomWeightsForVertex(KdTree<float, int> centersKdTree, Vector3[] vertices, Vector3 vertex, float[,] affinity, double affinityThreshold, Vector3[] oldCenters)
@@ -347,6 +395,18 @@ namespace TVMEditor.Editing.SurfaceDeformation
             {
                 CallProfiles.Add(profile);
             }
+        }
+
+        private sealed class FrameWeightCache
+        {
+            public FrameWeightCache(List<int[]> centers, List<float[]> weights)
+            {
+                Centers = centers;
+                Weights = weights;
+            }
+
+            public List<int[]> Centers { get; }
+            public List<float[]> Weights { get; }
         }
     }
 }

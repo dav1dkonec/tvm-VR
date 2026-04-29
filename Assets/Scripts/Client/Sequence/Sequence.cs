@@ -456,6 +456,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         }
 
         var pl = playing;
+        var beforeVertices = CloneVertices(frames[currentFrame]?.vertices);
         Pause();
         busyStateController.Enter(leftHand, rightHand, waitCanvas);
 
@@ -481,11 +482,59 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             return;
         }
 
+        LogSurfaceDelta(beforeVertices, frames[currentFrame]?.vertices);
+
         centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
         RedrawMesh();
 
         busyStateController.Exit(leftHand, rightHand, waitCanvas);
         if (pl) Play();
+    }
+
+    private static System.Numerics.Vector3[] CloneVertices(System.Numerics.Vector3[] source)
+    {
+        if (source == null)
+            return null;
+
+        var clone = new System.Numerics.Vector3[source.Length];
+        Array.Copy(source, clone, source.Length);
+        return clone;
+    }
+
+    private static void LogSurfaceDelta(System.Numerics.Vector3[] before, System.Numerics.Vector3[] after)
+    {
+        if (before == null || after == null)
+        {
+            Debug.Log("Sequence: Deform diagnostics skipped because vertex data are missing.");
+            return;
+        }
+
+        if (before.Length != after.Length)
+        {
+            Debug.Log($"Sequence: Deform changed vertex count from {before.Length} to {after.Length}.");
+            return;
+        }
+
+        float maxDistance = 0f;
+        double totalDistance = 0d;
+        int changedCount = 0;
+
+        for (var i = 0; i < before.Length; i++)
+        {
+            var distance = System.Numerics.Vector3.Distance(before[i], after[i]);
+            if (distance > 1e-6f)
+                changedCount++;
+
+            if (distance > maxDistance)
+                maxDistance = distance;
+
+            totalDistance += distance;
+        }
+
+        var averageDistance = before.Length > 0 ? totalDistance / before.Length : 0d;
+        Debug.Log(
+            $"Sequence: Deform diagnostics | changedVertices={changedCount}/{before.Length}, " +
+            $"maxShift={maxDistance:F6}, avgShift={averageDistance:F6}");
     }
 
     public async void CommitInflateDeflate(UnityEngine.Vector3 referencePoint)

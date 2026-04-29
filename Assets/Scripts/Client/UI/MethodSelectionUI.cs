@@ -1,6 +1,7 @@
 using TMPro;
 using TvmVr2.Api.Enums;
 using TvmVr2.Client.Centers;
+using TvmVr2.Client.Sequence;
 using UnityEngine;
 using UnityEngine.UI;
 

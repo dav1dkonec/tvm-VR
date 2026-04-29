@@ -410,6 +410,24 @@ public class PinnedHandMenuController : MonoBehaviour
         }
     }
 
+    public void SuspendForBusy()
+    {
+        if (state == MenuState.HandAttached || bindings.menuRoot == null)
+            return;
+
+        bindings.menuRoot.SetActive(false);
+    }
+
+    public void ResumeAfterBusy()
+    {
+        if (state == MenuState.HandAttached || bindings.menuRoot == null)
+            return;
+
+        bindings.menuRoot.SetActive(true);
+        UpdatePinnedTransform();
+        EnsurePinnedMenuVisible();
+    }
+
     private Vector3 GetHorizontalDirection(Vector3 direction)
     {
         direction.y = 0f;

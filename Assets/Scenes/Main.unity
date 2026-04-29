@@ -50157,7 +50157,7 @@ MonoBehaviour:
   doubleClickWindow: 0.6
   dragStartHoldTime: 0.15
   orbitRadius: 0.55
-  dragDegreesPerMeter: 80
+  dragDegreesPerMeter: 160
   dragVerticalSensitivity: 1
   minHeightOffset: -0.33
   maxHeightOffset: 0.15

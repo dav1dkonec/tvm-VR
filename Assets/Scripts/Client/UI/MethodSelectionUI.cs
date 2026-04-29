@@ -1,7 +1,6 @@
 using TMPro;
 using TvmVr2.Api.Enums;
 using TvmVr2.Client.Centers;
-using TvmVr2.Client.Sequence;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -14,12 +13,12 @@ public class MethodSelectionUI : MonoBehaviour
     private const string InflateOptionName = "MethodInflateDeflateButton";
     private const string LoopOptionName = "MethodLoopSequenceButton";
     private static readonly Color SelectedMethodTextColor = new(0.49019608f, 1f, 0.8784314f, 1f);
+    private static readonly Color DisabledMethodTextColor = new(0.42f, 0.42f, 0.42f, 1f);
     private static readonly Color TransparentColor = new(0f, 0f, 0f, 0f);
 
     private EditingMethodRuntimeSettings target;
     private InflateDeflateUI inflateDeflateUi;
     private CenterPool centerPool;
-    private global::Sequence sequence;
     private TMP_Text methodLabelText;
     private Button basicTranslateButton;
     private Button inflateDeflateButton;
@@ -36,7 +35,6 @@ public class MethodSelectionUI : MonoBehaviour
         target = FindFirstObjectByType<EditingMethodRuntimeSettings>();
         inflateDeflateUi = GetComponent<InflateDeflateUI>();
         centerPool = FindFirstObjectByType<CenterPool>();
-        sequence = FindFirstObjectByType<global::Sequence>();
 
         var root = ResolveUiRoot();
         if (root == null)
@@ -83,16 +81,6 @@ public class MethodSelectionUI : MonoBehaviour
         target.SetInflateMode(0);
         dropdownVisible = false;
         ApplyMethodVisibility();
-    }
-
-    public void SelectLoopSequence()
-    {
-        if (inflateDeflateUi != null && !inflateDeflateUi.CanChangeMethod())
-            return;
-
-        dropdownVisible = false;
-        ApplyMethodVisibility();
-        sequence?.ShowTransientWaitMessage("not implemented yet.");
     }
 
     private void ApplyMethodVisibility()
@@ -170,10 +158,7 @@ public class MethodSelectionUI : MonoBehaviour
             inflateDeflateButton.onClick.AddListener(SelectInflateDeflate);
 
         if (loopSequenceButton != null)
-        {
-            loopSequenceButton.interactable = true;
-            loopSequenceButton.onClick.AddListener(SelectLoopSequence);
-        }
+            loopSequenceButton.interactable = false;
 
         if (dropdownRoot == null)
             return;
@@ -206,7 +191,9 @@ public class MethodSelectionUI : MonoBehaviour
         if (label != null)
         {
             label.fontStyle = FontStyles.Normal;
-            label.color = selected ? SelectedMethodTextColor : Color.white;
+            label.color = !button.interactable
+                ? DisabledMethodTextColor
+                : selected ? SelectedMethodTextColor : Color.white;
         }
     }
 

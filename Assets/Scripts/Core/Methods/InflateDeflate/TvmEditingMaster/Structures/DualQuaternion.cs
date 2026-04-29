@@ -7,6 +7,7 @@ namespace TVMEditor.Structures
         public Quaternion Real;
         public Quaternion Dual;
 
+
         public DualQuaternion(Quaternion real, Quaternion dual)
         {
             Real = real;

@@ -74,14 +74,17 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
             var indices = new List<int>();
             var translations = new List<Vector3>();
-            var seedCount = ResolveSeedCount(seedCandidates.Count);
+            var selectedIndices = new HashSet<int>();
+            var activeSeedCount = ResolveActiveSeedCount(seedCandidates.Count);
+            var anchorSeedCount = ResolveAnchorSeedCount(candidates.Count, activeSeedCount);
             var baseDirection = mode == InflateDeflateMode.Inflate ? surfaceNormal : -surfaceNormal;
-            var patchRadius = System.MathF.Max(radius * 0.45f, 1e-4f);
+            var activePatchRadius = System.MathF.Max(radius * 0.3f, 1e-4f);
+            var anchorPatchRadius = System.MathF.Max(radius * 0.75f, activePatchRadius);
 
-            for (var i = 0; i < seedCandidates.Count && indices.Count < seedCount; i++)
+            for (var i = 0; i < seedCandidates.Count && indices.Count < activeSeedCount; i++)
             {
                 var candidate = seedCandidates[i];
-                var tangentialFalloff = 1f - (candidate.TangentialDistance / patchRadius);
+                var tangentialFalloff = 1f - (candidate.TangentialDistance / activePatchRadius);
                 if (tangentialFalloff <= 0f)
                     continue;
 
@@ -93,6 +96,22 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
                 indices.Add(candidate.Index);
                 translations.Add(translation);
+                selectedIndices.Add(candidate.Index);
+            }
+
+            candidates.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
+            for (var i = 0; i < candidates.Count && selectedIndices.Count < activeSeedCount + anchorSeedCount; i++)
+            {
+                var candidate = candidates[i];
+                if (selectedIndices.Contains(candidate.Index))
+                    continue;
+
+                if (candidate.Distance <= activePatchRadius || candidate.Distance > anchorPatchRadius)
+                    continue;
+
+                indices.Add(candidate.Index);
+                translations.Add(Vector3.Zero);
+                selectedIndices.Add(candidate.Index);
             }
 
             return new InflateDeflateResolvedEffectors
@@ -198,7 +217,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             }
         }
 
-        private static int ResolveSeedCount(int candidateCount)
+        private static int ResolveActiveSeedCount(int candidateCount)
         {
             if (candidateCount <= 6)
                 return System.Math.Min(4, candidateCount);
@@ -210,6 +229,15 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 return 10;
 
             return System.Math.Min(16, candidateCount);
+        }
+
+        private static int ResolveAnchorSeedCount(int candidateCount, int activeSeedCount)
+        {
+            if (candidateCount <= activeSeedCount)
+                return 0;
+
+            var desiredAnchors = System.Math.Max(activeSeedCount, candidateCount / 2);
+            return System.Math.Min(desiredAnchors, candidateCount - activeSeedCount);
         }
 
         private static bool TryEstimateSurfaceNormal(

@@ -58,16 +58,12 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             if (!TryEstimateSurfaceNormal(frame.centers, candidates, referencePoint, out var surfaceNormal))
                 return new InflateDeflateResolvedEffectors();
 
-            var seedCandidates = CollectSeedCandidates(candidates, referencePoint, surfaceNormal, radius);
-            if (seedCandidates.Count == 0)
-                return new InflateDeflateResolvedEffectors();
-
-            ScoreCandidates(seedCandidates, radius);
-            seedCandidates.Sort(static (a, b) =>
+            ScoreCandidates(candidates, radius);
+            candidates.Sort(static (a, b) =>
             {
-                var tangentialComparison = a.TangentialDistance.CompareTo(b.TangentialDistance);
-                if (tangentialComparison != 0)
-                    return tangentialComparison;
+                var distanceComparison = a.Distance.CompareTo(b.Distance);
+                if (distanceComparison != 0)
+                    return distanceComparison;
 
                 return b.Score.CompareTo(a.Score);
             });
@@ -75,21 +71,22 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             var indices = new List<int>();
             var translations = new List<Vector3>();
             var selectedIndices = new HashSet<int>();
-            var activeSeedCount = ResolveActiveSeedCount(seedCandidates.Count);
+            var activeSeedCount = ResolveActiveSeedCount(candidates.Count);
             var anchorSeedCount = ResolveAnchorSeedCount(candidates.Count, activeSeedCount);
             var baseDirection = mode == InflateDeflateMode.Inflate ? surfaceNormal : -surfaceNormal;
-            var activePatchRadius = System.MathF.Max(radius * 0.3f, 1e-4f);
-            var anchorPatchRadius = System.MathF.Max(radius * 0.75f, activePatchRadius);
+            var activePatchRadius = System.MathF.Max(radius * 0.4f, 1e-4f);
+            var anchorPatchRadius = System.MathF.Max(radius * 0.85f, activePatchRadius);
 
-            for (var i = 0; i < seedCandidates.Count && indices.Count < activeSeedCount; i++)
+            for (var i = 0; i < candidates.Count && indices.Count < activeSeedCount; i++)
             {
-                var candidate = seedCandidates[i];
-                var tangentialFalloff = 1f - (candidate.TangentialDistance / activePatchRadius);
-                if (tangentialFalloff <= 0f)
+                var candidate = candidates[i];
+                if (candidate.Distance > activePatchRadius)
                     continue;
 
-                var depthFactor = System.MathF.Min(candidate.SignedDepth / System.MathF.Max(radius, 1e-4f), 1f);
-                var translationScale = tangentialFalloff * (0.35f + 0.65f * depthFactor);
+                var translationScale = ComputeDomeFalloff(candidate.Distance, activePatchRadius);
+                if (translationScale <= 0f)
+                    continue;
+
                 var translation = baseDirection * (strength * translationScale);
                 if (translation.LengthSquared() < 1e-8f)
                     continue;
@@ -141,55 +138,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return candidates;
         }
 
-        private static List<CandidateCenter> CollectSeedCandidates(
-            List<CandidateCenter> candidates,
-            Vector3 referencePoint,
-            Vector3 surfaceNormal,
-            float radius)
-        {
-            var seedCandidates = new List<CandidateCenter>(candidates.Count);
-            var patchRadius = System.MathF.Max(radius * 0.45f, 1e-4f);
-            var minDepth = System.MathF.Max(radius * 0.04f, 1e-5f);
-
-            for (var i = 0; i < candidates.Count; i++)
-            {
-                var offset = candidates[i].Position - referencePoint;
-                var signedDepth = Vector3.Dot(offset, surfaceNormal);
-                if (signedDepth <= minDepth)
-                    continue;
-
-                var tangential = offset - surfaceNormal * signedDepth;
-                var tangentialDistance = tangential.Length();
-                if (tangentialDistance > patchRadius)
-                    continue;
-
-                var candidate = candidates[i];
-                candidate.SignedDepth = signedDepth;
-                candidate.TangentialDistance = tangentialDistance;
-                seedCandidates.Add(candidate);
-            }
-
-            if (seedCandidates.Count > 0)
-                return seedCandidates;
-
-            // Fallback for very small radii: keep at least outward-facing candidates.
-            for (var i = 0; i < candidates.Count; i++)
-            {
-                var offset = candidates[i].Position - referencePoint;
-                var signedDepth = Vector3.Dot(offset, surfaceNormal);
-                if (signedDepth <= 1e-5f)
-                    continue;
-
-                var tangential = offset - surfaceNormal * signedDepth;
-                var candidate = candidates[i];
-                candidate.SignedDepth = signedDepth;
-                candidate.TangentialDistance = tangential.Length();
-                seedCandidates.Add(candidate);
-            }
-
-            return seedCandidates;
-        }
-
         private static void ScoreCandidates(List<CandidateCenter> candidates, float radius)
         {
             var densityRadius = System.MathF.Max(radius * 0.25f, 1e-4f);
@@ -209,12 +157,21 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                     density += 1f - (neighborDistance / densityRadius);
                 }
 
-                var tangentialPriority = 1f - (candidates[i].TangentialDistance / System.MathF.Max(radius * 0.45f, 1e-4f));
-                var depthPriority = System.MathF.Min(candidates[i].SignedDepth / System.MathF.Max(radius, 1e-4f), 1f);
+                var distancePriority = 1f - (candidates[i].Distance / System.MathF.Max(radius, 1e-4f));
                 var candidate = candidates[i];
-                candidate.Score = tangentialPriority * 6f + depthPriority * 3f + density;
+                candidate.Score = distancePriority * 8f + density;
                 candidates[i] = candidate;
             }
+        }
+
+        private static float ComputeDomeFalloff(float distance, float activePatchRadius)
+        {
+            if (activePatchRadius <= 1e-8f)
+                return 0f;
+
+            var normalizedDistance = System.MathF.Min(distance / activePatchRadius, 1f);
+            var inverse = 1f - normalizedDistance;
+            return inverse * inverse;
         }
 
         private static int ResolveActiveSeedCount(int candidateCount)
@@ -412,8 +369,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             public Vector3 Position;
             public float Distance;
             public float Score;
-            public float SignedDepth;
-            public float TangentialDistance;
         }
     }
 }

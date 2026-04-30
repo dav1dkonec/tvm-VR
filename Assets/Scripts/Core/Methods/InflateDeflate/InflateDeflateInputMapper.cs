@@ -56,7 +56,11 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 return new InflateDeflateResolvedEffectors();
 
             ScoreCandidates(candidates, radius);
-            candidates.Sort(static (a, b) =>
+            var seedCandidates = CollectSeedCandidates(candidates, radius);
+            if (seedCandidates.Count == 0)
+                return new InflateDeflateResolvedEffectors();
+
+            seedCandidates.Sort(static (a, b) =>
             {
                 var scoreComparison = b.Score.CompareTo(a.Score);
                 if (scoreComparison != 0)
@@ -67,12 +71,12 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
             var indices = new List<int>();
             var translations = new List<Vector3>();
-            var seedCount = ResolveSeedCount(candidates.Count);
+            var seedCount = ResolveSeedCount(seedCandidates.Count);
 
-            for (var i = 0; i < candidates.Count && indices.Count < seedCount; i++)
+            for (var i = 0; i < seedCandidates.Count && indices.Count < seedCount; i++)
             {
-                var candidate = candidates[i];
-                if (!TryResolveSeedDirection(candidate, referencePoint, candidates, out var direction))
+                var candidate = seedCandidates[i];
+                if (!TryResolveSeedDirection(candidate, referencePoint, out var direction))
                     continue;
 
                 if (mode == InflateDeflateMode.Deflate)
@@ -114,6 +118,32 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return candidates;
         }
 
+        private static List<CandidateCenter> CollectSeedCandidates(List<CandidateCenter> candidates, float radius)
+        {
+            var seedCandidates = new List<CandidateCenter>(candidates.Count);
+            var centerExclusionRadius = System.MathF.Max(radius * 0.12f, 1e-4f);
+
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                if (candidates[i].Distance <= centerExclusionRadius)
+                    continue;
+
+                seedCandidates.Add(candidates[i]);
+            }
+
+            if (seedCandidates.Count > 0)
+                return seedCandidates;
+
+            // Fallback for very small radii: keep at least non-zero-distance candidates.
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                if (candidates[i].Distance > 1e-5f)
+                    seedCandidates.Add(candidates[i]);
+            }
+
+            return seedCandidates;
+        }
+
         private static void ScoreCandidates(List<CandidateCenter> candidates, float radius)
         {
             var densityRadius = System.MathF.Max(radius * 0.45f, 1e-4f);
@@ -142,19 +172,18 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
         private static int ResolveSeedCount(int candidateCount)
         {
-            if (candidateCount <= 6)
-                return 1;
+            if (candidateCount <= 4)
+                return System.Math.Min(2, candidateCount);
 
-            if (candidateCount <= 16)
-                return 2;
+            if (candidateCount <= 12)
+                return 3;
 
-            return 3;
+            return 4;
         }
 
         private static bool TryResolveSeedDirection(
             CandidateCenter candidate,
             Vector3 referencePoint,
-            List<CandidateCenter> candidates,
             out Vector3 direction)
         {
             var toReference = referencePoint - candidate.Position;
@@ -162,28 +191,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             {
                 direction = Vector3.Normalize(toReference);
                 return true;
-            }
-
-            var centroid = Vector3.Zero;
-            var count = 0;
-            for (var i = 0; i < candidates.Count; i++)
-            {
-                if (candidates[i].Index == candidate.Index)
-                    continue;
-
-                centroid += candidates[i].Position;
-                count++;
-            }
-
-            if (count > 0)
-            {
-                centroid /= count;
-                var outward = candidate.Position - centroid;
-                if (outward.LengthSquared() >= 1e-8f)
-                {
-                    direction = Vector3.Normalize(outward);
-                    return true;
-                }
             }
 
             direction = Vector3.Zero;

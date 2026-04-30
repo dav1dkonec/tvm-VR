@@ -152,6 +152,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
         private static float ComputeInflateInfluence(float distance, float activePatchRadius, float outerRingRadius)
         {
+            const float inflateOuterRingStartInfluence = 0.12f;
+            const float inflateOuterRingEndInfluence = 0.02f;
+
             if (activePatchRadius <= 1e-8f || outerRingRadius <= 1e-8f)
                 return 0f;
 
@@ -164,15 +167,18 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
             var outerSpan = outerRingRadius - activePatchRadius;
             if (outerSpan <= 1e-8f)
-                return 0.1f;
+                return inflateOuterRingStartInfluence;
 
             var ringDistance = System.MathF.Min((distance - activePatchRadius) / outerSpan, 1f);
             // Outer ring still participates a little to keep the transition smooth.
-            return 0.12f * (1f - ringDistance) + 0.02f * ringDistance;
+            return inflateOuterRingStartInfluence * (1f - ringDistance) + inflateOuterRingEndInfluence * ringDistance;
         }
 
         private static float ComputeDeflateInfluence(float distance, float activePatchRadius, float outerRingRadius)
         {
+            const float deflateOuterRingStartInfluence = 0.18f;
+            const float deflateOuterRingEndInfluence = 0.06f;
+
             if (activePatchRadius <= 1e-8f || outerRingRadius <= 1e-8f)
                 return 0f;
 
@@ -186,11 +192,11 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
             var outerSpan = outerRingRadius - activePatchRadius;
             if (outerSpan <= 1e-8f)
-                return 0.18f;
+                return deflateOuterRingStartInfluence;
 
             var ringDistance = System.MathF.Min((distance - activePatchRadius) / outerSpan, 1f);
             // Broader and stronger transition ring for deflate to avoid a gap behind the border.
-            return 0.18f * (1f - ringDistance) + 0.06f * ringDistance;
+            return deflateOuterRingStartInfluence * (1f - ringDistance) + deflateOuterRingEndInfluence * ringDistance;
         }
 
         private struct CandidateCenter

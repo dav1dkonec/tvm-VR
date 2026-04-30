@@ -19,6 +19,7 @@ namespace TvmVr2.Client.DebugTools
         [SerializeField] private float strength = 0.10f;
         [SerializeField] private InflateDeflateMode mode = InflateDeflateMode.Inflate;
         [SerializeField] private int iterations = 1;
+        [SerializeField] private bool useStreamingAssetsCache = true;
 
         [ContextMenu("Run InflateDeflate Quick Profile")]
         public void RunQuickProfile()
@@ -26,6 +27,7 @@ namespace TvmVr2.Client.DebugTools
             if (!EnsureSequence())
                 return;
 
+            sequence.SetInflateDeflateStreamingCacheEnabled(useStreamingAssetsCache);
             var targetFrameIndex = useCurrentFrame ? sequence.currentFrame : frameIndex;
             sequence.RunInflateDeflateQuickProfile(
                 targetFrameIndex,
@@ -39,23 +41,22 @@ namespace TvmVr2.Client.DebugTools
         [ContextMenu("Load Short Samba")]
         public void LoadShortSamba()
         {
+            LoadSequenceByName("short_samba");
+        }
+
+        [ContextMenu("Export InflateDeflate Cache")]
+        public void ExportInflateDeflateCache()
+        {
             if (!EnsureSequence())
                 return;
 
             if (!UnityEngine.Application.isPlaying)
             {
-                Debug.LogError("InflateDeflateQuickProfiler: short_samba can be loaded only in Play Mode.");
+                Debug.LogError("InflateDeflateQuickProfiler: cache export is available only in Play Mode.");
                 return;
             }
 
-            if (!TryResolveShortSamba(out var sequencePath, out var sequenceName))
-            {
-                Debug.LogError("InflateDeflateQuickProfiler: short_samba was not found in the configured sequence catalog.");
-                return;
-            }
-
-            Debug.Log($"InflateDeflateQuickProfiler: loading {sequenceName} from {sequencePath}");
-            sequence.Load(sequencePath, sequenceName);
+            sequence.ExportInflateDeflateCacheToStreamingAssets();
         }
 
         [ContextMenu("Apply Visible Inflate Debug Edit")]
@@ -154,7 +155,43 @@ namespace TvmVr2.Client.DebugTools
             return bestIndex;
         }
 
-        private static bool TryResolveShortSamba(out string sequencePath, out string sequenceName)
+        public bool LoadSequenceByName(string targetSequenceName)
+        {
+            if (!EnsureSequence())
+                return false;
+
+            if (!UnityEngine.Application.isPlaying)
+            {
+                Debug.LogError($"InflateDeflateQuickProfiler: {targetSequenceName} can be loaded only in Play Mode.");
+                return false;
+            }
+
+            if (!TryResolveSequenceByName(targetSequenceName, out var sequencePath, out var sequenceName))
+            {
+                Debug.LogError($"InflateDeflateQuickProfiler: {targetSequenceName} was not found in the configured sequence catalog.");
+                return false;
+            }
+
+            sequence.SetInflateDeflateStreamingCacheEnabled(useStreamingAssetsCache);
+            Debug.Log($"InflateDeflateQuickProfiler: loading {sequenceName} from {sequencePath}");
+            sequence.Load(sequencePath, sequenceName);
+            return true;
+        }
+
+        public static string[] GetCatalogSequenceNames()
+        {
+            var catalog = new SequenceCatalog();
+            var settings = catalog.LoadOrCreateSettings("/settings.xml");
+            var directories = catalog.GetSequenceDirectories(settings);
+            var names = new string[directories.Length];
+
+            for (var i = 0; i < directories.Length; i++)
+                names[i] = Path.GetFileName(directories[i]);
+
+            return names;
+        }
+
+        private static bool TryResolveSequenceByName(string targetSequenceName, out string sequencePath, out string sequenceName)
         {
             sequencePath = null;
             sequenceName = null;
@@ -166,7 +203,7 @@ namespace TvmVr2.Client.DebugTools
             {
                 var candidatePath = directories[i];
                 var candidateName = Path.GetFileName(candidatePath);
-                if (!string.Equals(candidateName, "short_samba", System.StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(candidateName, targetSequenceName, System.StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 sequencePath = candidatePath;

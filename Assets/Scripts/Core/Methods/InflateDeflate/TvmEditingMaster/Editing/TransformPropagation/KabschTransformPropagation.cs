@@ -4,12 +4,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Threading;
-using System.Threading.Tasks;
 using TVMEditor.Editing.AffinityCalculation;
 using TVMEditor.Extensions;
 using TVMEditor.Math;
 using TVMEditor.Structures;
+using TvmVr2.Core.Methods.InflateDeflate.Cache;
 
 namespace TVMEditor.Editing.TransformPropagation
 {
@@ -60,26 +59,67 @@ namespace TVMEditor.Editing.TransformPropagation
             return GetTimeAttenuation(editedFrameIndex, frameIndex) > 1e-3;
         }
 
-        public void PrecomputeAllFrames(Vector3[][] centers, int maxDegreeOfParallelism, CancellationToken cancellationToken)
+        public int[,] GetNeighborIndices()
+        {
+            return NeighborIndices;
+        }
+
+        public void SetNeighborIndices(int[,] neighborIndices)
+        {
+            lock (neighborIndicesLock)
+            {
+                NeighborIndices = neighborIndices;
+            }
+        }
+
+        public void ClearNeighborCaches()
+        {
+            NeighborWeights.Clear();
+            NeighborWeightsSums.Clear();
+        }
+
+        public void PrecomputeNeighborWeights(int frameIndex, Vector3[] centers)
         {
             if (centers == null || centers.Length == 0)
                 return;
 
             EnsureNeighborIndicesPrepared();
+            if (NeighborIndices == null)
+                return;
 
-            var parallelOptions = new ParallelOptions
+            if (!NeighborsPrecomputed(frameIndex))
+                PrecomputeNeighbors(frameIndex, centers);
+        }
+
+        public bool TryExportNeighborCache(int frameIndex, out InflateDeflateKabschFrameCache cache)
+        {
+            cache = null;
+
+            if (!NeighborWeights.TryGetValue(frameIndex, out var neighborWeights) ||
+                !NeighborWeightsSums.TryGetValue(frameIndex, out var neighborWeightsSums))
             {
-                CancellationToken = cancellationToken,
-                MaxDegreeOfParallelism = Math.Max(1, maxDegreeOfParallelism)
+                return false;
+            }
+
+            cache = new InflateDeflateKabschFrameCache
+            {
+                FrameIndex = frameIndex,
+                NeighborWeights = CloneMatrix(neighborWeights),
+                NeighborWeightsSums = neighborWeightsSums.ToArray()
             };
 
-            Parallel.For(0, centers.Length, parallelOptions, frameIndex =>
-            {
-                if (NeighborsPrecomputed(frameIndex))
-                    return;
+            return true;
+        }
 
-                PrecomputeNeighbors(frameIndex, centers[frameIndex]);
-            });
+        public void ImportNeighborCache(InflateDeflateKabschFrameCache cache)
+        {
+            if (cache == null || cache.FrameIndex < 0)
+                return;
+
+            NeighborWeights[cache.FrameIndex] = CloneMatrix(cache.NeighborWeights);
+            NeighborWeightsSums[cache.FrameIndex] = cache.NeighborWeightsSums != null
+                ? cache.NeighborWeightsSums.ToArray()
+                : null;
         }
 
         private void EnsureNeighborIndicesPrepared()
@@ -293,6 +333,23 @@ namespace TVMEditor.Editing.TransformPropagation
             }
 
             throw new NotImplementedException($"Attenuation {fun} not implemented.");
+        }
+
+        private static float[,] CloneMatrix(float[,] source)
+        {
+            if (source == null)
+                return null;
+
+            var rows = source.GetLength(0);
+            var columns = source.GetLength(1);
+            var clone = new float[rows, columns];
+            for (var r = 0; r < rows; r++)
+            {
+                for (var c = 0; c < columns; c++)
+                    clone[r, c] = source[r, c];
+            }
+
+            return clone;
         }
     }
 }

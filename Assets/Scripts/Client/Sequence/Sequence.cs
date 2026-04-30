@@ -248,7 +248,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         loadedName = sequenceName;
         saveButton.interactable = true;
         SetPendingEdits(false);
-
         if (pl) Play();
     }
 
@@ -301,6 +300,72 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         }
 
         Load(loadedPath, loadedName);
+    }
+
+    public void SetInflateDeflateStreamingCacheEnabled(bool enabled)
+    {
+        inflateDeflateAdapter?.SetStreamingAssetsCacheEnabled(enabled);
+    }
+
+    public async void ExportInflateDeflateCacheToStreamingAssets()
+    {
+        if (frames == null || frames.Length == 0)
+        {
+            Debug.LogWarning("Sequence: No loaded sequence is available for inflate/deflate cache export.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(loadedName))
+        {
+            Debug.LogWarning("Sequence: Loaded sequence name is missing for inflate/deflate cache export.");
+            return;
+        }
+
+        if (inflateDeflateAdapter == null)
+        {
+            Debug.LogWarning("Sequence: Inflate/deflate adapter is not available for cache export.");
+            return;
+        }
+
+        var pl = playing;
+        Pause();
+        busyStateController.Enter(leftHand, rightHand, waitCanvas);
+
+        var waitText = waitCanvas != null ? waitCanvas.GetComponentInChildren<TMP_Text>() : null;
+        var previousWaitText = waitText != null ? waitText.text : string.Empty;
+        if (waitText != null)
+            waitText.text = "exporting inflate/deflate cache...";
+
+        var snapshot = FrameSnapshot.Clone(frames);
+
+        try
+        {
+            var execution = await Task.Run(() =>
+            {
+                var result = inflateDeflateAdapter.ExportCacheToStreamingAssets(loadedName, snapshot, out var localErrorMessage);
+                return (result, localErrorMessage);
+            });
+
+            if (!execution.Item1)
+            {
+                Debug.LogError($"Sequence: Inflate/deflate cache export failed: {execution.Item2}");
+                return;
+            }
+
+            Debug.Log($"Sequence: Inflate/deflate cache exported to {Path.Combine(UnityEngine.Application.streamingAssetsPath, "InflateDeflateCache", loadedName)}");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Sequence: Inflate/deflate cache export failed with exception: {ex}");
+        }
+        finally
+        {
+            if (waitText != null)
+                waitText.text = previousWaitText;
+
+            busyStateController.Exit(leftHand, rightHand, waitCanvas);
+            if (pl) Play();
+        }
     }
 
     public void ShowTransientWaitMessage(string message, float durationSeconds = DefaultTransientWaitMessageDuration)

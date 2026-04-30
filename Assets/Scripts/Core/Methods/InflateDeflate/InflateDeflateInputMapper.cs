@@ -51,27 +51,39 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             if (frame?.centers == null || frame.centers.Length == 0 || radius <= 0f || strength <= 0f)
                 return new InflateDeflateResolvedEffectors();
 
+            var candidates = CollectCandidates(frame.centers, referencePoint, radius);
+            if (candidates.Count == 0)
+                return new InflateDeflateResolvedEffectors();
+
+            ScoreCandidates(candidates, radius);
+            candidates.Sort(static (a, b) =>
+            {
+                var scoreComparison = b.Score.CompareTo(a.Score);
+                if (scoreComparison != 0)
+                    return scoreComparison;
+
+                return a.Distance.CompareTo(b.Distance);
+            });
+
             var indices = new List<int>();
             var translations = new List<Vector3>();
-            var signedStrength = mode == InflateDeflateMode.Inflate ? strength : -strength;
+            var seedCount = ResolveSeedCount(candidates.Count);
 
-            for (var i = 0; i < frame.centers.Length; i++)
+            for (var i = 0; i < candidates.Count && indices.Count < seedCount; i++)
             {
-                var center = frame.centers[i];
-                var distance = Vector3.Distance(center, referencePoint);
-                if (distance > radius)
+                var candidate = candidates[i];
+                if (!TryResolveSeedDirection(candidate, referencePoint, candidates, out var direction))
                     continue;
 
-                var radialDirection = center - referencePoint;
-                if (radialDirection.LengthSquared() < 1e-8f)
-                    radialDirection = Vector3.UnitY;
-                else
-                    radialDirection = Vector3.Normalize(radialDirection);
+                if (mode == InflateDeflateMode.Deflate)
+                    direction = -direction;
 
-                var falloff = 1f - (distance / radius);
-                var translation = radialDirection * (signedStrength * falloff);
+                var falloff = 1f - (candidate.Distance / radius);
+                var translation = direction * (strength * falloff);
+                if (translation.LengthSquared() < 1e-8f)
+                    continue;
 
-                indices.Add(i);
+                indices.Add(candidate.Index);
                 translations.Add(translation);
             }
 
@@ -80,6 +92,110 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 Indices = indices.ToArray(),
                 Translations = translations.ToArray()
             };
+        }
+
+        private static List<CandidateCenter> CollectCandidates(Vector3[] centers, Vector3 referencePoint, float radius)
+        {
+            var candidates = new List<CandidateCenter>();
+            for (var i = 0; i < centers.Length; i++)
+            {
+                var distance = Vector3.Distance(centers[i], referencePoint);
+                if (distance > radius)
+                    continue;
+
+                candidates.Add(new CandidateCenter
+                {
+                    Index = i,
+                    Position = centers[i],
+                    Distance = distance
+                });
+            }
+
+            return candidates;
+        }
+
+        private static void ScoreCandidates(List<CandidateCenter> candidates, float radius)
+        {
+            var densityRadius = System.MathF.Max(radius * 0.45f, 1e-4f);
+
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                var density = 0f;
+                for (var j = 0; j < candidates.Count; j++)
+                {
+                    if (i == j)
+                        continue;
+
+                    var neighborDistance = Vector3.Distance(candidates[i].Position, candidates[j].Position);
+                    if (neighborDistance > densityRadius)
+                        continue;
+
+                    density += 1f - (neighborDistance / densityRadius);
+                }
+
+                var distancePriority = 1f - (candidates[i].Distance / radius);
+                var candidate = candidates[i];
+                candidate.Score = density * 2f + distancePriority;
+                candidates[i] = candidate;
+            }
+        }
+
+        private static int ResolveSeedCount(int candidateCount)
+        {
+            if (candidateCount <= 6)
+                return 1;
+
+            if (candidateCount <= 16)
+                return 2;
+
+            return 3;
+        }
+
+        private static bool TryResolveSeedDirection(
+            CandidateCenter candidate,
+            Vector3 referencePoint,
+            List<CandidateCenter> candidates,
+            out Vector3 direction)
+        {
+            var toReference = referencePoint - candidate.Position;
+            if (toReference.LengthSquared() >= 1e-8f)
+            {
+                direction = Vector3.Normalize(toReference);
+                return true;
+            }
+
+            var centroid = Vector3.Zero;
+            var count = 0;
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                if (candidates[i].Index == candidate.Index)
+                    continue;
+
+                centroid += candidates[i].Position;
+                count++;
+            }
+
+            if (count > 0)
+            {
+                centroid /= count;
+                var outward = candidate.Position - centroid;
+                if (outward.LengthSquared() >= 1e-8f)
+                {
+                    direction = Vector3.Normalize(outward);
+                    return true;
+                }
+            }
+
+            direction = Vector3.Zero;
+            return false;
+        }
+
+        private struct CandidateCenter
+        {
+            public int Index;
+            public Vector3 Position;
+            public float Distance;
+            public float Score;
         }
     }
 }

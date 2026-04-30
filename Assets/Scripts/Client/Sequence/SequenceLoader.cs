@@ -9,6 +9,11 @@ namespace TvmVr2.Client.Sequence
     {
         public async Task<SequenceLoadResult> LoadAsync(SequenceLoadRequest request)
         {
+            return await Task.Run(() => Load(request));
+        }
+
+        public SequenceLoadResult Load(SequenceLoadRequest request)
+        {
             if (request == null)
             {
                 return new SequenceLoadResult
@@ -38,27 +43,23 @@ namespace TvmVr2.Client.Sequence
                 };
             }
 
-            Frame[] loadedFrames = null;
-            await Task.Run(() =>
+            var loadedCenters = CentersIO.LoadCentersFiles(centers);
+            var loadedCentersUnedited = CentersIO.LoadCentersFiles(centers);
+
+            var loadedFrames = new Frame[centers.Length];
+            for (var i = 0; i < loadedFrames.Length; i++)
             {
-                var loadedCenters = CentersIO.LoadCentersFiles(centers);
-                var loadedCentersUnedited = CentersIO.LoadCentersFiles(centers);
-
-                loadedFrames = new Frame[centers.Length];
-                for (var i = 0; i < loadedFrames.Length; i++)
+                loadedFrames[i] = new Frame
                 {
-                    loadedFrames[i] = new Frame
-                    {
-                        centers = loadedCenters[i],
-                        centersUnedited = loadedCentersUnedited[i]
-                    };
+                    centers = loadedCenters[i],
+                    centersUnedited = loadedCentersUnedited[i]
+                };
 
-                    MeshIO.LoadMesh(meshes[i], out loadedFrames[i].vertices, out loadedFrames[i].faces);
-                    MeshIO.LoadMesh(meshes[i], out loadedFrames[i].verticesUnedited, out loadedFrames[i].faces);
-                    loadedFrames[i].FindNearest(request.NearestCenterCount);
-                    Debug.Log($"SequenceLoader: loaded frame {i + 1}/{loadedFrames.Length}");
-                }
-            });
+                MeshIO.LoadMesh(meshes[i], out loadedFrames[i].vertices, out loadedFrames[i].faces);
+                MeshIO.LoadMesh(meshes[i], out loadedFrames[i].verticesUnedited, out loadedFrames[i].faces);
+                loadedFrames[i].FindNearest(request.NearestCenterCount);
+                Debug.Log($"SequenceLoader: loaded frame {i + 1}/{loadedFrames.Length}");
+            }
 
             var settings = settingsExist
                 ? Serialization.Deserialize<SequenceSettings>(settingsPath)

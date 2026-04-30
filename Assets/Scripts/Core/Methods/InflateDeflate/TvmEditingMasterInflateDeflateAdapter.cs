@@ -1,9 +1,12 @@
+using System;
 using System.Text;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
 using TvmVr2.Core.Abstractions;
 using TvmVr2.Core.Common;
+using TvmVr2.Api.Enums;
+using TvmVr2.Core.Methods.InflateDeflate.Cache;
 using TvmVr2.Core.Methods.InflateDeflate.Profiling;
 using TVMEditor.Editing;
 using TVMEditor.Editing.AffinityCalculation;
@@ -20,6 +23,19 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         private readonly object _contextLock = new object();
         private readonly SemaphoreSlim _operationGate = new SemaphoreSlim(1, 1);
         private CachedExecutionContext _cachedExecutionContext;
+        private bool _useStreamingAssetsCache = true;
+
+        public void SetStreamingAssetsCacheEnabled(bool enabled)
+        {
+            lock (_contextLock)
+            {
+                if (_useStreamingAssetsCache == enabled)
+                    return;
+
+                _useStreamingAssetsCache = enabled;
+                _cachedExecutionContext = null;
+            }
+        }
 
         public IMethodResult Execute(InflateDeflateMethodInput input)
         {
@@ -29,82 +45,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         public MethodExecutionResult ExecuteProfiled(InflateDeflateMethodInput input, out InflateDeflateQuickProfile profile)
         {
             return ExecuteInternal(input, out profile);
-        }
-
-        public InflateDeflateCacheWarmupProfile WarmCache(InflateDeflateMethodInput input, int maxDegreeOfParallelism, CancellationToken cancellationToken)
-        {
-            var profile = new InflateDeflateCacheWarmupProfile
-            {
-                FrameCount = input?.Frames?.Length ?? 0,
-                MaxDegreeOfParallelism = System.Math.Max(1, maxDegreeOfParallelism)
-            };
-
-            if (input == null)
-            {
-                profile.Success = false;
-                profile.ErrorMessage = "InflateDeflate warmup input is missing.";
-                return profile;
-            }
-
-            if (input.Frames == null || input.Frames.Length == 0)
-            {
-                profile.Success = false;
-                profile.ErrorMessage = "InflateDeflate warmup frames are missing.";
-                return profile;
-            }
-
-            var totalTimer = Stopwatch.StartNew();
-            _operationGate.Wait(cancellationToken);
-
-            try
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var executionContext = GetOrCreateExecutionContext(input);
-                var centers = input.Frames.Select(frame => frame.centers).ToArray();
-
-                var stageTimer = Stopwatch.StartNew();
-                if (executionContext.AffinityCalculation.GetCentersAffinity() == null)
-                    executionContext.AffinityCalculation.CalculateCentersAffinity(centers);
-                stageTimer.Stop();
-                profile.AffinityMs = stageTimer.Elapsed.TotalMilliseconds;
-
-                cancellationToken.ThrowIfCancellationRequested();
-                stageTimer.Restart();
-                executionContext.SurfaceDeformation.PrecomputeAllFrames(
-                    input.Frames.Select(frame => frame.vertices).ToArray(),
-                    centers,
-                    profile.MaxDegreeOfParallelism,
-                    cancellationToken);
-                stageTimer.Stop();
-                profile.SurfaceWeightsMs = stageTimer.Elapsed.TotalMilliseconds;
-
-                cancellationToken.ThrowIfCancellationRequested();
-                stageTimer.Restart();
-                executionContext.TransformPropagation.PrecomputeAllFrames(
-                    centers,
-                    profile.MaxDegreeOfParallelism,
-                    cancellationToken);
-                stageTimer.Stop();
-                profile.KabschNeighborsMs = stageTimer.Elapsed.TotalMilliseconds;
-
-                totalTimer.Stop();
-                profile.TotalMs = totalTimer.Elapsed.TotalMilliseconds;
-                profile.Success = true;
-                return profile;
-            }
-            catch (OperationCanceledException)
-            {
-                totalTimer.Stop();
-                profile.TotalMs = totalTimer.Elapsed.TotalMilliseconds;
-                profile.WasCanceled = true;
-                profile.Success = false;
-                profile.ErrorMessage = "InflateDeflate cache warmup was canceled.";
-                return profile;
-            }
-            finally
-            {
-                _operationGate.Release();
-            }
         }
 
         private MethodExecutionResult ExecuteInternal(InflateDeflateMethodInput input, out InflateDeflateQuickProfile profile)
@@ -271,27 +211,57 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 if (_cachedExecutionContext != null && _cachedExecutionContext.CacheKey == cacheKey)
                     return _cachedExecutionContext;
 
-                var affinityCalculation = new DistanceDirectionAffinityCalculation();
-                var surfaceDeformation = new CustomSurfaceDeformation(affinityCalculation);
-                var transformPropagation = new KabschTransformPropagation(affinityCalculation);
-                var meshEditor = new MeshEditor(
-                    affinityCalculation,
-                    new AffinityCenterDeformation(affinityCalculation),
-                    null,
-                    surfaceDeformation,
-                    transformPropagation);
-
-                _cachedExecutionContext = new CachedExecutionContext
-                {
-                    CacheKey = cacheKey,
-                    MeshEditor = meshEditor,
-                    AffinityCalculation = affinityCalculation,
-                    SurfaceDeformation = surfaceDeformation,
-                    TransformPropagation = transformPropagation
-                };
+                _cachedExecutionContext = CreateExecutionContext(cacheKey);
+                TryHydrateExecutionContextFromStreamingAssets(input, _cachedExecutionContext, out var loadError);
+                if (!string.IsNullOrWhiteSpace(loadError))
+                    UnityEngine.Debug.LogWarning(loadError);
 
                 return _cachedExecutionContext;
             }
+        }
+
+        public bool ExportCacheToStreamingAssets(string sequenceId, Frame[] frames, out string errorMessage)
+        {
+            errorMessage = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(sequenceId))
+            {
+                errorMessage = "InflateDeflate cache export requires a sequence id.";
+                return false;
+            }
+
+            if (frames == null || frames.Length == 0)
+            {
+                errorMessage = "InflateDeflate cache export requires loaded frames.";
+                return false;
+            }
+
+            var exportInput = new InflateDeflateMethodInput
+            {
+                SequenceId = sequenceId,
+                Frames = frames,
+                FrameIndex = 0,
+                ReferencePoint = Vector3.Zero,
+                Radius = 0f,
+                Strength = 0f,
+                Mode = InflateDeflateMode.Inflate
+            };
+
+            var executionContext = CreateExecutionContext(BuildCacheKey(exportInput));
+            PrecomputeCache(executionContext, frames);
+
+            var bundle = BuildCacheBundle(executionContext, exportInput);
+            var rootPath = UnityEngine.Application.streamingAssetsPath;
+            if (!InflateDeflateCacheStore.TrySaveBundle(rootPath, bundle, out errorMessage))
+                return false;
+
+            lock (_contextLock)
+            {
+                if (_cachedExecutionContext != null && _cachedExecutionContext.CacheKey == executionContext.CacheKey)
+                    HydrateExecutionContext(_cachedExecutionContext, bundle);
+            }
+
+            return true;
         }
 
         private static string BuildCacheKey(InflateDeflateMethodInput input)
@@ -318,6 +288,164 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             }
 
             return builder.ToString();
+        }
+
+        private static CachedExecutionContext CreateExecutionContext(string cacheKey)
+        {
+            var affinityCalculation = new DistanceDirectionAffinityCalculation();
+            var surfaceDeformation = new CustomSurfaceDeformation(affinityCalculation);
+            var transformPropagation = new KabschTransformPropagation(affinityCalculation);
+            var meshEditor = new MeshEditor(
+                affinityCalculation,
+                new AffinityCenterDeformation(affinityCalculation),
+                null,
+                surfaceDeformation,
+                transformPropagation);
+
+            return new CachedExecutionContext
+            {
+                CacheKey = cacheKey,
+                MeshEditor = meshEditor,
+                AffinityCalculation = affinityCalculation,
+                SurfaceDeformation = surfaceDeformation,
+                TransformPropagation = transformPropagation
+            };
+        }
+
+        private void TryHydrateExecutionContextFromStreamingAssets(InflateDeflateMethodInput input, CachedExecutionContext context, out string errorMessage)
+        {
+            errorMessage = string.Empty;
+
+            if (!_useStreamingAssetsCache ||
+                input?.Frames == null ||
+                input.Frames.Length == 0 ||
+                context == null ||
+                string.IsNullOrWhiteSpace(input.SequenceId))
+                return;
+
+            var rootPath = UnityEngine.Application.streamingAssetsPath;
+            if (!InflateDeflateCacheStore.TryLoadBundle(rootPath, input.SequenceId, out var bundle, out var loadError))
+            {
+                if (!string.IsNullOrWhiteSpace(loadError) && !loadError.Contains("was not found"))
+                    errorMessage = loadError;
+
+                return;
+            }
+
+            var manifest = BuildCacheManifest(input, context);
+            if (!bundle.Manifest.IsCompatibleWith(manifest))
+            {
+                errorMessage = $"InflateDeflate cache manifest mismatch for sequence '{input.SequenceId}'.";
+                return;
+            }
+
+            HydrateExecutionContext(context, bundle);
+        }
+
+        private static void PrecomputeCache(CachedExecutionContext context, Frame[] frames)
+        {
+            if (context == null || frames == null || frames.Length == 0)
+                return;
+
+            var centers = frames.Select(frame => frame.centers).ToArray();
+
+            if (context.AffinityCalculation != null)
+                context.AffinityCalculation.CalculateCentersAffinity(centers);
+
+            if (context.TransformPropagation != null)
+            {
+                context.TransformPropagation.ClearNeighborCaches();
+                context.TransformPropagation.SetNeighborIndices(null);
+                for (var frameIndex = 0; frameIndex < frames.Length; frameIndex++)
+                    context.TransformPropagation.PrecomputeNeighborWeights(frameIndex, centers[frameIndex]);
+            }
+
+            if (context.SurfaceDeformation != null)
+            {
+                context.SurfaceDeformation.ClearFrameWeightCaches();
+                for (var frameIndex = 0; frameIndex < frames.Length; frameIndex++)
+                {
+                    context.SurfaceDeformation.PrecomputeFrameWeightCache(
+                        frames[frameIndex].vertices,
+                        frames[frameIndex].centers,
+                        frameIndex);
+                }
+            }
+        }
+
+        private static void HydrateExecutionContext(CachedExecutionContext context, InflateDeflateCacheBundle bundle)
+        {
+            if (context == null || bundle?.Manifest == null)
+                return;
+
+            if (context.AffinityCalculation != null && bundle.Affinity != null)
+                context.AffinityCalculation.SetCentersAffinity(bundle.Affinity);
+
+            if (context.TransformPropagation != null)
+            {
+                context.TransformPropagation.SetNeighborIndices(bundle.NeighborIndices);
+                context.TransformPropagation.ClearNeighborCaches();
+                foreach (var neighborCache in bundle.KabschFrameCaches.Values)
+                    context.TransformPropagation.ImportNeighborCache(neighborCache);
+            }
+
+            if (context.SurfaceDeformation != null)
+            {
+                context.SurfaceDeformation.ClearFrameWeightCaches();
+                foreach (var surfaceCache in bundle.SurfaceFrameCaches.Values)
+                    context.SurfaceDeformation.ImportFrameWeightCache(surfaceCache);
+            }
+        }
+
+        private static InflateDeflateCacheBundle BuildCacheBundle(CachedExecutionContext context, InflateDeflateMethodInput input)
+        {
+            var bundle = new InflateDeflateCacheBundle
+            {
+                Manifest = BuildCacheManifest(input, context),
+                Affinity = context.AffinityCalculation?.GetCentersAffinity(),
+                NeighborIndices = context.TransformPropagation?.GetNeighborIndices()
+            };
+
+            var frames = input.Frames ?? Array.Empty<Frame>();
+            for (var frameIndex = 0; frameIndex < frames.Length; frameIndex++)
+            {
+                if (context.SurfaceDeformation != null &&
+                    context.SurfaceDeformation.TryExportFrameWeightCache(frameIndex, out var surfaceCache))
+                {
+                    bundle.SurfaceFrameCaches[frameIndex] = surfaceCache;
+                }
+
+                if (context.TransformPropagation != null &&
+                    context.TransformPropagation.TryExportNeighborCache(frameIndex, out var neighborCache))
+                {
+                    bundle.KabschFrameCaches[frameIndex] = neighborCache;
+                }
+            }
+
+            return bundle;
+        }
+
+        private static InflateDeflateCacheManifest BuildCacheManifest(InflateDeflateMethodInput input, CachedExecutionContext context)
+        {
+            var firstFrame = input.Frames != null && input.Frames.Length > 0 ? input.Frames[0] : null;
+            return new InflateDeflateCacheManifest
+            {
+                SchemaVersion = InflateDeflateCacheManifest.CurrentSchemaVersion,
+                SequenceId = input.SequenceId ?? string.Empty,
+                FrameCount = input.Frames?.Length ?? 0,
+                CenterCount = firstFrame?.centers?.Length ?? 0,
+                VertexCount = firstFrame?.vertices?.Length ?? 0,
+                FaceCount = firstFrame?.faces?.Length ?? 0,
+                Neighbors = context.SurfaceDeformation?.Neighbors ?? 0,
+                Shape = context.SurfaceDeformation?.Shape ?? 0f,
+                LimitEpsilon = context.SurfaceDeformation?.LimitEpsilon ?? 0f,
+                MaxSplitIterations = context.SurfaceDeformation?.MaxSplitIterations ?? 0,
+                AffinityShapeDistance = context.AffinityCalculation?.ShapeDistance ?? 0f,
+                AffinityShapeDirection = context.AffinityCalculation?.ShapeDirection ?? 0f,
+                AffinityPower = context.AffinityCalculation?.Power ?? 0,
+                SourceHash = string.Empty,
+                GeneratedAtUtcTicks = DateTime.UtcNow.Ticks
+            };
         }
 
         private sealed class CachedExecutionContext

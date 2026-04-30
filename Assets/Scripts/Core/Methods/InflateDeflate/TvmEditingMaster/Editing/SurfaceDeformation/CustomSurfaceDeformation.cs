@@ -1,11 +1,13 @@
 using KdTree;
 using KdTree.Math;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using TvmVr2.Core.Methods.InflateDeflate.Cache;
 using TVMEditor.Editing.AffinityCalculation;
 using TVMEditor.Structures;
 using Stopwatch = System.Diagnostics.Stopwatch;
@@ -37,29 +39,45 @@ namespace TVMEditor.Editing.SurfaceDeformation
             }
         }
 
-        public void PrecomputeAllFrames(Vector3[][] verticesPerFrame, Vector3[][] centersPerFrame, int maxDegreeOfParallelism, CancellationToken cancellationToken)
+        public void ClearFrameWeightCaches()
         {
-            if (verticesPerFrame == null || centersPerFrame == null)
+            frameWeightCaches.Clear();
+        }
+
+        public void PrecomputeFrameWeightCache(Vector3[] vertices, Vector3[] oldCenters, int frameIndex)
+        {
+            if (vertices == null || oldCenters == null)
                 return;
 
-            var frameCount = System.Math.Min(verticesPerFrame.Length, centersPerFrame.Length);
-            if (frameCount == 0)
-                return;
+            var identityTransformations = Enumerable.Repeat(DualQuaternion.Identity(), oldCenters.Length).ToArray();
+            ComputeDeformations(vertices, Array.Empty<TVMEditor.Structures.Face>(), oldCenters, oldCenters, frameIndex, identityTransformations);
+        }
 
-            var frameIndices = Enumerable.Range(0, frameCount);
-            var parallelOptions = new ParallelOptions
+        public bool TryExportFrameWeightCache(int frameIndex, out InflateDeflateSurfaceFrameCache cache)
+        {
+            cache = null;
+
+            if (!frameWeightCaches.TryGetValue(frameIndex, out var frameWeightCache))
+                return false;
+
+            cache = new InflateDeflateSurfaceFrameCache
             {
-                CancellationToken = cancellationToken,
-                MaxDegreeOfParallelism = System.Math.Max(1, maxDegreeOfParallelism)
+                FrameIndex = frameIndex,
+                Centers = CloneJagged(frameWeightCache.Centers),
+                Weights = CloneJagged(frameWeightCache.Weights)
             };
 
-            Parallel.ForEach(frameIndices, parallelOptions, frameIndex =>
-            {
-                if (frameWeightCaches.ContainsKey(frameIndex))
-                    return;
+            return true;
+        }
 
-                ComputeWeights(verticesPerFrame[frameIndex], centersPerFrame[frameIndex], frameIndex, parallelizeVertices: false, cancellationToken);
-            });
+        public void ImportFrameWeightCache(InflateDeflateSurfaceFrameCache cache)
+        {
+            if (cache == null || cache.FrameIndex < 0)
+                return;
+
+            frameWeightCaches[cache.FrameIndex] = new FrameWeightCache(
+                CloneToList(cache.Centers),
+                CloneToList(cache.Weights));
         }
 
         public TriangleMesh DeformSurface(Vector3[] vertices, TVMEditor.Structures.Face[] faces, Vector3[] oldCenters, Vector3[] newCenters, int frameIndex, DualQuaternion[] transformations)
@@ -313,7 +331,7 @@ namespace TVMEditor.Editing.SurfaceDeformation
                 }
             }
 
-            var cache = new FrameWeightCache(indices.ToList(), weights.ToList());
+            var cache = new FrameWeightCache(CloneToList(indices), CloneToList(weights));
             frameWeightCaches[frameIndex] = cache;
             return cache;
         }
@@ -401,12 +419,84 @@ namespace TVMEditor.Editing.SurfaceDeformation
         {
             public FrameWeightCache(List<int[]> centers, List<float[]> weights)
             {
-                Centers = centers;
-                Weights = weights;
+                Centers = centers ?? new List<int[]>();
+                Weights = weights ?? new List<float[]>();
             }
 
             public List<int[]> Centers { get; }
             public List<float[]> Weights { get; }
+        }
+
+        private static int[][] CloneJagged(int[][] source)
+        {
+            if (source == null)
+                return null;
+
+            var clone = new int[source.Length][];
+            for (var i = 0; i < source.Length; i++)
+                clone[i] = source[i] != null ? source[i].ToArray() : null;
+
+            return clone;
+        }
+
+        private static int[][] CloneJagged(List<int[]> source)
+        {
+            if (source == null)
+                return null;
+
+            var clone = new int[source.Count][];
+            for (var i = 0; i < source.Count; i++)
+                clone[i] = source[i] != null ? source[i].ToArray() : null;
+
+            return clone;
+        }
+
+        private static List<int[]> CloneToList(int[][] source)
+        {
+            if (source == null)
+                return null;
+
+            var clone = new List<int[]>(source.Length);
+            for (var i = 0; i < source.Length; i++)
+                clone.Add(source[i] != null ? source[i].ToArray() : null);
+
+            return clone;
+        }
+
+        private static float[][] CloneJagged(float[][] source)
+        {
+            if (source == null)
+                return null;
+
+            var clone = new float[source.Length][];
+            for (var i = 0; i < source.Length; i++)
+                clone[i] = source[i] != null ? source[i].ToArray() : null;
+
+            return clone;
+        }
+
+        private static float[][] CloneJagged(List<float[]> source)
+        {
+            if (source == null)
+                return null;
+
+            var clone = new float[source.Count][];
+            for (var i = 0; i < source.Count; i++)
+                clone[i] = source[i] != null ? source[i].ToArray() : null;
+
+            return clone;
+        }
+
+        private static List<float[]> CloneToList(float[][] source)
+        {
+            if (source == null)
+                return null;
+
+            var clone = new List<float[]>(source.Length);
+            for (var i = 0; i < source.Length; i++)
+                clone.Add(source[i] != null ? source[i].ToArray() : null);
+
+            return clone;
         }
     }
 }

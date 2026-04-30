@@ -78,6 +78,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             var directionSign = mode == InflateDeflateMode.Inflate ? 1f : -1f;
             var expansionCenter = ComputeExpansionCenter(candidates, activePatchRadius, selectedCenterPosition);
             var sparseRegionBoost = ComputeSparseRegionBoost(candidates.Count);
+            EstimateExpansionAxis(candidates, expansionCenter, out var expansionAxis, out var anisotropy);
 
             for (var i = 0; i < candidates.Count; i++)
             {
@@ -95,7 +96,8 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 }
 
                 var influence = ComputeInfluence(candidate.Distance, activePatchRadius, outerRingRadius);
-                translations.Add(offset * (directionSign * strength * influence * sparseRegionBoost));
+                var shapedOffset = ShapeOffset(offset, expansionAxis, anisotropy);
+                translations.Add(shapedOffset * (directionSign * strength * influence * sparseRegionBoost));
             }
 
             return new InflateDeflateResolvedEffectors
@@ -231,6 +233,175 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
             // Sparse parts like wrists/arms need slightly stronger scaling to create visible volume.
             return 1f + (8 - candidateCount) * 0.12f;
+        }
+
+        private static Vector3 ShapeOffset(Vector3 offset, Vector3 expansionAxis, float anisotropy)
+        {
+            if (offset.LengthSquared() < 1e-8f)
+                return Vector3.Zero;
+
+            if (expansionAxis.LengthSquared() < 1e-8f || anisotropy <= 0f)
+                return offset;
+
+            var axial = expansionAxis * Vector3.Dot(offset, expansionAxis);
+            var radial = offset - axial;
+
+            if (radial.LengthSquared() < 1e-8f)
+            {
+                // Preserve a little axial motion so line-like regions do not collapse to zero response.
+                return axial * (0.15f + 0.15f * anisotropy);
+            }
+
+            // Blend between isotropic expansion and radial thickening.
+            var isotropicWeight = 1f - anisotropy;
+            var radialWeight = 1f + anisotropy * 0.35f;
+            var axialWeight = 1f - anisotropy * 0.85f;
+
+            return offset * isotropicWeight + radial * radialWeight + axial * axialWeight;
+        }
+
+        private static void EstimateExpansionAxis(
+            List<CandidateCenter> candidates,
+            Vector3 expansionCenter,
+            out Vector3 axis,
+            out float anisotropy)
+        {
+            axis = Vector3.Zero;
+            anisotropy = 0f;
+
+            if (candidates == null || candidates.Count < 3)
+                return;
+
+            var xx = 0f;
+            var xy = 0f;
+            var xz = 0f;
+            var yy = 0f;
+            var yz = 0f;
+            var zz = 0f;
+
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                var delta = candidates[i].Position - expansionCenter;
+                xx += delta.X * delta.X;
+                xy += delta.X * delta.Y;
+                xz += delta.X * delta.Z;
+                yy += delta.Y * delta.Y;
+                yz += delta.Y * delta.Z;
+                zz += delta.Z * delta.Z;
+            }
+
+            var matrix = new float[,]
+            {
+                { xx, xy, xz },
+                { xy, yy, yz },
+                { xz, yz, zz }
+            };
+
+            var eigenVectors = new float[,]
+            {
+                { 1f, 0f, 0f },
+                { 0f, 1f, 0f },
+                { 0f, 0f, 1f }
+            };
+
+            JacobiEigenDecomposition(matrix, eigenVectors);
+
+            var largestIndex = 0;
+            if (matrix[1, 1] > matrix[largestIndex, largestIndex])
+                largestIndex = 1;
+            if (matrix[2, 2] > matrix[largestIndex, largestIndex])
+                largestIndex = 2;
+
+            var smallestIndex = 0;
+            if (matrix[1, 1] < matrix[smallestIndex, smallestIndex])
+                smallestIndex = 1;
+            if (matrix[2, 2] < matrix[smallestIndex, smallestIndex])
+                smallestIndex = 2;
+
+            axis = new Vector3(
+                eigenVectors[0, largestIndex],
+                eigenVectors[1, largestIndex],
+                eigenVectors[2, largestIndex]);
+
+            if (axis.LengthSquared() < 1e-8f)
+            {
+                axis = Vector3.Zero;
+                anisotropy = 0f;
+                return;
+            }
+
+            axis = Vector3.Normalize(axis);
+
+            var largestEigenvalue = System.MathF.Max(matrix[largestIndex, largestIndex], 1e-8f);
+            var smallestEigenvalue = System.MathF.Max(matrix[smallestIndex, smallestIndex], 0f);
+            anisotropy = 1f - (smallestEigenvalue / largestEigenvalue);
+            anisotropy = System.Math.Clamp(anisotropy, 0f, 1f);
+        }
+
+        private static void JacobiEigenDecomposition(float[,] matrix, float[,] eigenVectors)
+        {
+            const int maxIterations = 12;
+            const float epsilon = 1e-6f;
+
+            for (var iteration = 0; iteration < maxIterations; iteration++)
+            {
+                var p = 0;
+                var q = 1;
+                var maxOffDiagonal = System.MathF.Abs(matrix[0, 1]);
+
+                if (System.MathF.Abs(matrix[0, 2]) > maxOffDiagonal)
+                {
+                    p = 0;
+                    q = 2;
+                    maxOffDiagonal = System.MathF.Abs(matrix[0, 2]);
+                }
+
+                if (System.MathF.Abs(matrix[1, 2]) > maxOffDiagonal)
+                {
+                    p = 1;
+                    q = 2;
+                    maxOffDiagonal = System.MathF.Abs(matrix[1, 2]);
+                }
+
+                if (maxOffDiagonal < epsilon)
+                    break;
+
+                var app = matrix[p, p];
+                var aqq = matrix[q, q];
+                var apq = matrix[p, q];
+                var tau = (aqq - app) / (2f * apq);
+                var t = tau >= 0f
+                    ? 1f / (tau + System.MathF.Sqrt(1f + tau * tau))
+                    : -1f / (-tau + System.MathF.Sqrt(1f + tau * tau));
+                var c = 1f / System.MathF.Sqrt(1f + t * t);
+                var s = t * c;
+
+                matrix[p, p] = app - t * apq;
+                matrix[q, q] = aqq + t * apq;
+                matrix[p, q] = 0f;
+                matrix[q, p] = 0f;
+
+                for (var r = 0; r < 3; r++)
+                {
+                    if (r == p || r == q)
+                        continue;
+
+                    var arp = matrix[r, p];
+                    var arq = matrix[r, q];
+                    matrix[r, p] = c * arp - s * arq;
+                    matrix[p, r] = matrix[r, p];
+                    matrix[r, q] = c * arq + s * arp;
+                    matrix[q, r] = matrix[r, q];
+                }
+
+                for (var r = 0; r < 3; r++)
+                {
+                    var vrp = eigenVectors[r, p];
+                    var vrq = eigenVectors[r, q];
+                    eigenVectors[r, p] = c * vrp - s * vrq;
+                    eigenVectors[r, q] = c * vrq + s * vrp;
+                }
+            }
         }
 
         private struct CandidateCenter

@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
+using UnityEngine.XR;
 
 /// <summary>
 /// Moves the sequence on right hand grab
@@ -15,11 +15,6 @@ public class GrabToMove : MonoBehaviour
     /// Hand object
     /// </summary>
     public GameObject rightHand;
-
-    /// <summary>
-    /// Right hand grab input property
-    /// </summary>
-    public InputActionProperty rightSelect;
 
     /// <summary>
     /// Last postion of the right hand controller
@@ -55,7 +50,7 @@ public class GrabToMove : MonoBehaviour
             return;
         }
 
-        bool rightDown = rightSelect.action.IsPressed();
+        bool rightDown = IsRightGripPressed();
         
         if (rightDown)
         {
@@ -73,5 +68,20 @@ public class GrabToMove : MonoBehaviour
         {
             wasDownR = false;
         }
+    }
+
+    private static bool IsRightGripPressed()
+    {
+        var device = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+        if (!device.isValid)
+            return false;
+
+        if (device.TryGetFeatureValue(CommonUsages.gripButton, out bool gripButton) && gripButton)
+            return true;
+
+        if (device.TryGetFeatureValue(CommonUsages.grip, out float gripValue) && gripValue >= 0.5f)
+            return true;
+
+        return false;
     }
 }

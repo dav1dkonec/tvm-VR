@@ -23,8 +23,6 @@ using Stopwatch = System.Diagnostics.Stopwatch;
 /// </summary>
 public class Sequence : MonoBehaviour, ICenterSelectionListener
 {
-    private const float DefaultTransientWaitMessageDuration = 2f;
-
     private TvmEditingMasterInflateDeflateAdapter inflateDeflateAdapter;
     private SequenceLoader sequenceLoader;
     private SequenceSaver sequenceSaver;
@@ -35,7 +33,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     private EditingCore editingCore;
     private MeshCollider sequenceMeshCollider;
     private InflateDeflateUI inflateDeflateUi;
-    private Coroutine transientWaitMessageCoroutine;
     public EditingMethodRuntimeSettings methodSettings;
 
     public SurfaceNeighborsUI ui;
@@ -368,17 +365,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         }
     }
 
-    public void ShowTransientWaitMessage(string message, float durationSeconds = DefaultTransientWaitMessageDuration)
-    {
-        if (waitCanvas == null)
-            return;
-
-        if (transientWaitMessageCoroutine != null)
-            StopCoroutine(transientWaitMessageCoroutine);
-
-        transientWaitMessageCoroutine = StartCoroutine(ShowTransientWaitMessageCoroutine(message, durationSeconds));
-    }
-
     private void SetPendingEdits(bool value)
     {
         if (HasPendingEdits == value)
@@ -386,25 +372,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
 
         HasPendingEdits = value;
         PendingEditsChanged?.Invoke(value);
-    }
-
-    private System.Collections.IEnumerator ShowTransientWaitMessageCoroutine(string message, float durationSeconds)
-    {
-        var waitText = waitCanvas != null ? waitCanvas.GetComponentInChildren<TMP_Text>() : null;
-        if (waitCanvas == null || waitText == null)
-            yield break;
-
-        bool wasActive = waitCanvas.activeSelf;
-        string previousText = waitText.text;
-
-        waitText.text = message;
-        waitCanvas.SetActive(true);
-
-        yield return new WaitForSecondsRealtime(durationSeconds);
-
-        waitText.text = previousText;
-        waitCanvas.SetActive(wasActive);
-        transientWaitMessageCoroutine = null;
     }
 
     /// <summary>

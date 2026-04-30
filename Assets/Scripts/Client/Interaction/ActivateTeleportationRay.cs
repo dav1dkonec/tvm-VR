@@ -11,7 +11,7 @@ using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 public class ActivateTeleportationRay : MonoBehaviour
 {
     private const float AnchorSnapRadius = 1.5f;
-    private const float FullPressThreshold = 0.9f;
+    private const float FullPressThreshold = 0.1f;
 
     /// <summary>
     /// Teleportation ray object

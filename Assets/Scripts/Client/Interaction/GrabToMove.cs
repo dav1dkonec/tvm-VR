@@ -6,8 +6,6 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class GrabToMove : MonoBehaviour
 {
-    private const float FullPressThreshold = 0.9f;
-
     /// <summary>
     /// Grab target object
     /// </summary>
@@ -57,7 +55,7 @@ public class GrabToMove : MonoBehaviour
             return;
         }
 
-        bool rightDown = rightSelect.action.ReadValue<float>() >= FullPressThreshold;
+        bool rightDown = rightSelect.action.IsPressed();
         
         if (rightDown)
         {

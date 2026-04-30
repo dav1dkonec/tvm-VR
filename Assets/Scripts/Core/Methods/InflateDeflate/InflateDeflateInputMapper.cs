@@ -122,7 +122,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         {
             var seedCandidates = new List<CandidateCenter>(candidates.Count);
             var centerExclusionRadius = System.MathF.Max(radius * 0.08f, 1e-4f);
-            var seedBandRadius = System.MathF.Max(radius * 0.45f, centerExclusionRadius + 1e-4f);
+            var seedBandRadius = System.MathF.Max(radius * 0.65f, centerExclusionRadius + 1e-4f);
 
             for (var i = 0; i < candidates.Count; i++)
             {
@@ -176,13 +176,16 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
         private static int ResolveSeedCount(int candidateCount)
         {
-            if (candidateCount <= 4)
-                return System.Math.Min(2, candidateCount);
+            if (candidateCount <= 6)
+                return System.Math.Min(4, candidateCount);
 
-            if (candidateCount <= 12)
-                return 3;
+            if (candidateCount <= 14)
+                return 6;
 
-            return 4;
+            if (candidateCount <= 24)
+                return 10;
+
+            return System.Math.Min(16, candidateCount);
         }
 
         private static bool TryResolveSeedDirection(

@@ -96,7 +96,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                     continue;
                 }
 
-                var influence = ComputeInfluence(candidate.Distance, activePatchRadius, outerRingRadius);
+                var influence = mode == InflateDeflateMode.Inflate
+                    ? ComputeInflateInfluence(candidate.Distance, activePatchRadius, outerRingRadius)
+                    : ComputeDeflateInfluence(candidate.Distance, activePatchRadius, outerRingRadius);
                 translations.Add(offset * (directionSign * strength * influence));
             }
 
@@ -148,7 +150,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return bestIndex;
         }
 
-        private static float ComputeInfluence(float distance, float activePatchRadius, float outerRingRadius)
+        private static float ComputeInflateInfluence(float distance, float activePatchRadius, float outerRingRadius)
         {
             if (activePatchRadius <= 1e-8f || outerRingRadius <= 1e-8f)
                 return 0f;
@@ -167,6 +169,28 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             var ringDistance = System.MathF.Min((distance - activePatchRadius) / outerSpan, 1f);
             // Outer ring still participates a little to keep the transition smooth.
             return 0.12f * (1f - ringDistance) + 0.02f * ringDistance;
+        }
+
+        private static float ComputeDeflateInfluence(float distance, float activePatchRadius, float outerRingRadius)
+        {
+            if (activePatchRadius <= 1e-8f || outerRingRadius <= 1e-8f)
+                return 0f;
+
+            if (distance <= activePatchRadius)
+            {
+                var normalizedDistance = System.MathF.Min(distance / activePatchRadius, 1f);
+                // Keep the center softer and let middle shells participate more,
+                // so the local region shrinks compactly instead of collapsing inward.
+                return 0.45f + 0.35f * normalizedDistance;
+            }
+
+            var outerSpan = outerRingRadius - activePatchRadius;
+            if (outerSpan <= 1e-8f)
+                return 0.18f;
+
+            var ringDistance = System.MathF.Min((distance - activePatchRadius) / outerSpan, 1f);
+            // Broader and stronger transition ring for deflate to avoid a gap behind the border.
+            return 0.18f * (1f - ringDistance) + 0.06f * ringDistance;
         }
 
         private struct CandidateCenter

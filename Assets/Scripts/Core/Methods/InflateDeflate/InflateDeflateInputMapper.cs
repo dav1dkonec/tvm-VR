@@ -69,27 +69,25 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 return a.Index.CompareTo(b.Index);
             });
 
+            EnsureMinimumCandidateCount(frame.centers, selectedCenterIndex, candidates);
+
             var indices = new List<int>();
             var translations = new List<Vector3>();
             var activePatchRadius = System.MathF.Max(radius * 0.72f, 1e-4f);
             var outerRingRadius = System.MathF.Max(radius, activePatchRadius);
             var directionSign = mode == InflateDeflateMode.Inflate ? 1f : -1f;
-
-            indices.Add(selectedCenterIndex);
-            translations.Add(Vector3.Zero);
+            var expansionCenter = ComputeExpansionCenter(candidates, activePatchRadius, selectedCenterPosition);
+            var sparseRegionBoost = ComputeSparseRegionBoost(candidates.Count);
 
             for (var i = 0; i < candidates.Count; i++)
             {
                 var candidate = candidates[i];
-                if (candidate.Index == selectedCenterIndex)
-                    continue;
-
                 if (candidate.Distance > outerRingRadius)
                     continue;
 
                 indices.Add(candidate.Index);
 
-                var offset = candidate.Position - selectedCenterPosition;
+                var offset = candidate.Position - expansionCenter;
                 if (offset.LengthSquared() < 1e-8f)
                 {
                     translations.Add(Vector3.Zero);
@@ -97,7 +95,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 }
 
                 var influence = ComputeInfluence(candidate.Distance, activePatchRadius, outerRingRadius);
-                translations.Add(offset * (directionSign * strength * influence));
+                translations.Add(offset * (directionSign * strength * influence * sparseRegionBoost));
             }
 
             return new InflateDeflateResolvedEffectors
@@ -125,6 +123,39 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             }
 
             return candidates;
+        }
+
+        private static void EnsureMinimumCandidateCount(
+            Vector3[] centers,
+            int selectedCenterIndex,
+            List<CandidateCenter> candidates)
+        {
+            const int minimumCandidateCount = 8;
+            if (centers == null || centers.Length == 0 || candidates.Count >= minimumCandidateCount)
+                return;
+
+            var present = new HashSet<int>();
+            for (var i = 0; i < candidates.Count; i++)
+                present.Add(candidates[i].Index);
+
+            var ordered = new List<CandidateCenter>(centers.Length);
+            for (var i = 0; i < centers.Length; i++)
+            {
+                if (present.Contains(i))
+                    continue;
+
+                var distance = Vector3.Distance(centers[i], centers[selectedCenterIndex]);
+                ordered.Add(new CandidateCenter
+                {
+                    Index = i,
+                    Position = centers[i],
+                    Distance = distance
+                });
+            }
+
+            ordered.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
+            for (var i = 0; i < ordered.Count && candidates.Count < minimumCandidateCount; i++)
+                candidates.Add(ordered[i]);
         }
 
         private static int FindNearestCenterIndex(Vector3[] centers, Vector3 referencePoint)
@@ -167,6 +198,39 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             var ringDistance = System.MathF.Min((distance - activePatchRadius) / outerSpan, 1f);
             // Outer ring still participates a little to keep the transition smooth.
             return 0.12f * (1f - ringDistance) + 0.02f * ringDistance;
+        }
+
+        private static Vector3 ComputeExpansionCenter(
+            List<CandidateCenter> candidates,
+            float activePatchRadius,
+            Vector3 fallbackCenter)
+        {
+            if (candidates == null || candidates.Count == 0)
+                return fallbackCenter;
+
+            var centroid = Vector3.Zero;
+            var weightSum = 0f;
+
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                var weight = candidates[i].Distance <= activePatchRadius ? 1f : 0.25f;
+                centroid += candidates[i].Position * weight;
+                weightSum += weight;
+            }
+
+            if (weightSum <= 1e-8f)
+                return fallbackCenter;
+
+            return centroid / weightSum;
+        }
+
+        private static float ComputeSparseRegionBoost(int candidateCount)
+        {
+            if (candidateCount >= 8)
+                return 1f;
+
+            // Sparse parts like wrists/arms need slightly stronger scaling to create visible volume.
+            return 1f + (8 - candidateCount) * 0.12f;
         }
 
         private struct CandidateCenter

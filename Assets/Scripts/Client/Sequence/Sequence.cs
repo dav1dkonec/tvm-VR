@@ -501,7 +501,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         }
 
         centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
-        RedrawMesh();
         SetPendingEdits(true);
 
         busyStateController.Exit(leftHand, rightHand, waitCanvas);
@@ -551,6 +550,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
 
         centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
         RedrawMesh();
+        SetPendingEdits(false);
 
         busyStateController.Exit(leftHand, rightHand, waitCanvas);
         if (pl) Play();

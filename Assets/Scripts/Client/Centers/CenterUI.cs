@@ -235,6 +235,9 @@ public class CenterUI : MonoBehaviour
         if (normalMaterial == null)
             return;
 
+        if (normalMaterial.HasProperty("_EmissionColor"))
+            normalMaterial.SetColor("_EmissionColor", highlightedColor);
+
         if (normalMaterial.HasProperty("_BaseColor"))
             normalMaterial.SetColor("_BaseColor", highlightedColor);
         else if (normalMaterial.HasProperty("_Color"))

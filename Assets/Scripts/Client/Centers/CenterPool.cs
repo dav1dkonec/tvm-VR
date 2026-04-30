@@ -11,7 +11,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class CenterPool : MonoBehaviour, ICenterHoverListener
 {
     private const float InflateStrengthPreviewReference = 0.5f;
-    private const float PreviewEmissionMultiplier = 1.12f;
+    private const float PreviewEmissionMultiplier = 1f;
 
     /// <summary>
     /// Center game object prefab
@@ -157,6 +157,7 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
             if (center != null)
                 PreviewInflateDeflate(center.transform.position, center.centerIndex);
 
+            DynamicGI.UpdateEnvironment();
             return;
         }
 
@@ -182,6 +183,8 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
             var intensity = Mathf.Exp(-sigma * distance);
             ApplyPreviewIntensity(targetCenter, intensity);
         }
+
+        DynamicGI.UpdateEnvironment();
     }
 
     public void PreviewInflateDeflate(Vector3 referencePoint)
@@ -232,6 +235,8 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
 
         if (activeCenter != null)
             ApplyPreviewIntensity(activeCenter, 1f);
+
+        DynamicGI.UpdateEnvironment();
     }
 
     public void ClearPreview()
@@ -247,6 +252,8 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
 
             ApplyColor(center, center.normalColor);
         }
+
+        DynamicGI.UpdateEnvironment();
     }
 
     public void SetInteractionEnabled(bool enabled)

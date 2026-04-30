@@ -40,14 +40,10 @@ namespace TvmVr2.Core.Methods.BasicTranslate
                 };
             }
 
-            var surfaceRebuilt = _pipeline.RebuildSurface(
-                input.Frames,
-                input.SurfaceNeighborCount);
-
             return new MethodExecutionResult
             {
-                Success = surfaceRebuilt,
-                ErrorMessage = surfaceRebuilt ? string.Empty : "BasicTranslate surface rebuild failed."
+                Success = true,
+                ErrorMessage = string.Empty
             };
         }
     }

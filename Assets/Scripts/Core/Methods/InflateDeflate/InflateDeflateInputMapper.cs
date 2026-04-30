@@ -55,18 +55,18 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             if (candidates.Count == 0)
                 return new InflateDeflateResolvedEffectors();
 
-            ScoreCandidates(candidates, radius);
             var seedCandidates = CollectSeedCandidates(candidates, radius);
             if (seedCandidates.Count == 0)
                 return new InflateDeflateResolvedEffectors();
 
+            ScoreCandidates(seedCandidates, radius);
             seedCandidates.Sort(static (a, b) =>
             {
-                var scoreComparison = b.Score.CompareTo(a.Score);
-                if (scoreComparison != 0)
-                    return scoreComparison;
+                var distanceComparison = a.Distance.CompareTo(b.Distance);
+                if (distanceComparison != 0)
+                    return distanceComparison;
 
-                return a.Distance.CompareTo(b.Distance);
+                return b.Score.CompareTo(a.Score);
             });
 
             var indices = new List<int>();
@@ -121,11 +121,15 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         private static List<CandidateCenter> CollectSeedCandidates(List<CandidateCenter> candidates, float radius)
         {
             var seedCandidates = new List<CandidateCenter>(candidates.Count);
-            var centerExclusionRadius = System.MathF.Max(radius * 0.12f, 1e-4f);
+            var centerExclusionRadius = System.MathF.Max(radius * 0.08f, 1e-4f);
+            var seedBandRadius = System.MathF.Max(radius * 0.45f, centerExclusionRadius + 1e-4f);
 
             for (var i = 0; i < candidates.Count; i++)
             {
                 if (candidates[i].Distance <= centerExclusionRadius)
+                    continue;
+
+                if (candidates[i].Distance > seedBandRadius)
                     continue;
 
                 seedCandidates.Add(candidates[i]);
@@ -146,7 +150,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
         private static void ScoreCandidates(List<CandidateCenter> candidates, float radius)
         {
-            var densityRadius = System.MathF.Max(radius * 0.45f, 1e-4f);
+            var densityRadius = System.MathF.Max(radius * 0.25f, 1e-4f);
 
             for (var i = 0; i < candidates.Count; i++)
             {
@@ -165,7 +169,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
                 var distancePriority = 1f - (candidates[i].Distance / radius);
                 var candidate = candidates[i];
-                candidate.Score = density * 2f + distancePriority;
+                candidate.Score = density + distancePriority * 10f;
                 candidates[i] = candidate;
             }
         }
@@ -186,10 +190,10 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             Vector3 referencePoint,
             out Vector3 direction)
         {
-            var toReference = referencePoint - candidate.Position;
-            if (toReference.LengthSquared() >= 1e-8f)
+            var outwardFromReference = candidate.Position - referencePoint;
+            if (outwardFromReference.LengthSquared() >= 1e-8f)
             {
-                direction = Vector3.Normalize(toReference);
+                direction = Vector3.Normalize(outwardFromReference);
                 return true;
             }
 

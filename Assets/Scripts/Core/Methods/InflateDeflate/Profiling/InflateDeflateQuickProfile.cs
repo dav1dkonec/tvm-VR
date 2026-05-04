@@ -10,7 +10,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
         public int CenterIndex { get; set; }
         public int AffectedCenterCount { get; set; }
         public int MovingEffectorCount { get; set; }
-        public int TransitionEffectorCount { get; set; }
         public int FixedEffectorCount { get; set; }
         public int CandidatePoolCount { get; set; }
         public int DiscardedCandidateCount { get; set; }
@@ -68,7 +67,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             builder.AppendLine("Planner.Selection: sparseAffinity");
             builder.AppendLine("Planner.RadiusIgnored: True");
             builder.AppendLine($"Planner.MovingEffectors: {MovingEffectorCount}");
-            builder.AppendLine($"Planner.TransitionEffectors: {TransitionEffectorCount}");
             builder.AppendLine($"Planner.FixedEffectors: {FixedEffectorCount}");
             builder.AppendLine($"Planner.CandidatePool: {CandidatePoolCount}");
             builder.AppendLine($"Planner.DiscardedCandidates: {DiscardedCandidateCount}");
@@ -137,7 +135,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             {
                 average.AffectedCenterCount += profile.AffectedCenterCount;
                 average.MovingEffectorCount += profile.MovingEffectorCount;
-                average.TransitionEffectorCount += profile.TransitionEffectorCount;
                 average.FixedEffectorCount += profile.FixedEffectorCount;
                 average.CandidatePoolCount += profile.CandidatePoolCount;
                 average.DiscardedCandidateCount += profile.DiscardedCandidateCount;
@@ -184,7 +181,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
 
             average.AffectedCenterCount /= profiles.Count;
             average.MovingEffectorCount /= profiles.Count;
-            average.TransitionEffectorCount /= profiles.Count;
             average.FixedEffectorCount /= profiles.Count;
             average.CandidatePoolCount /= profiles.Count;
             average.DiscardedCandidateCount /= profiles.Count;

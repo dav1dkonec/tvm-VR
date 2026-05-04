@@ -19,6 +19,11 @@ namespace TVMEditor.Editing
         public double SurfacePropagatedBlendVerticesMs { get; set; }
         public double SurfacePropagatedResampleMs { get; set; }
         public int SurfacePropagatedCacheMisses { get; set; }
+        public int SurfacePropagatedCacheHits { get; set; }
+        public double SurfacePropagatedMinCallTotalMs { get; set; }
+        public double SurfacePropagatedMaxCallTotalMs { get; set; }
+        public int SurfacePropagatedMaxCallFrameIndex { get; set; }
+        public double SurfacePropagatedAverageCallTotalMs { get; set; }
         public double TotalMs { get; set; }
     }
 }

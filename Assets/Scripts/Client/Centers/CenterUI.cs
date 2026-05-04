@@ -88,7 +88,7 @@ public class CenterUI : MonoBehaviour
     /// <param name="e">Hover event</param>
     public void OnHoverEnter(HoverEnterEventArgs e)
     {
-        if (Sequence.playing || !IsCenterInteractionMethodActive()) return;
+        if (Sequence.playing || Sequence.editing || !IsCenterInteractionMethodActive()) return;
 
         if (isPersistentSelected)
             ApplyPersistentSelectedVisual();
@@ -107,7 +107,7 @@ public class CenterUI : MonoBehaviour
     /// <param name="e">Hover event</param>
     public void OnHoverExit(HoverExitEventArgs e)
     {
-        if (Sequence.playing || !IsCenterInteractionMethodActive()) return;
+        if (Sequence.playing || Sequence.editing || !IsCenterInteractionMethodActive()) return;
 
         if (isPersistentSelected)
             ApplyPersistentSelectedVisual();
@@ -126,7 +126,7 @@ public class CenterUI : MonoBehaviour
     /// <param name="e">Selection event</param>
     public void OnSelectEnter(SelectEnterEventArgs e)
     {
-        if (Sequence.playing || !IsCenterInteractionMethodActive()) return;
+        if (Sequence.playing || Sequence.editing || !IsCenterInteractionMethodActive()) return;
 
         if (IsInflateDeflateActive())
         {
@@ -153,7 +153,7 @@ public class CenterUI : MonoBehaviour
     /// <param name="e">Selection event</param>
     public void OnSelectExit(SelectExitEventArgs e)
     {
-        if (Sequence.playing || !IsCenterInteractionMethodActive()) return;
+        if (Sequence.playing || Sequence.editing || !IsCenterInteractionMethodActive()) return;
 
         if (IsInflateDeflateActive())
             return;

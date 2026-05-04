@@ -9,5 +9,6 @@ namespace TvmVr2.Client.Sequence
         public string ErrorMessage { get; set; } = string.Empty;
         public Frame[] Frames { get; set; } = Array.Empty<Frame>();
         public SequenceSettings Settings { get; set; } = new SequenceSettings();
+        public SequenceData SequenceData { get; set; }
     }
 }

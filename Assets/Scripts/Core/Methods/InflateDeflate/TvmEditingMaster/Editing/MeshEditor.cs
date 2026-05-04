@@ -184,6 +184,21 @@ namespace TVMEditor.Editing
             profile.SurfacePropagatedBlendVerticesMs = propagatedProfiles.Sum(p => p.BlendVerticesMs);
             profile.SurfacePropagatedResampleMs = propagatedProfiles.Sum(p => p.ResampleMs);
             profile.SurfacePropagatedCacheMisses = propagatedProfiles.Count(p => !p.UsedCachedWeights);
+            profile.SurfacePropagatedCacheHits = propagatedProfiles.Length - profile.SurfacePropagatedCacheMisses;
+            profile.SurfacePropagatedAverageCallTotalMs = propagatedProfiles.Average(p => p.TotalMs);
+            profile.SurfacePropagatedMinCallTotalMs = propagatedProfiles.Min(p => p.TotalMs);
+            profile.SurfacePropagatedMaxCallTotalMs = propagatedProfiles.Max(p => p.TotalMs);
+            profile.SurfacePropagatedMaxCallFrameIndex = propagatedProfiles
+                .OrderByDescending(p => p.TotalMs)
+                .First()
+                .FrameIndex;
+
+            UnityEngine.Debug.Log(
+                $"MeshEditor: propagated surface call summary | editedFrame={editedFrameIndex}, " +
+                $"calls={propagatedProfiles.Length}, cacheHits={profile.SurfacePropagatedCacheHits}, " +
+                $"cacheMisses={profile.SurfacePropagatedCacheMisses}, avgTotalMs={profile.SurfacePropagatedAverageCallTotalMs:F2}, " +
+                $"minTotalMs={profile.SurfacePropagatedMinCallTotalMs:F2}, maxTotalMs={profile.SurfacePropagatedMaxCallTotalMs:F2}, " +
+                $"maxFrameIndex={profile.SurfacePropagatedMaxCallFrameIndex}.");
         }
     }
 }

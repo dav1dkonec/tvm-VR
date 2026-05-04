@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 using TvmVr2.Api.Enums;
 using TvmVr2.Api.Requests;
 using TvmVr2.Api.Responses;
@@ -12,21 +13,18 @@ namespace TvmVr2.Core
     public sealed class EditingCore
     {
         private readonly EditingMethodDispatcher _dispatcher;
-        private readonly BasicTranslateInputMapper _basicTranslateInputMapper;
-        private readonly InflateDeflateInputMapper _inflateDeflateInputMapper;
         private readonly BasicTranslatePipeline _basicTranslatePipeline;
-
+        private readonly TvmEditingMasterInflateDeflateAdapter _inflateDeflateAdapter;
         public EditingCore(
             BasicTranslatePipeline basicTranslatePipeline = null,
             TvmEditingMasterInflateDeflateAdapter inflateDeflateAdapter = null)
         {
             _basicTranslatePipeline = basicTranslatePipeline ?? new BasicTranslatePipeline();
-            _basicTranslateInputMapper = new BasicTranslateInputMapper();
-            _inflateDeflateInputMapper = new InflateDeflateInputMapper();
+            _inflateDeflateAdapter = inflateDeflateAdapter ?? new TvmEditingMasterInflateDeflateAdapter();
             _dispatcher = new EditingMethodDispatcher(new IEditingMethodHandler[]
             {
                 new BasicTranslateMethodHandler(_basicTranslatePipeline),
-                new InflateDeflateMethodHandler(inflateDeflateAdapter ?? new TvmEditingMasterInflateDeflateAdapter())
+                new InflateDeflateMethodHandler(_inflateDeflateAdapter)
             });
         }
 
@@ -55,18 +53,14 @@ namespace TvmVr2.Core
             }
             else if (request is InflateDeflateRequest inflateDeflateRequest)
             {
+                if (inflateDeflateRequest.SelectedCenterIndex < 0)
+                    return ValidationResult.Invalid("SelectedCenterIndex must be non-negative.");
+
                 if (inflateDeflateRequest.Radius <= 0f)
                     return ValidationResult.Invalid("Radius must be greater than zero.");
 
                 if (inflateDeflateRequest.Strength <= 0f)
                     return ValidationResult.Invalid("Strength must be greater than zero.");
-
-                if (float.IsNaN(inflateDeflateRequest.ReferencePoint.X) ||
-                    float.IsNaN(inflateDeflateRequest.ReferencePoint.Y) ||
-                    float.IsNaN(inflateDeflateRequest.ReferencePoint.Z))
-                {
-                    return ValidationResult.Invalid("ReferencePoint must contain valid coordinates.");
-                }
             }
 
             return ValidationResult.Valid();
@@ -114,12 +108,41 @@ namespace TvmVr2.Core
             return _basicTranslatePipeline.RebuildSurface(frames, surfaceNeighborCount);
         }
 
-        private IMethodInput MapRequest(EditOperationRequest request, SequenceRuntimeContext runtimeContext)
+        public void InvalidateInflateDeflateFrameCaches(int[] frameIndices)
+        {
+            if (_inflateDeflateAdapter == null || frameIndices == null || frameIndices.Length == 0)
+                return;
+
+            _inflateDeflateAdapter.InvalidateFrameCaches(frameIndices);
+        }
+
+        public IMethodInput MapRequest(EditOperationRequest request, SequenceRuntimeContext runtimeContext)
         {
             return request.MethodKind switch
             {
-                MethodKind.BasicTranslate => _basicTranslateInputMapper.Map((BasicTranslateRequest)request, runtimeContext),
-                MethodKind.InflateDeflate => _inflateDeflateInputMapper.Map((InflateDeflateRequest)request, runtimeContext),
+                MethodKind.BasicTranslate => new BasicTranslateMethodInput
+                {
+                    Frames = runtimeContext?.Frames,
+                    FrameIndex = request.FrameIndex,
+                    CenterIndex = ((BasicTranslateRequest)request).CenterIndex,
+                    CenterSigma = runtimeContext?.BasicTranslate?.CenterSigma ?? 1f,
+                    SequenceNeighborCount = runtimeContext?.BasicTranslate?.SequenceNeighborCount ?? 4,
+                    SurfaceNeighborCount = runtimeContext?.BasicTranslate?.SurfaceNeighborCount ?? 6,
+                    TargetPosition = new Vector3(
+                        ((BasicTranslateRequest)request).TargetPosition.X,
+                        ((BasicTranslateRequest)request).TargetPosition.Y,
+                        ((BasicTranslateRequest)request).TargetPosition.Z)
+                },
+                MethodKind.InflateDeflate => new InflateDeflateMethodInput
+                {
+                    SequenceId = runtimeContext?.SequenceId ?? string.Empty,
+                    Frames = runtimeContext?.Frames,
+                    FrameIndex = request.FrameIndex,
+                    SelectedCenterIndex = ((InflateDeflateRequest)request).SelectedCenterIndex,
+                    Radius = ((InflateDeflateRequest)request).Radius,
+                    Strength = ((InflateDeflateRequest)request).Strength,
+                    Mode = ((InflateDeflateRequest)request).Mode
+                },
                 _ => throw new InvalidOperationException($"Unsupported method kind: {request.MethodKind}")
             };
         }

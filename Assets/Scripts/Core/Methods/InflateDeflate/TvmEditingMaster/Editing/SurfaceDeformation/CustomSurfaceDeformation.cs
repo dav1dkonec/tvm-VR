@@ -44,6 +44,14 @@ namespace TVMEditor.Editing.SurfaceDeformation
             frameWeightCaches.Clear();
         }
 
+        public void InvalidateFrameCache(int frameIndex)
+        {
+            if (frameIndex < 0)
+                return;
+
+            frameWeightCaches.TryRemove(frameIndex, out _);
+        }
+
         public void PrecomputeFrameWeightCache(Vector3[] vertices, Vector3[] oldCenters, int frameIndex)
         {
             if (vertices == null || oldCenters == null)
@@ -97,7 +105,11 @@ namespace TVMEditor.Editing.SurfaceDeformation
             stageTimer.Stop();
             profile.ComputeWeightsMs = stageTimer.Elapsed.TotalMilliseconds;
 
-            var frameCache = frameWeightCaches[frameIndex];
+            if (!frameWeightCaches.TryGetValue(frameIndex, out var frameCache))
+            {
+                ComputeWeights(vertices, oldCenters, frameIndex, parallelizeVertices: true, CancellationToken.None);
+                frameCache = frameWeightCaches[frameIndex];
+            }
             var centersArray = frameCache.Centers;
             var weightsArray = frameCache.Weights;
             var verticesList = new List<Vector3>();

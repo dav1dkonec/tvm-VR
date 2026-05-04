@@ -92,9 +92,9 @@ public class InflateDeflateUI : MonoBehaviour
         if (selectedReferenceCenter == null || sequence == null || target == null || target.CurrentMethod != MethodKind.InflateDeflate)
             return;
 
-        var referencePoint = selectedReferenceCenter.transform.position;
+        var selectedCenterIndex = selectedReferenceCenter.centerIndex;
         CancelSelection();
-        sequence.CommitInflateDeflate(referencePoint);
+        sequence.CommitInflateDeflate(selectedCenterIndex);
     }
 
     public void RefreshSelectionPreview()

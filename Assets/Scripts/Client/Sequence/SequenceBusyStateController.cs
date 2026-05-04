@@ -21,12 +21,6 @@ namespace TvmVr2.Client.Sequence
             SetPinnedMenuBusy(leftHand, true);
             SetPinnedMenuBusy(rightHand, true);
 
-            if (leftHand != null)
-                leftHand.SetActive(false);
-
-            if (rightHand != null)
-                rightHand.SetActive(false);
-
             if (waitCanvas != null)
                 waitCanvas.SetActive(true);
 
@@ -35,12 +29,6 @@ namespace TvmVr2.Client.Sequence
 
         public void Exit(GameObject leftHand, GameObject rightHand, GameObject waitCanvas)
         {
-            if (leftHand != null)
-                leftHand.SetActive(true);
-
-            if (rightHand != null)
-                rightHand.SetActive(true);
-
             SetPinnedMenuBusy(leftHand, false);
             SetPinnedMenuBusy(rightHand, false);
 

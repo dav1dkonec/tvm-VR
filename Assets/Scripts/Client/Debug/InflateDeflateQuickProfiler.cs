@@ -8,9 +8,6 @@ namespace TvmVr2.Client.DebugTools
     [DisallowMultipleComponent]
     public sealed class InflateDeflateQuickProfiler : MonoBehaviour
     {
-        private const float VisibleRadius = 0.30f;
-        private const float VisibleStrength = 0.18f;
-
         [SerializeField] private global::Sequence sequence;
         [SerializeField] private bool useCurrentFrame = true;
         [SerializeField] private int frameIndex;
@@ -20,6 +17,15 @@ namespace TvmVr2.Client.DebugTools
         [SerializeField] private InflateDeflateMode mode = InflateDeflateMode.Inflate;
         [SerializeField] private int iterations = 1;
         [SerializeField] private bool useStreamingAssetsCache = true;
+        [SerializeField] private bool restoreOriginalStateAfterQuickProfile = true;
+
+        public enum DebugBodyRegion
+        {
+            Head,
+            Belly,
+            Arm,
+            Leg
+        }
 
         [ContextMenu("Run InflateDeflate Quick Profile")]
         public void RunQuickProfile()
@@ -35,7 +41,8 @@ namespace TvmVr2.Client.DebugTools
                 radius,
                 strength,
                 mode,
-                iterations);
+                iterations,
+                restoreOriginalStateAfterQuickProfile);
         }
 
         [ContextMenu("Load Short Samba")]
@@ -62,13 +69,38 @@ namespace TvmVr2.Client.DebugTools
         [ContextMenu("Apply Visible Inflate Debug Edit")]
         public void ApplyVisibleInflateDebugEdit()
         {
-            ApplyVisibleDebugEdit(InflateDeflateMode.Inflate);
+            ApplyRegionDebugEdit(DebugBodyRegion.Head, InflateDeflateMode.Inflate);
         }
 
         [ContextMenu("Apply Visible Deflate Debug Edit")]
         public void ApplyVisibleDeflateDebugEdit()
         {
-            ApplyVisibleDebugEdit(InflateDeflateMode.Deflate);
+            ApplyRegionDebugEdit(DebugBodyRegion.Head, InflateDeflateMode.Deflate);
+        }
+
+        public void MoveSequenceToCamera()
+        {
+            if (!EnsureSequence())
+                return;
+
+            if (!UnityEngine.Application.isPlaying)
+            {
+                Debug.LogError("InflateDeflateQuickProfiler: moving sequence to camera is available only in Play Mode.");
+                return;
+            }
+
+            var cameraTransform = Camera.main != null
+                ? Camera.main.transform
+                : FindFirstObjectByType<Camera>()?.transform;
+            if (cameraTransform == null)
+            {
+                Debug.LogError("InflateDeflateQuickProfiler: no camera was found.");
+                return;
+            }
+
+            var sequenceTransform = sequence.transform;
+            sequenceTransform.position = cameraTransform.position + cameraTransform.forward * 0.75f;
+            sequenceTransform.rotation = Quaternion.LookRotation(sequenceTransform.position - cameraTransform.position, Vector3.up);
         }
 
         private bool EnsureSequence()
@@ -83,7 +115,7 @@ namespace TvmVr2.Client.DebugTools
             return false;
         }
 
-        private void ApplyVisibleDebugEdit(InflateDeflateMode visibleMode)
+        public void ApplyRegionDebugEdit(DebugBodyRegion region, InflateDeflateMode visibleMode)
         {
             if (!EnsureSequence())
                 return;
@@ -107,27 +139,27 @@ namespace TvmVr2.Client.DebugTools
                 return;
             }
 
-            var resolvedCenterIndex = ResolveHighestYCenterIndex(targetFrameIndex);
+            var resolvedCenterIndex = ResolveRegionCenterIndex(targetFrameIndex, region);
             if (resolvedCenterIndex < 0)
             {
-                Debug.LogError("InflateDeflateQuickProfiler: unable to resolve a visible center for debug apply.");
+                Debug.LogError($"InflateDeflateQuickProfiler: unable to resolve a center for debug region {region}.");
                 return;
             }
 
             centerIndex = resolvedCenterIndex;
             Debug.Log(
-                $"InflateDeflateQuickProfiler: applying visible debug edit " +
-                $"frame={targetFrameIndex}, center={centerIndex}, radius={VisibleRadius:F2}, strength={VisibleStrength:F2}, mode={visibleMode}.");
+                $"InflateDeflateQuickProfiler: applying region debug edit " +
+                $"frame={targetFrameIndex}, center={centerIndex}, region={region}, radius={radius:F2}, strength={strength:F2}, mode={visibleMode}.");
 
             sequence.ApplyInflateDeflateDebug(
                 targetFrameIndex,
                 centerIndex,
-                VisibleRadius,
-                VisibleStrength,
+                radius,
+                strength,
                 visibleMode);
         }
 
-        private int ResolveHighestYCenterIndex(int targetFrameIndex)
+        private int ResolveRegionCenterIndex(int targetFrameIndex, DebugBodyRegion region)
         {
             if (sequence == null ||
                 sequence.frames == null ||
@@ -141,18 +173,63 @@ namespace TvmVr2.Client.DebugTools
             }
 
             var centers = sequence.frames[targetFrameIndex].centers;
-            var bestIndex = 0;
-            var bestY = centers[0].Y;
+            var minY = centers[0].Y;
+            var maxY = centers[0].Y;
+            var minX = centers[0].X;
+            var maxX = centers[0].X;
+
             for (var i = 1; i < centers.Length; i++)
             {
-                if (centers[i].Y <= bestY)
+                if (centers[i].Y < minY)
+                    minY = centers[i].Y;
+                if (centers[i].Y > maxY)
+                    maxY = centers[i].Y;
+                if (centers[i].X < minX)
+                    minX = centers[i].X;
+                if (centers[i].X > maxX)
+                    maxX = centers[i].X;
+            }
+
+            var bodyCenterX = 0.5f * (minX + maxX);
+            var ySpan = Mathf.Max(1e-4f, maxY - minY);
+            var xSpan = Mathf.Max(1e-4f, maxX - minX);
+
+            var bestIndex = -1;
+            var bestScore = float.NegativeInfinity;
+
+            for (var i = 0; i < centers.Length; i++)
+            {
+                var center = centers[i];
+                var normalizedY = (center.Y - minY) / ySpan;
+                var normalizedSide = Mathf.Abs(center.X - bodyCenterX) / xSpan;
+                var score = EvaluateRegionScore(region, normalizedY, normalizedSide, center.X - bodyCenterX);
+                if (score <= bestScore)
                     continue;
 
-                bestY = centers[i].Y;
+                bestScore = score;
                 bestIndex = i;
             }
 
             return bestIndex;
+        }
+
+        public bool ShouldRestoreOriginalStateAfterQuickProfile => restoreOriginalStateAfterQuickProfile;
+
+        private static float EvaluateRegionScore(DebugBodyRegion region, float normalizedY, float normalizedSide, float signedSideOffset)
+        {
+            switch (region)
+            {
+                case DebugBodyRegion.Head:
+                    return normalizedY * 3f - Mathf.Abs(signedSideOffset) * 0.05f;
+                case DebugBodyRegion.Belly:
+                    return (1f - Mathf.Abs(normalizedY - 0.52f)) * 2.5f - normalizedSide;
+                case DebugBodyRegion.Arm:
+                    return normalizedSide * 2.5f + Mathf.Clamp01(normalizedY - 0.35f) - Mathf.Abs(normalizedY - 0.62f);
+                case DebugBodyRegion.Leg:
+                    return normalizedSide * 1.5f + (1f - normalizedY) * 2.5f;
+                default:
+                    return float.NegativeInfinity;
+            }
         }
 
         public bool LoadSequenceByName(string targetSequenceName)

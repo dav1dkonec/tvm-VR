@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Linq;
 using System.Numerics;
@@ -25,6 +26,8 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         private CachedExecutionContext _cachedExecutionContext;
         private bool _useStreamingAssetsCache = true;
 
+        public bool IsStreamingAssetsCacheEnabled => _useStreamingAssetsCache;
+
         public void SetStreamingAssetsCacheEnabled(bool enabled)
         {
             lock (_contextLock)
@@ -47,6 +50,90 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return ExecuteInternal(input, out profile);
         }
 
+        public void InvalidateFrameCaches(int[] frameIndices)
+        {
+            if (frameIndices == null || frameIndices.Length == 0)
+                return;
+
+            lock (_contextLock)
+            {
+                if (_cachedExecutionContext == null)
+                    return;
+
+                for (var i = 0; i < frameIndices.Length; i++)
+                {
+                    var frameIndex = frameIndices[i];
+                    _cachedExecutionContext.SurfaceDeformation?.InvalidateFrameCache(frameIndex);
+                    _cachedExecutionContext.TransformPropagation?.InvalidateFrameCache(frameIndex);
+                }
+
+                UnityEngine.Debug.Log(
+                    $"InflateDeflateCache: invalidated runtime frame caches for {frameIndices.Length} frame(s) " +
+                    $"[{string.Join(", ", frameIndices)}].");
+            }
+        }
+
+        public bool ResetExecutionContextToDefaultCache(
+            string sequenceId,
+            Frame[] frames,
+            out string cacheHydrationState,
+            out string errorMessage)
+        {
+            cacheHydrationState = "not_attempted";
+            errorMessage = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(sequenceId))
+            {
+                errorMessage = "InflateDeflate cache reset requires a sequence id.";
+                return false;
+            }
+
+            if (frames == null || frames.Length == 0)
+            {
+                errorMessage = "InflateDeflate cache reset requires loaded frames.";
+                return false;
+            }
+
+            var input = new InflateDeflateMethodInput
+            {
+                SequenceId = sequenceId,
+                Frames = frames,
+                FrameIndex = 0,
+                SelectedCenterIndex = -1,
+                Radius = 0f,
+                Strength = 0f,
+                Mode = InflateDeflateMode.Inflate
+            };
+
+            var cacheKey = BuildCacheKey(input);
+            var resetTimer = Stopwatch.StartNew();
+
+            _operationGate.Wait();
+            try
+            {
+                lock (_contextLock)
+                {
+                    _cachedExecutionContext = CreateExecutionContext(cacheKey);
+                    TryHydrateExecutionContextFromStreamingAssets(
+                        input,
+                        _cachedExecutionContext,
+                        out errorMessage,
+                        out cacheHydrationState);
+                }
+            }
+            finally
+            {
+                _operationGate.Release();
+            }
+
+            resetTimer.Stop();
+            UnityEngine.Debug.Log(
+                $"InflateDeflateCache: execution context reset for sequence '{sequenceId}' in {resetTimer.Elapsed.TotalMilliseconds:F2} ms " +
+                $"(hydrationState={cacheHydrationState}).");
+
+            return string.Equals(cacheHydrationState, "hit", StringComparison.Ordinal);
+        }
+
         private MethodExecutionResult ExecuteInternal(InflateDeflateMethodInput input, out InflateDeflateQuickProfile profile)
         {
             profile = new InflateDeflateQuickProfile();
@@ -58,8 +145,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 profile.ErrorMessage = validationResult.ErrorMessage;
                 return validationResult;
             }
-
-            profile.AffectedCenterCount = input.SelectedCenterIndices.Length;
 
             TriangleMeshSequence sequence;
             UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase PrepareSequence.");
@@ -76,19 +161,49 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             profile.PrepareSequenceMs = stageTimer.Elapsed.TotalMilliseconds;
 
             UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase PrepareTransforms.");
-            stageTimer.Restart();
             var centers = input.Frames.Select(frame => frame.centers).ToArray();
-            var transformations = Enumerable
-                .Repeat(DualQuaternion.Identity(), centers[input.FrameIndex].Length)
-                .ToArray();
 
-            for (var i = 0; i < input.SelectedCenterIndices.Length; i++)
+            _operationGate.Wait();
+            try
             {
-                var centerIndex = input.SelectedCenterIndices[i];
-                if (centerIndex < 0 || centerIndex >= transformations.Length)
+                var executionContext = GetOrCreateExecutionContext(input, out var executionContextCacheHit, out var cacheHydrationState);
+                profile.ExecutionContextCacheHit = executionContextCacheHit;
+                profile.CacheHydrationState = cacheHydrationState;
+                EnsureAffinityAvailable(executionContext, centers, out var affinityWasAvailableBeforeEnsure, out var affinityCalculatedDuringRun);
+                profile.AffinityWasAvailableBeforeEnsure = affinityWasAvailableBeforeEnsure;
+                profile.AffinityCalculatedDuringRun = affinityCalculatedDuringRun;
+
+                var resolvedEffectors = ResolveEffectorsFromAffinity(
+                    input,
+                    executionContext.AffinityCalculation?.GetCentersAffinity(),
+                    out var plannerDiagnostics);
+                input.SelectedCenterIndices = resolvedEffectors.Indices;
+                input.CenterTranslations = resolvedEffectors.Translations;
+                profile.AffectedCenterCount = input.SelectedCenterIndices.Length;
+                profile.ActivePatchCount = plannerDiagnostics.ActivePatchCount;
+                profile.TransitionRingCount = plannerDiagnostics.TransitionRingCount;
+                profile.PreferredCandidateCount = plannerDiagnostics.PreferredCandidateCount;
+                profile.FallbackCandidateCount = plannerDiagnostics.FallbackCandidateCount;
+                profile.GuardRadius = plannerDiagnostics.GuardRadius;
+                profile.PatchMinAffinity = plannerDiagnostics.PatchMinAffinity;
+                profile.PatchMaxAffinity = plannerDiagnostics.PatchMaxAffinity;
+                profile.TranslationMagnitudeMax = plannerDiagnostics.TranslationMagnitudeMax;
+                profile.TranslationMagnitudeAverage = plannerDiagnostics.TranslationMagnitudeAverage;
+
+                UnityEngine.Debug.Log(
+                    $"InflateDeflatePlanner: selectedCenter={input.SelectedCenterIndex}, mode={input.Mode}, " +
+                    $"affectedCenters={profile.AffectedCenterCount}, activePatch={profile.ActivePatchCount}, " +
+                    $"transitionRing={profile.TransitionRingCount}, preferredCandidates={profile.PreferredCandidateCount}, " +
+                    $"fallbackCandidates={profile.FallbackCandidateCount}, guardRadius={profile.GuardRadius:F4}, " +
+                    $"patchMinAffinity={profile.PatchMinAffinity:F4}, patchMaxAffinity={profile.PatchMaxAffinity:F4}, " +
+                    $"maxTranslation={profile.TranslationMagnitudeMax:F6}, avgTranslation={profile.TranslationMagnitudeAverage:F6}, " +
+                    $"cacheContextHit={profile.ExecutionContextCacheHit}, cacheHydration={profile.CacheHydrationState}, " +
+                    $"affinityCalculatedDuringRun={profile.AffinityCalculatedDuringRun}.");
+
+                if (input.SelectedCenterIndices.Length == 0)
                 {
                     profile.Success = false;
-                    profile.ErrorMessage = $"InflateDeflate selected center index {centerIndex} is outside valid range 0..{transformations.Length - 1}.";
+                    profile.ErrorMessage = "InflateDeflate affinity planner resolved no affected centers for the current request.";
                     return new MethodExecutionResult
                     {
                         Success = false,
@@ -96,16 +211,30 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                     };
                 }
 
-                var translation = input.CenterTranslations[i];
-                transformations[centerIndex] = DualQuaternion.Translation(new Vector3(translation.X, translation.Y, translation.Z));
-            }
-            stageTimer.Stop();
-            profile.PrepareTransformsMs = stageTimer.Elapsed.TotalMilliseconds;
+                stageTimer.Restart();
+                var transformations = Enumerable
+                    .Repeat(DualQuaternion.Identity(), centers[input.FrameIndex].Length)
+                    .ToArray();
 
-            _operationGate.Wait();
-            try
-            {
-                var executionContext = GetOrCreateExecutionContext(input);
+                for (var i = 0; i < input.SelectedCenterIndices.Length; i++)
+                {
+                    var centerIndex = input.SelectedCenterIndices[i];
+                    if (centerIndex < 0 || centerIndex >= transformations.Length)
+                    {
+                        profile.Success = false;
+                        profile.ErrorMessage = $"InflateDeflate selected center index {centerIndex} is outside valid range 0..{transformations.Length - 1}.";
+                        return new MethodExecutionResult
+                        {
+                            Success = false,
+                            ErrorMessage = profile.ErrorMessage
+                        };
+                    }
+
+                    var translation = input.CenterTranslations[i];
+                    transformations[centerIndex] = DualQuaternion.Translation(new Vector3(translation.X, translation.Y, translation.Z));
+                }
+                stageTimer.Stop();
+                profile.PrepareTransformsMs = stageTimer.Elapsed.TotalMilliseconds;
 
                 UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase Deform.");
                 stageTimer.Restart();
@@ -137,6 +266,19 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 profile.DeformSurfacePropagatedBlendVerticesMs = deformProfile.SurfacePropagatedBlendVerticesMs;
                 profile.DeformSurfacePropagatedResampleMs = deformProfile.SurfacePropagatedResampleMs;
                 profile.DeformSurfacePropagatedCacheMisses = deformProfile.SurfacePropagatedCacheMisses;
+                profile.DeformSurfacePropagatedCacheHits = deformProfile.SurfacePropagatedCacheHits;
+                profile.DeformSurfacePropagatedMinCallTotalMs = deformProfile.SurfacePropagatedMinCallTotalMs;
+                profile.DeformSurfacePropagatedMaxCallTotalMs = deformProfile.SurfacePropagatedMaxCallTotalMs;
+                profile.DeformSurfacePropagatedMaxCallFrameIndex = deformProfile.SurfacePropagatedMaxCallFrameIndex;
+                profile.DeformSurfacePropagatedAverageCallTotalMs = deformProfile.SurfacePropagatedAverageCallTotalMs;
+                profile.TotalAffectedFrames = 1 + profile.DeformPropagatedSurfaceFrames;
+
+                UnityEngine.Debug.Log(
+                    $"InflateDeflateDeform: frame={input.FrameIndex}, affectedFrames={profile.TotalAffectedFrames}, " +
+                    $"propagatedSurfaceFrames={profile.DeformPropagatedSurfaceFrames}, deformMs={profile.DeformMs:F2}, " +
+                    $"affinityMs={profile.DeformAffinityMs:F2}, centerDeformationMs={profile.DeformCenterDeformationMs:F2}, " +
+                    $"editedSurfaceMs={profile.DeformEditedSurfaceMs:F2}, propagateTransformsMs={profile.DeformPropagateTransformsMs:F2}, " +
+                    $"propagateSurfaceMs={profile.DeformPropagateSurfaceMs:F2}, writeBackPending=true.");
 
                 UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase WriteBack.");
                 stageTimer.Restart();
@@ -157,7 +299,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 + profile.PrepareTransformsMs
                 + profile.DeformMs
                 + profile.WriteBackMs;
+            profile.TotalMs = profile.AdapterTotalMs;
             profile.Success = true;
+            UnityEngine.Debug.Log(BuildDiagnosticsLog(input, profile));
             UnityEngine.Debug.Log("InflateDeflateQuickProfiler: adapter phases completed.");
 
             return new MethodExecutionResult
@@ -175,12 +319,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             if (input.Frames == null || input.Frames.Length == 0)
                 return MethodExecutionResult.NotImplemented("InflateDeflate runtime data are missing.");
 
-            if (input.SelectedCenterIndices == null || input.CenterTranslations == null)
-                return MethodExecutionResult.NotImplemented("InflateDeflate effectors were not resolved.");
-
-            if (input.SelectedCenterIndices.Length != input.CenterTranslations.Length)
-                return MethodExecutionResult.NotImplemented("InflateDeflate effectors are inconsistent.");
-
             if (input.FrameIndex < 0 || input.FrameIndex >= input.Frames.Length)
             {
                 return new MethodExecutionResult
@@ -190,29 +328,298 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 };
             }
 
-            if (input.SelectedCenterIndices.Length == 0)
+            var centers = input.Frames[input.FrameIndex]?.centers;
+            if (centers == null || centers.Length == 0)
             {
                 return new MethodExecutionResult
                 {
                     Success = false,
-                    ErrorMessage = "InflateDeflate resolved no affected centers for the current request."
+                    ErrorMessage = "InflateDeflate frame centers are missing."
                 };
             }
+
+            if (input.SelectedCenterIndex < 0 || input.SelectedCenterIndex >= centers.Length)
+            {
+                return new MethodExecutionResult
+                {
+                    Success = false,
+                    ErrorMessage = $"InflateDeflate selected center index {input.SelectedCenterIndex} is outside valid range 0..{centers.Length - 1}."
+                };
+            }
+
+            if (input.Radius <= 0f || input.Strength <= 0f)
+                return MethodExecutionResult.NotImplemented("InflateDeflate radius and strength must be positive.");
 
             return null;
         }
 
-        private CachedExecutionContext GetOrCreateExecutionContext(InflateDeflateMethodInput input)
+        private static void EnsureAffinityAvailable(
+            CachedExecutionContext executionContext,
+            Vector3[][] centers,
+            out bool affinityWasAvailableBeforeEnsure,
+            out bool affinityCalculatedDuringRun)
+        {
+            affinityWasAvailableBeforeEnsure = false;
+            affinityCalculatedDuringRun = false;
+
+            if (executionContext?.AffinityCalculation == null || centers == null || centers.Length == 0)
+                return;
+
+            affinityWasAvailableBeforeEnsure = executionContext.AffinityCalculation.GetCentersAffinity() != null;
+            if (executionContext.AffinityCalculation.GetCentersAffinity() == null)
+            {
+                executionContext.AffinityCalculation.CalculateCentersAffinity(centers);
+                affinityCalculatedDuringRun = true;
+            }
+        }
+
+        private static InflateDeflateResolvedEffectors ResolveEffectorsFromAffinity(
+            InflateDeflateMethodInput input,
+            float[,] affinity,
+            out AffinityPlannerDiagnostics diagnostics)
+        {
+            diagnostics = default;
+
+            if (input?.Frames == null ||
+                input.FrameIndex < 0 ||
+                input.FrameIndex >= input.Frames.Length ||
+                affinity == null)
+            {
+                return new InflateDeflateResolvedEffectors();
+            }
+
+            var frame = input.Frames[input.FrameIndex];
+            var centers = frame?.centers;
+            if (centers == null ||
+                centers.Length == 0 ||
+                input.SelectedCenterIndex < 0 ||
+                input.SelectedCenterIndex >= centers.Length ||
+                affinity.GetLength(0) != centers.Length ||
+                affinity.GetLength(1) != centers.Length)
+            {
+                return new InflateDeflateResolvedEffectors();
+            }
+
+            var selectedCenter = centers[input.SelectedCenterIndex];
+            var activeCount = ResolveActiveCountFromRadius(centers, selectedCenter, input.Radius, input.Mode);
+            var transitionCount = ResolveTransitionCount(input.Mode, activeCount, centers.Length - 1);
+            var guardRadius = input.Radius * (input.Mode == InflateDeflateMode.Deflate ? 1.75f : 1.5f);
+
+            var candidates = BuildAffinityCandidates(centers, input.SelectedCenterIndex, affinity, selectedCenter);
+            if (candidates.Count == 0)
+                return new InflateDeflateResolvedEffectors();
+
+            candidates.Sort(static (a, b) =>
+            {
+                var affinityComparison = b.Affinity.CompareTo(a.Affinity);
+                if (affinityComparison != 0)
+                    return affinityComparison;
+
+                var distanceComparison = a.Distance.CompareTo(b.Distance);
+                if (distanceComparison != 0)
+                    return distanceComparison;
+
+                return a.Index.CompareTo(b.Index);
+            });
+
+            var preferred = new List<AffinityCandidate>(candidates.Count);
+            var fallback = new List<AffinityCandidate>(candidates.Count);
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                if (candidates[i].Distance <= guardRadius)
+                    preferred.Add(candidates[i]);
+                else
+                    fallback.Add(candidates[i]);
+            }
+
+            diagnostics.ActivePatchCount = activeCount;
+            diagnostics.TransitionRingCount = transitionCount;
+            diagnostics.PreferredCandidateCount = preferred.Count;
+            diagnostics.FallbackCandidateCount = fallback.Count;
+            diagnostics.GuardRadius = guardRadius;
+
+            var ordered = new List<AffinityCandidate>(candidates.Count);
+            ordered.AddRange(preferred);
+            ordered.AddRange(fallback);
+
+            activeCount = Math.Min(activeCount, ordered.Count);
+            transitionCount = Math.Min(transitionCount, Math.Max(0, ordered.Count - activeCount));
+            if (activeCount <= 0)
+                return new InflateDeflateResolvedEffectors();
+
+            var selectedCandidates = new List<AffinityCandidate>(1 + activeCount + transitionCount);
+            for (var i = 0; i < activeCount + transitionCount; i++)
+                selectedCandidates.Add(ordered[i]);
+
+            var minAffinity = selectedCandidates.Min(candidate => candidate.Affinity);
+            var maxAffinity = selectedCandidates.Max(candidate => candidate.Affinity);
+            diagnostics.PatchMinAffinity = minAffinity;
+            diagnostics.PatchMaxAffinity = maxAffinity;
+
+            var indices = new List<int>(1 + selectedCandidates.Count)
+            {
+                input.SelectedCenterIndex
+            };
+            var translations = new List<Vector3>(1 + selectedCandidates.Count)
+            {
+                Vector3.Zero
+            };
+            var translationMagnitudeSum = 0f;
+            var translationMagnitudeCount = 0;
+            var translationMagnitudeMax = 0f;
+
+            for (var i = 0; i < selectedCandidates.Count; i++)
+            {
+                var candidate = selectedCandidates[i];
+                var translation = Vector3.Zero;
+                var isSupportSubset = i >= activeCount;
+                if (!isSupportSubset)
+                {
+                    var offset = candidate.Position - selectedCenter;
+                    if (offset.LengthSquared() >= 1e-8f)
+                    {
+                        var normalizedAffinity = NormalizeAffinity(candidate.Affinity, minAffinity, maxAffinity);
+                        var influence = input.Mode == InflateDeflateMode.Inflate
+                            ? ComputeInflateAffinityInfluence(normalizedAffinity, false)
+                            : ComputeDeflateAffinityInfluence(normalizedAffinity, false);
+                        var directionSign = input.Mode == InflateDeflateMode.Inflate ? 1f : -1f;
+                        translation = offset * (directionSign * input.Strength * influence);
+                    }
+                }
+
+                var translationMagnitude = translation.Length();
+
+                indices.Add(candidate.Index);
+                translations.Add(translation);
+                if (translationMagnitude > 1e-8f)
+                {
+                    translationMagnitudeSum += translationMagnitude;
+                    translationMagnitudeCount++;
+                    if (translationMagnitude > translationMagnitudeMax)
+                        translationMagnitudeMax = translationMagnitude;
+                }
+            }
+
+            diagnostics.TranslationMagnitudeMax = translationMagnitudeMax;
+            diagnostics.TranslationMagnitudeAverage = translationMagnitudeCount > 0
+                ? translationMagnitudeSum / translationMagnitudeCount
+                : 0f;
+
+            return new InflateDeflateResolvedEffectors
+            {
+                Indices = indices.ToArray(),
+                Translations = translations.ToArray()
+            };
+        }
+
+        private static List<AffinityCandidate> BuildAffinityCandidates(
+            Vector3[] centers,
+            int selectedCenterIndex,
+            float[,] affinity,
+            Vector3 selectedCenter)
+        {
+            var candidates = new List<AffinityCandidate>(Math.Max(0, centers.Length - 1));
+            for (var i = 0; i < centers.Length; i++)
+            {
+                if (i == selectedCenterIndex)
+                    continue;
+
+                candidates.Add(new AffinityCandidate
+                {
+                    Index = i,
+                    Position = centers[i],
+                    Affinity = affinity[selectedCenterIndex, i],
+                    Distance = Vector3.Distance(centers[i], selectedCenter)
+                });
+            }
+
+            return candidates;
+        }
+
+        private static int ResolveActiveCountFromRadius(
+            Vector3[] centers,
+            Vector3 selectedCenter,
+            float radius,
+            InflateDeflateMode mode)
+        {
+            var nearbyCount = 0;
+            for (var i = 0; i < centers.Length; i++)
+            {
+                if (Vector3.Distance(centers[i], selectedCenter) <= radius)
+                    nearbyCount++;
+            }
+
+            var effectorsInRadius = Math.Max(nearbyCount - 1, 0);
+            if (effectorsInRadius == 0)
+                return Math.Min(Math.Max(3, centers.Length - 1), centers.Length - 1);
+
+            if (mode == InflateDeflateMode.Deflate)
+            {
+                var conservativeDeflateCount = Math.Max(3, (int)MathF.Ceiling(effectorsInRadius * 0.65f));
+                return Math.Clamp(conservativeDeflateCount, 1, centers.Length - 1);
+            }
+
+            return Math.Clamp(effectorsInRadius, 1, centers.Length - 1);
+        }
+
+        private static int ResolveTransitionCount(InflateDeflateMode mode, int activeCount, int maxAvailable)
+        {
+            if (maxAvailable <= activeCount)
+                return 0;
+
+            var desired = mode == InflateDeflateMode.Deflate
+                ? Math.Max(2, (int)MathF.Ceiling(activeCount * 0.6f))
+                : Math.Max(1, activeCount / 2);
+            return Math.Clamp(desired, 0, maxAvailable - activeCount);
+        }
+
+        private static float NormalizeAffinity(float affinity, float minAffinity, float maxAffinity)
+        {
+            var span = maxAffinity - minAffinity;
+            if (span <= 1e-8f)
+                return 1f;
+
+            return Math.Clamp((affinity - minAffinity) / span, 0f, 1f);
+        }
+
+        private static float ComputeInflateAffinityInfluence(float normalizedAffinity, bool inTransitionRing)
+        {
+            return inTransitionRing
+                ? 0.24f + 0.24f * normalizedAffinity
+                : 1.80f + 1.50f * normalizedAffinity;
+        }
+
+        private static float ComputeDeflateAffinityInfluence(float normalizedAffinity, bool inTransitionRing)
+        {
+            return inTransitionRing
+                ? 0.12f + 0.10f * normalizedAffinity
+                : 0.35f + 0.35f * normalizedAffinity;
+        }
+
+        private CachedExecutionContext GetOrCreateExecutionContext(
+            InflateDeflateMethodInput input,
+            out bool cacheHit,
+            out string cacheHydrationState)
         {
             var cacheKey = BuildCacheKey(input);
+            cacheHit = false;
+            cacheHydrationState = "not_attempted";
 
             lock (_contextLock)
             {
                 if (_cachedExecutionContext != null && _cachedExecutionContext.CacheKey == cacheKey)
+                {
+                    cacheHit = true;
+                    cacheHydrationState = "context_reuse";
+                    UnityEngine.Debug.Log(
+                        $"InflateDeflateCache: execution context cache hit for sequence '{input.SequenceId}' (key={cacheKey}).");
                     return _cachedExecutionContext;
+                }
 
+                UnityEngine.Debug.Log(
+                    $"InflateDeflateCache: execution context cache miss for sequence '{input.SequenceId}' (key={cacheKey}); creating new context.");
                 _cachedExecutionContext = CreateExecutionContext(cacheKey);
-                TryHydrateExecutionContextFromStreamingAssets(input, _cachedExecutionContext, out var loadError);
+                TryHydrateExecutionContextFromStreamingAssets(input, _cachedExecutionContext, out var loadError, out cacheHydrationState);
                 if (!string.IsNullOrWhiteSpace(loadError))
                     UnityEngine.Debug.LogWarning(loadError);
 
@@ -241,7 +648,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 SequenceId = sequenceId,
                 Frames = frames,
                 FrameIndex = 0,
-                ReferencePoint = Vector3.Zero,
+                SelectedCenterIndex = -1,
                 Radius = 0f,
                 Strength = 0f,
                 Mode = InflateDeflateMode.Inflate
@@ -312,34 +719,62 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             };
         }
 
-        private void TryHydrateExecutionContextFromStreamingAssets(InflateDeflateMethodInput input, CachedExecutionContext context, out string errorMessage)
+        private void TryHydrateExecutionContextFromStreamingAssets(
+            InflateDeflateMethodInput input,
+            CachedExecutionContext context,
+            out string errorMessage,
+            out string hydrationState)
         {
             errorMessage = string.Empty;
+            hydrationState = "not_attempted";
 
             if (!_useStreamingAssetsCache ||
                 input?.Frames == null ||
                 input.Frames.Length == 0 ||
                 context == null ||
                 string.IsNullOrWhiteSpace(input.SequenceId))
+            {
+                hydrationState = "skipped";
+                UnityEngine.Debug.Log(
+                    $"InflateDeflateCache: streaming-assets cache hydrate skipped for sequence '{input?.SequenceId ?? string.Empty}' " +
+                    $"(enabled={_useStreamingAssetsCache}, hasFrames={input?.Frames != null && input.Frames.Length > 0}).");
                 return;
+            }
 
             var rootPath = UnityEngine.Application.streamingAssetsPath;
+            var hydrateTimer = Stopwatch.StartNew();
             if (!InflateDeflateCacheStore.TryLoadBundle(rootPath, input.SequenceId, out var bundle, out var loadError))
             {
+                hydrateTimer.Stop();
                 if (!string.IsNullOrWhiteSpace(loadError) && !loadError.Contains("was not found"))
                     errorMessage = loadError;
+                hydrationState = "miss";
 
+                UnityEngine.Debug.Log(
+                    $"InflateDeflateCache: cache miss for sequence '{input.SequenceId}' after {hydrateTimer.Elapsed.TotalMilliseconds:F2} ms. " +
+                    $"{loadError}");
                 return;
             }
 
             var manifest = BuildCacheManifest(input, context);
             if (!bundle.Manifest.IsCompatibleWith(manifest))
             {
+                hydrateTimer.Stop();
                 errorMessage = $"InflateDeflate cache manifest mismatch for sequence '{input.SequenceId}'.";
+                hydrationState = "manifest_mismatch";
+                UnityEngine.Debug.LogWarning(
+                    $"InflateDeflateCache: manifest mismatch for sequence '{input.SequenceId}' after {hydrateTimer.Elapsed.TotalMilliseconds:F2} ms. " +
+                    $"expected=[schema={manifest.SchemaVersion}, frames={manifest.FrameCount}, centers={manifest.CenterCount}, vertices={manifest.VertexCount}, faces={manifest.FaceCount}, neighbors={manifest.Neighbors}, shape={manifest.Shape}, epsilon={manifest.LimitEpsilon}, split={manifest.MaxSplitIterations}] " +
+                    $"actual=[schema={bundle.Manifest.SchemaVersion}, frames={bundle.Manifest.FrameCount}, centers={bundle.Manifest.CenterCount}, vertices={bundle.Manifest.VertexCount}, faces={bundle.Manifest.FaceCount}, neighbors={bundle.Manifest.Neighbors}, shape={bundle.Manifest.Shape}, epsilon={bundle.Manifest.LimitEpsilon}, split={bundle.Manifest.MaxSplitIterations}].");
                 return;
             }
 
             HydrateExecutionContext(context, bundle);
+            hydrateTimer.Stop();
+            hydrationState = "hit";
+            UnityEngine.Debug.Log(
+                $"InflateDeflateCache: cache hit for sequence '{input.SequenceId}' hydrated in {hydrateTimer.Elapsed.TotalMilliseconds:F2} ms " +
+                $"(frames={bundle.Manifest.FrameCount}, centers={bundle.Manifest.CenterCount}, vertices={bundle.Manifest.VertexCount}, faces={bundle.Manifest.FaceCount}).");
         }
 
         private static void PrecomputeCache(CachedExecutionContext context, Frame[] frames)
@@ -455,6 +890,68 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             public DistanceDirectionAffinityCalculation AffinityCalculation { get; set; }
             public CustomSurfaceDeformation SurfaceDeformation { get; set; }
             public KabschTransformPropagation TransformPropagation { get; set; }
+        }
+
+        private struct AffinityPlannerDiagnostics
+        {
+            public int ActivePatchCount;
+            public int TransitionRingCount;
+            public int PreferredCandidateCount;
+            public int FallbackCandidateCount;
+            public float GuardRadius;
+            public float PatchMinAffinity;
+            public float PatchMaxAffinity;
+            public float TranslationMagnitudeMax;
+            public float TranslationMagnitudeAverage;
+        }
+
+        private struct AffinityCandidate
+        {
+            public int Index;
+            public Vector3 Position;
+            public float Affinity;
+            public float Distance;
+        }
+
+        private static string BuildDiagnosticsLog(InflateDeflateMethodInput input, InflateDeflateQuickProfile profile)
+        {
+            var builder = new StringBuilder();
+            builder.AppendLine("InflateDeflate Diagnostics");
+            builder.AppendLine($"Sequence: {input.SequenceId}");
+            builder.AppendLine($"Frame: {input.FrameIndex}");
+            builder.AppendLine($"SelectedCenter: {input.SelectedCenterIndex}");
+            builder.AppendLine($"Mode: {input.Mode}");
+            builder.AppendLine($"Radius: {input.Radius:F4}");
+            builder.AppendLine($"Strength: {input.Strength:F4}");
+            builder.AppendLine($"Cache.ContextHit: {profile.ExecutionContextCacheHit}");
+            builder.AppendLine($"Cache.HydrationState: {profile.CacheHydrationState}");
+            builder.AppendLine($"Cache.AffinityAvailableBeforeEnsure: {profile.AffinityWasAvailableBeforeEnsure}");
+            builder.AppendLine($"Cache.AffinityCalculatedDuringRun: {profile.AffinityCalculatedDuringRun}");
+            builder.AppendLine($"Planner.AffectedCenters: {profile.AffectedCenterCount}");
+            builder.AppendLine($"Planner.ActivePatch: {profile.ActivePatchCount}");
+            builder.AppendLine($"Planner.TransitionRing: {profile.TransitionRingCount}");
+            builder.AppendLine($"Planner.PreferredCandidates: {profile.PreferredCandidateCount}");
+            builder.AppendLine($"Planner.FallbackCandidates: {profile.FallbackCandidateCount}");
+            builder.AppendLine($"Planner.GuardRadius: {profile.GuardRadius:F4}");
+            builder.AppendLine($"Planner.PatchMinAffinity: {profile.PatchMinAffinity:F4}");
+            builder.AppendLine($"Planner.PatchMaxAffinity: {profile.PatchMaxAffinity:F4}");
+            builder.AppendLine($"Planner.TranslationMagnitudeMax: {profile.TranslationMagnitudeMax:F6}");
+            builder.AppendLine($"Planner.TranslationMagnitudeAverage: {profile.TranslationMagnitudeAverage:F6}");
+            builder.AppendLine($"Frames.PropagatedSurface: {profile.DeformPropagatedSurfaceFrames}");
+            builder.AppendLine($"Frames.TotalAffected: {profile.TotalAffectedFrames}");
+            builder.AppendLine($"Timing.ResolveEffectors: {profile.ResolveEffectorsMs:F2} ms");
+            builder.AppendLine($"Timing.PrepareSequence: {profile.PrepareSequenceMs:F2} ms");
+            builder.AppendLine($"Timing.PrepareTransforms: {profile.PrepareTransformsMs:F2} ms");
+            builder.AppendLine($"Timing.Deform: {profile.DeformMs:F2} ms");
+            builder.AppendLine($"Timing.Deform.Affinity: {profile.DeformAffinityMs:F2} ms");
+            builder.AppendLine($"Timing.Deform.CenterDeformation: {profile.DeformCenterDeformationMs:F2} ms");
+            builder.AppendLine($"Timing.Deform.EditedSurface: {profile.DeformEditedSurfaceMs:F2} ms");
+            builder.AppendLine($"Timing.Deform.PropagateTransforms: {profile.DeformPropagateTransformsMs:F2} ms");
+            builder.AppendLine($"Timing.Deform.PropagateSurface: {profile.DeformPropagateSurfaceMs:F2} ms");
+            builder.AppendLine($"Timing.WriteBack: {profile.WriteBackMs:F2} ms");
+            builder.AppendLine($"Timing.AdapterTotal: {profile.AdapterTotalMs:F2} ms");
+            builder.AppendLine($"Timing.Total: {profile.TotalMs:F2} ms");
+            return builder.ToString();
         }
     }
 }

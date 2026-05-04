@@ -9,13 +9,14 @@ public sealed class InflateDeflateQuickProfilerEditor : Editor
     {
         DrawDefaultInspector();
 
+        var profiler = (InflateDeflateQuickProfiler)target;
+
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("Catalog Sequences", EditorStyles.boldLabel);
 
         if (!Application.isPlaying)
             EditorGUILayout.HelpBox("Sequence load buttons are available in Play Mode.", MessageType.Info);
 
-        var profiler = (InflateDeflateQuickProfiler)target;
         var sequenceNames = InflateDeflateQuickProfiler.GetCatalogSequenceNames();
 
         if (sequenceNames == null || sequenceNames.Length == 0)
@@ -34,8 +35,34 @@ public sealed class InflateDeflateQuickProfilerEditor : Editor
             }
 
             EditorGUILayout.Space();
-            if (GUILayout.Button("Export InflateDeflate Cache"))
-                profiler.ExportInflateDeflateCache();
+            if (GUILayout.Button("Move Sequence To Camera"))
+                profiler.MoveSequenceToCamera();
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Visible Debug Apply", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Applies inflate/deflate directly to the loaded sequence in Play Mode so the mesh stays visibly edited without a VR headset.",
+                MessageType.Info);
+
+            DrawRegionButtons(profiler, InflateDeflateQuickProfiler.DebugBodyRegion.Head, "Head");
+            DrawRegionButtons(profiler, InflateDeflateQuickProfiler.DebugBodyRegion.Belly, "Belly");
+            DrawRegionButtons(profiler, InflateDeflateQuickProfiler.DebugBodyRegion.Arm, "Arm");
+            DrawRegionButtons(profiler, InflateDeflateQuickProfiler.DebugBodyRegion.Leg, "Leg");
+        }
+    }
+
+    private static void DrawRegionButtons(
+        InflateDeflateQuickProfiler profiler,
+        InflateDeflateQuickProfiler.DebugBodyRegion region,
+        string label)
+    {
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            if (GUILayout.Button($"Inflate {label}"))
+                profiler.ApplyRegionDebugEdit(region, TvmVr2.Api.Enums.InflateDeflateMode.Inflate);
+
+            if (GUILayout.Button($"Deflate {label}"))
+                profiler.ApplyRegionDebugEdit(region, TvmVr2.Api.Enums.InflateDeflateMode.Deflate);
         }
     }
 }

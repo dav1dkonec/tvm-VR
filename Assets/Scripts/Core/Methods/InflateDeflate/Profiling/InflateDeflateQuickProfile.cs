@@ -9,6 +9,20 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
         public int FrameIndex { get; set; }
         public int CenterIndex { get; set; }
         public int AffectedCenterCount { get; set; }
+        public int ActivePatchCount { get; set; }
+        public int TransitionRingCount { get; set; }
+        public int PreferredCandidateCount { get; set; }
+        public int FallbackCandidateCount { get; set; }
+        public float GuardRadius { get; set; }
+        public float PatchMinAffinity { get; set; }
+        public float PatchMaxAffinity { get; set; }
+        public float TranslationMagnitudeMax { get; set; }
+        public float TranslationMagnitudeAverage { get; set; }
+        public bool ExecutionContextCacheHit { get; set; }
+        public string CacheHydrationState { get; set; } = string.Empty;
+        public bool AffinityWasAvailableBeforeEnsure { get; set; }
+        public bool AffinityCalculatedDuringRun { get; set; }
+        public int TotalAffectedFrames { get; set; }
         public double ResolveEffectorsMs { get; set; }
         public double PrepareSequenceMs { get; set; }
         public double PrepareTransformsMs { get; set; }
@@ -30,6 +44,11 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
         public double DeformSurfacePropagatedBlendVerticesMs { get; set; }
         public double DeformSurfacePropagatedResampleMs { get; set; }
         public int DeformSurfacePropagatedCacheMisses { get; set; }
+        public int DeformSurfacePropagatedCacheHits { get; set; }
+        public double DeformSurfacePropagatedMinCallTotalMs { get; set; }
+        public double DeformSurfacePropagatedMaxCallTotalMs { get; set; }
+        public int DeformSurfacePropagatedMaxCallFrameIndex { get; set; }
+        public double DeformSurfacePropagatedAverageCallTotalMs { get; set; }
         public double WriteBackMs { get; set; }
         public double AdapterTotalMs { get; set; }
         public double CoreTotalMs { get; set; }
@@ -46,6 +65,19 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             builder.AppendLine($"FrameIndex: {FrameIndex}");
             builder.AppendLine($"CenterIndex: {CenterIndex}");
             builder.AppendLine($"AffectedCenters: {AffectedCenterCount}");
+            builder.AppendLine($"Planner.ActivePatch: {ActivePatchCount}");
+            builder.AppendLine($"Planner.TransitionRing: {TransitionRingCount}");
+            builder.AppendLine($"Planner.PreferredCandidates: {PreferredCandidateCount}");
+            builder.AppendLine($"Planner.FallbackCandidates: {FallbackCandidateCount}");
+            builder.AppendLine($"Planner.GuardRadius: {GuardRadius:F4}");
+            builder.AppendLine($"Planner.PatchMinAffinity: {PatchMinAffinity:F4}");
+            builder.AppendLine($"Planner.PatchMaxAffinity: {PatchMaxAffinity:F4}");
+            builder.AppendLine($"Planner.TranslationMagnitudeMax: {TranslationMagnitudeMax:F6}");
+            builder.AppendLine($"Planner.TranslationMagnitudeAverage: {TranslationMagnitudeAverage:F6}");
+            builder.AppendLine($"Cache.ExecutionContextHit: {ExecutionContextCacheHit}");
+            builder.AppendLine($"Cache.HydrationState: {CacheHydrationState}");
+            builder.AppendLine($"Cache.AffinityAvailableBeforeEnsure: {AffinityWasAvailableBeforeEnsure}");
+            builder.AppendLine($"Cache.AffinityCalculatedDuringRun: {AffinityCalculatedDuringRun}");
             builder.AppendLine($"ResolveEffectors: {ResolveEffectorsMs:F2} ms");
             builder.AppendLine($"PrepareSequence: {PrepareSequenceMs:F2} ms");
             builder.AppendLine($"PrepareTransforms: {PrepareTransformsMs:F2} ms");
@@ -59,6 +91,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             builder.AppendLine($"Deform.PropagateSurface: {DeformPropagateSurfaceMs:F2} ms");
             builder.AppendLine($"Deform.PropagateTotal: {DeformPropagateTotalMs:F2} ms");
             builder.AppendLine($"Deform.PropagatedSurfaceFrames: {DeformPropagatedSurfaceFrames}");
+            builder.AppendLine($"Deform.TotalAffectedFrames: {TotalAffectedFrames}");
             builder.AppendLine($"Deform.SurfaceEdited.ComputeWeights: {DeformSurfaceEditedComputeWeightsMs:F2} ms");
             builder.AppendLine($"Deform.SurfaceEdited.BlendVertices: {DeformSurfaceEditedBlendVerticesMs:F2} ms");
             builder.AppendLine($"Deform.SurfaceEdited.Resample: {DeformSurfaceEditedResampleMs:F2} ms");
@@ -67,6 +100,11 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             builder.AppendLine($"Deform.SurfacePropagated.BlendVertices: {DeformSurfacePropagatedBlendVerticesMs:F2} ms");
             builder.AppendLine($"Deform.SurfacePropagated.Resample: {DeformSurfacePropagatedResampleMs:F2} ms");
             builder.AppendLine($"Deform.SurfacePropagated.CacheMisses: {DeformSurfacePropagatedCacheMisses}");
+            builder.AppendLine($"Deform.SurfacePropagated.CacheHits: {DeformSurfacePropagatedCacheHits}");
+            builder.AppendLine($"Deform.SurfacePropagated.CallTotalMin: {DeformSurfacePropagatedMinCallTotalMs:F2} ms");
+            builder.AppendLine($"Deform.SurfacePropagated.CallTotalMax: {DeformSurfacePropagatedMaxCallTotalMs:F2} ms");
+            builder.AppendLine($"Deform.SurfacePropagated.CallTotalAvg: {DeformSurfacePropagatedAverageCallTotalMs:F2} ms");
+            builder.AppendLine($"Deform.SurfacePropagated.CallTotalMaxFrame: {DeformSurfacePropagatedMaxCallFrameIndex}");
             builder.AppendLine($"WriteBack: {WriteBackMs:F2} ms");
             builder.AppendLine($"AdapterTotal: {AdapterTotalMs:F2} ms");
             builder.AppendLine($"CoreTotal: {CoreTotalMs:F2} ms");
@@ -89,12 +127,26 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
                 Iteration = profiles.Count,
                 FrameIndex = profiles[0].FrameIndex,
                 CenterIndex = profiles[0].CenterIndex,
+                CacheHydrationState = profiles[0].CacheHydrationState,
                 Success = true
             };
 
             foreach (var profile in profiles)
             {
                 average.AffectedCenterCount += profile.AffectedCenterCount;
+                average.ActivePatchCount += profile.ActivePatchCount;
+                average.TransitionRingCount += profile.TransitionRingCount;
+                average.PreferredCandidateCount += profile.PreferredCandidateCount;
+                average.FallbackCandidateCount += profile.FallbackCandidateCount;
+                average.GuardRadius += profile.GuardRadius;
+                average.PatchMinAffinity += profile.PatchMinAffinity;
+                average.PatchMaxAffinity += profile.PatchMaxAffinity;
+                average.TranslationMagnitudeMax += profile.TranslationMagnitudeMax;
+                average.TranslationMagnitudeAverage += profile.TranslationMagnitudeAverage;
+                average.ExecutionContextCacheHit |= profile.ExecutionContextCacheHit;
+                average.AffinityWasAvailableBeforeEnsure |= profile.AffinityWasAvailableBeforeEnsure;
+                average.AffinityCalculatedDuringRun |= profile.AffinityCalculatedDuringRun;
+                average.TotalAffectedFrames += profile.TotalAffectedFrames;
                 average.ResolveEffectorsMs += profile.ResolveEffectorsMs;
                 average.PrepareSequenceMs += profile.PrepareSequenceMs;
                 average.PrepareTransformsMs += profile.PrepareTransformsMs;
@@ -116,6 +168,10 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
                 average.DeformSurfacePropagatedBlendVerticesMs += profile.DeformSurfacePropagatedBlendVerticesMs;
                 average.DeformSurfacePropagatedResampleMs += profile.DeformSurfacePropagatedResampleMs;
                 average.DeformSurfacePropagatedCacheMisses += profile.DeformSurfacePropagatedCacheMisses;
+                average.DeformSurfacePropagatedCacheHits += profile.DeformSurfacePropagatedCacheHits;
+                average.DeformSurfacePropagatedMinCallTotalMs += profile.DeformSurfacePropagatedMinCallTotalMs;
+                average.DeformSurfacePropagatedMaxCallTotalMs += profile.DeformSurfacePropagatedMaxCallTotalMs;
+                average.DeformSurfacePropagatedAverageCallTotalMs += profile.DeformSurfacePropagatedAverageCallTotalMs;
                 average.WriteBackMs += profile.WriteBackMs;
                 average.AdapterTotalMs += profile.AdapterTotalMs;
                 average.CoreTotalMs += profile.CoreTotalMs;
@@ -125,6 +181,16 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             }
 
             average.AffectedCenterCount /= profiles.Count;
+            average.ActivePatchCount /= profiles.Count;
+            average.TransitionRingCount /= profiles.Count;
+            average.PreferredCandidateCount /= profiles.Count;
+            average.FallbackCandidateCount /= profiles.Count;
+            average.GuardRadius /= profiles.Count;
+            average.PatchMinAffinity /= profiles.Count;
+            average.PatchMaxAffinity /= profiles.Count;
+            average.TranslationMagnitudeMax /= profiles.Count;
+            average.TranslationMagnitudeAverage /= profiles.Count;
+            average.TotalAffectedFrames /= profiles.Count;
             average.ResolveEffectorsMs /= profiles.Count;
             average.PrepareSequenceMs /= profiles.Count;
             average.PrepareTransformsMs /= profiles.Count;
@@ -150,6 +216,11 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             average.DeformSurfacePropagatedBlendVerticesMs /= profiles.Count;
             average.DeformSurfacePropagatedResampleMs /= profiles.Count;
             average.DeformSurfacePropagatedCacheMisses /= profiles.Count;
+            average.DeformSurfacePropagatedCacheHits /= profiles.Count;
+            average.DeformSurfacePropagatedMinCallTotalMs /= profiles.Count;
+            average.DeformSurfacePropagatedMaxCallTotalMs /= profiles.Count;
+            average.DeformSurfacePropagatedAverageCallTotalMs /= profiles.Count;
+            average.DeformSurfacePropagatedMaxCallFrameIndex = profiles[0].DeformSurfacePropagatedMaxCallFrameIndex;
 
             if (!average.Success)
                 average.ErrorMessage = "At least one iteration failed.";

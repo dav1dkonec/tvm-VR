@@ -163,6 +163,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 input.CenterTranslations = resolvedEffectors.Translations;
                 profile.AffectedCenterCount = input.SelectedCenterIndices.Length;
                 profile.MovingEffectorCount = plannerDiagnostics.MovingEffectorCount;
+                profile.TransitionEffectorCount = plannerDiagnostics.TransitionEffectorCount;
                 profile.FixedEffectorCount = plannerDiagnostics.FixedEffectorCount;
                 profile.CandidatePoolCount = plannerDiagnostics.CandidatePoolCount;
                 profile.DiscardedCandidateCount = plannerDiagnostics.DiscardedCandidateCount;
@@ -174,7 +175,8 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 UnityEngine.Debug.Log(
                     $"InflateDeflatePlanner: selectedCenter={input.SelectedCenterIndex}, mode={input.Mode}, " +
                     $"selection=sparseAffinity, radiusIgnored=True, affectedCenters={profile.AffectedCenterCount}, " +
-                    $"movingEffectors={profile.MovingEffectorCount}, fixedEffectors={profile.FixedEffectorCount}, candidatePool={profile.CandidatePoolCount}, " +
+                    $"movingEffectors={profile.MovingEffectorCount}, transitionEffectors={profile.TransitionEffectorCount}, " +
+                    $"fixedEffectors={profile.FixedEffectorCount}, candidatePool={profile.CandidatePoolCount}, " +
                     $"discardedCandidates={profile.DiscardedCandidateCount}, " +
                     $"patchMinAffinity={profile.PatchMinAffinity:F4}, patchMaxAffinity={profile.PatchMaxAffinity:F4}, " +
                     $"maxTranslation={profile.TranslationMagnitudeMax:F6}, avgTranslation={profile.TranslationMagnitudeAverage:F6}, " +
@@ -361,11 +363,14 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         {
             const int minMovingEffectorCount = 16;
             const int maxMovingEffectorCount = 56;
-            const int targetFixedEffectorCount = 32;
+            const int targetTransitionEffectorCount = 24;
+            const int targetFixedEffectorCount = 24;
             const int fixedEffectorPoolSize = 160;
             const float minCandidateAffinity = 1e-6f;
             const float minRelativeMovingAffinity = 0.38f;
             const float minMovingInfluence = 0.55f;
+            const float minTransitionInfluence = 0.08f;
+            const float maxTransitionInfluence = 0.30f;
             const float inflateTranslationScale = 1.35f;
             const float deflateTranslationScale = 0.65f;
 
@@ -424,9 +429,16 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                     .ToList();
             }
 
+            var transitionStartIndex = movingCandidates.Count;
+            var transitionCandidates = candidates
+                .Skip(transitionStartIndex)
+                .Take(Math.Min(targetTransitionEffectorCount, Math.Max(0, candidates.Count - transitionStartIndex)))
+                .ToList();
+
+            var fixedStartIndex = movingCandidates.Count + transitionCandidates.Count;
             var fixedCandidates = SelectFixedEffectors(
                 candidates,
-                movingCandidates.Count,
+                fixedStartIndex,
                 targetFixedEffectorCount,
                 fixedEffectorPoolSize);
 
@@ -438,9 +450,10 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             var minAffinity = movingCandidates.Min(candidate => candidate.Affinity);
             var maxAffinity = movingCandidates.Max(candidate => candidate.Affinity);
             diagnostics.MovingEffectorCount = movingCandidates.Count;
+            diagnostics.TransitionEffectorCount = transitionCandidates.Count;
             diagnostics.FixedEffectorCount = fixedCandidates.Count;
-            diagnostics.CandidatePoolCount = movingCandidates.Count + fixedCandidates.Count;
-            diagnostics.DiscardedCandidateCount = candidates.Count - movingCandidates.Count - fixedCandidates.Count;
+            diagnostics.CandidatePoolCount = movingCandidates.Count + transitionCandidates.Count + fixedCandidates.Count;
+            diagnostics.DiscardedCandidateCount = candidates.Count - movingCandidates.Count - transitionCandidates.Count - fixedCandidates.Count;
             diagnostics.PatchMinAffinity = minAffinity;
             diagnostics.PatchMaxAffinity = maxAffinity;
 
@@ -449,8 +462,8 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 ? inflateTranslationScale
                 : deflateTranslationScale;
             var localScale = ResolveAverageDistanceFromOrigin(movingCandidates, expansionOrigin);
-            var indices = new List<int>(movingCandidates.Count + fixedCandidates.Count);
-            var translations = new List<Vector3>(movingCandidates.Count + fixedCandidates.Count);
+            var indices = new List<int>(movingCandidates.Count + transitionCandidates.Count + fixedCandidates.Count);
+            var translations = new List<Vector3>(movingCandidates.Count + transitionCandidates.Count + fixedCandidates.Count);
 
             var translationMagnitude = input.Strength * localScale * translationScale;
 
@@ -461,12 +474,28 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
                 var normalizedAffinity = Normalize(candidate.Affinity, minAffinity, maxAffinity);
                 var influence = minMovingInfluence + (1f - minMovingInfluence) * SmoothStep(normalizedAffinity);
-                var translation = offset.LengthSquared() >= 1e-8f
-                    ? Vector3.Normalize(offset) * (directionSign * translationMagnitude * influence)
-                    : Vector3.Zero;
+                var translation = ResolveRadialTranslation(offset, directionSign, translationMagnitude, influence);
 
                 indices.Add(candidate.Index);
                 translations.Add(translation);
+            }
+
+            if (transitionCandidates.Count > 0)
+            {
+                var minTransitionAffinity = transitionCandidates.Min(candidate => candidate.Affinity);
+                var maxTransitionAffinity = transitionCandidates.Max(candidate => candidate.Affinity);
+                for (var i = 0; i < transitionCandidates.Count; i++)
+                {
+                    var candidate = transitionCandidates[i];
+                    var offset = candidate.Position - expansionOrigin;
+                    var normalizedAffinity = Normalize(candidate.Affinity, minTransitionAffinity, maxTransitionAffinity);
+                    var influence = minTransitionInfluence
+                        + (maxTransitionInfluence - minTransitionInfluence) * SmoothStep(normalizedAffinity);
+                    var translation = ResolveRadialTranslation(offset, directionSign, translationMagnitude, influence);
+
+                    indices.Add(candidate.Index);
+                    translations.Add(translation);
+                }
             }
 
             for (var i = 0; i < fixedCandidates.Count; i++)
@@ -482,6 +511,17 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 Indices = indices.ToArray(),
                 Translations = translations.ToArray()
             };
+        }
+
+        private static Vector3 ResolveRadialTranslation(
+            Vector3 offset,
+            float directionSign,
+            float translationMagnitude,
+            float influence)
+        {
+            return offset.LengthSquared() >= 1e-8f
+                ? Vector3.Normalize(offset) * (directionSign * translationMagnitude * influence)
+                : Vector3.Zero;
         }
 
         private static Vector3 ResolveAffinityCentroid(
@@ -526,31 +566,31 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
         private static List<AffinityCandidate> SelectFixedEffectors(
             IReadOnlyList<AffinityCandidate> candidates,
-            int movingCount,
+            int startIndex,
             int targetCount,
             int poolSize)
         {
             var fixedCandidates = new List<AffinityCandidate>(Math.Max(0, targetCount));
-            if (candidates == null || targetCount <= 0 || movingCount >= candidates.Count)
+            if (candidates == null || targetCount <= 0 || startIndex >= candidates.Count)
                 return fixedCandidates;
 
-            var available = candidates.Count - movingCount;
+            var available = candidates.Count - startIndex;
             var sampledPoolSize = Math.Min(Math.Max(targetCount, poolSize), available);
-            var endExclusive = movingCount + sampledPoolSize;
+            var endExclusive = startIndex + sampledPoolSize;
             var sampleCount = Math.Min(targetCount, sampledPoolSize);
             if (sampleCount <= 0)
                 return fixedCandidates;
 
             if (sampleCount == 1)
             {
-                fixedCandidates.Add(candidates[movingCount]);
+                fixedCandidates.Add(candidates[startIndex]);
                 return fixedCandidates;
             }
 
             for (var i = 0; i < sampleCount; i++)
             {
                 var t = (float)i / (sampleCount - 1);
-                var index = movingCount + (int)MathF.Round(t * (endExclusive - movingCount - 1));
+                var index = startIndex + (int)MathF.Round(t * (endExclusive - startIndex - 1));
                 fixedCandidates.Add(candidates[index]);
             }
 
@@ -945,6 +985,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         private struct AffinityPlannerDiagnostics
         {
             public int MovingEffectorCount;
+            public int TransitionEffectorCount;
             public int FixedEffectorCount;
             public int CandidatePoolCount;
             public int DiscardedCandidateCount;
@@ -980,6 +1021,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             builder.AppendLine("Planner.Selection: sparseAffinity");
             builder.AppendLine("Planner.RadiusIgnored: True");
             builder.AppendLine($"Planner.MovingEffectors: {profile.MovingEffectorCount}");
+            builder.AppendLine($"Planner.TransitionEffectors: {profile.TransitionEffectorCount}");
             builder.AppendLine($"Planner.FixedEffectors: {profile.FixedEffectorCount}");
             builder.AppendLine($"Planner.CandidatePool: {profile.CandidatePoolCount}");
             builder.AppendLine($"Planner.DiscardedCandidates: {profile.DiscardedCandidateCount}");

@@ -79,26 +79,10 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
         for (int i = 0; i < count; i++)
         {
             var c = Instantiate(prefab, transform);
-            ConfigureCenterPhysics(c);
             centers[i] = c.GetComponent<CenterUI>();
             centers[i].transform.localPosition = centers[i].transform.localPosition + MathUtils.RandomUnitVector3() * 0.5f;
             centers[i].centerIndex = i;
         }
-    }
-
-    private static void ConfigureCenterPhysics(GameObject center)
-    {
-        var centerCollider = center.GetComponent<Collider>();
-        if (centerCollider != null)
-            centerCollider.isTrigger = true;
-
-        var rigidbody = center.GetComponent<Rigidbody>();
-        if (rigidbody == null)
-            return;
-
-        rigidbody.useGravity = false;
-        rigidbody.isKinematic = true;
-        rigidbody.constraints = RigidbodyConstraints.FreezeAll;
     }
 
     public void PrepareForSequence(int count)

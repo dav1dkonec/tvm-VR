@@ -457,6 +457,8 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             diagnostics.PatchMaxAffinity = maxAffinity;
 
             var expansionOrigin = ResolveExpansionOrigin(selectedCandidates, activeCount, minAffinity, maxAffinity, selectedCenter);
+            var activePatchRadius = ResolvePatchRadius(selectedCandidates, 0, activeCount, expansionOrigin);
+            var supportPatchRadius = ResolvePatchRadius(selectedCandidates, activeCount, transitionCount, expansionOrigin);
             var directionSign = input.Mode == InflateDeflateMode.Inflate ? 1f : -1f;
             var indices = new List<int>(1 + selectedCandidates.Count);
             var translations = new List<Vector3>(1 + selectedCandidates.Count);
@@ -469,8 +471,8 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             if (selectedOffset.LengthSquared() >= 1e-8f)
             {
                 var selectedInfluence = input.Mode == InflateDeflateMode.Inflate
-                    ? ComputeInflateAffinityInfluence(1f, false)
-                    : ComputeDeflateAffinityInfluence(1f, false);
+                    ? ComputeInflateSpatialInfluence(false, 0f)
+                    : ComputeDeflateSpatialInfluence(false, 0f);
                 selectedTranslation = selectedOffset * (directionSign * input.Strength * selectedInfluence);
             }
 
@@ -492,10 +494,11 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 var offset = candidate.Position - expansionOrigin;
                 if (offset.LengthSquared() >= 1e-8f)
                 {
-                    var normalizedAffinity = NormalizeAffinity(candidate.Affinity, minAffinity, maxAffinity);
+                    var distanceFromOrigin = offset.Length();
+                    var supportDistance = ComputeSupportDistance(distanceFromOrigin, activePatchRadius, supportPatchRadius);
                     var influence = input.Mode == InflateDeflateMode.Inflate
-                        ? ComputeInflateAffinityInfluence(normalizedAffinity, inSupportSubset)
-                        : ComputeDeflateAffinityInfluence(normalizedAffinity, inSupportSubset);
+                        ? ComputeInflateSpatialInfluence(inSupportSubset, supportDistance)
+                        : ComputeDeflateSpatialInfluence(inSupportSubset, supportDistance);
                     translation = offset * (directionSign * input.Strength * influence);
                 }
 
@@ -546,6 +549,36 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             }
 
             return candidates;
+        }
+
+        private static float ResolvePatchRadius(
+            IReadOnlyList<AffinityCandidate> selectedCandidates,
+            int startIndex,
+            int count,
+            Vector3 origin)
+        {
+            var endIndex = Math.Min(startIndex + count, selectedCandidates?.Count ?? 0);
+            var radius = 0f;
+            for (var i = Math.Max(0, startIndex); i < endIndex; i++)
+            {
+                var distance = Vector3.Distance(selectedCandidates[i].Position, origin);
+                if (distance > radius)
+                    radius = distance;
+            }
+
+            return radius;
+        }
+
+        private static float ComputeSupportDistance(
+            float distanceFromOrigin,
+            float activePatchRadius,
+            float supportPatchRadius)
+        {
+            var supportSpan = supportPatchRadius - activePatchRadius;
+            if (supportSpan <= 1e-8f)
+                return 0f;
+
+            return Math.Clamp((distanceFromOrigin - activePatchRadius) / supportSpan, 0f, 1f);
         }
 
         private static Vector3 ResolveExpansionOrigin(
@@ -618,18 +651,18 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return Math.Clamp((affinity - minAffinity) / span, 0f, 1f);
         }
 
-        private static float ComputeInflateAffinityInfluence(float normalizedAffinity, bool inTransitionRing)
+        private static float ComputeInflateSpatialInfluence(bool inTransitionRing, float normalizedSupportDistance)
         {
             return inTransitionRing
-                ? 0.24f + 0.24f * normalizedAffinity
-                : 1.80f + 1.50f * normalizedAffinity;
+                ? 0.34f * (1f - normalizedSupportDistance) + 0.10f * normalizedSupportDistance
+                : 2.55f;
         }
 
-        private static float ComputeDeflateAffinityInfluence(float normalizedAffinity, bool inTransitionRing)
+        private static float ComputeDeflateSpatialInfluence(bool inTransitionRing, float normalizedSupportDistance)
         {
             return inTransitionRing
-                ? 0.12f + 0.10f * normalizedAffinity
-                : 0.35f + 0.35f * normalizedAffinity;
+                ? 0.16f * (1f - normalizedSupportDistance) + 0.06f * normalizedSupportDistance
+                : 0.55f;
         }
 
         private CachedExecutionContext GetOrCreateExecutionContext(

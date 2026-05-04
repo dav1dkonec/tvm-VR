@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 /// <summary>
 /// Mutable working copy of a sequence used by the runtime editing flow.
@@ -9,8 +8,6 @@ public sealed class RuntimeState
     public SequenceData SequenceData { get; private set; }
     public SequenceTopology Topology => SequenceData?.Topology;
     public Frame[] Frames { get; private set; } = Array.Empty<Frame>();
-    public int[] FrameRevision { get; private set; } = Array.Empty<int>();
-    public HashSet<int> DirtyFrames { get; } = new HashSet<int>();
 
     public static RuntimeState From(SequenceData data)
     {
@@ -23,62 +20,11 @@ public sealed class RuntimeState
     {
         SequenceData = data;
         Frames = CloneRuntimeFrames(data?.OriginalFrames, data?.Topology);
-        FrameRevision = Frames != null ? new int[Frames.Length] : Array.Empty<int>();
-        DirtyFrames.Clear();
     }
 
     public void SetFrames(Frame[] frames)
     {
         Frames = frames ?? Array.Empty<Frame>();
-        if (FrameRevision == null || FrameRevision.Length != Frames.Length)
-            FrameRevision = new int[Frames.Length];
-        DirtyFrames.Clear();
-    }
-
-    public void MarkFrameEdited(int frameIndex)
-    {
-        if (Frames == null || frameIndex < 0 || frameIndex >= Frames.Length)
-            return;
-
-        FrameRevision[frameIndex]++;
-        DirtyFrames.Add(frameIndex);
-    }
-
-    public void MarkFramesEdited(IEnumerable<int> frameIndices)
-    {
-        if (frameIndices == null)
-            return;
-
-        foreach (var frameIndex in frameIndices)
-            MarkFrameEdited(frameIndex);
-    }
-
-    public void MarkAllFramesEdited()
-    {
-        if (Frames == null)
-            return;
-
-        for (var i = 0; i < Frames.Length; i++)
-            MarkFrameEdited(i);
-    }
-
-    public int[] ConsumeDirtyFrames()
-    {
-        if (DirtyFrames.Count == 0)
-            return Array.Empty<int>();
-
-        var frames = new int[DirtyFrames.Count];
-        DirtyFrames.CopyTo(frames);
-        DirtyFrames.Clear();
-        return frames;
-    }
-
-    public int GetFrameRevision(int frameIndex)
-    {
-        if (FrameRevision == null || frameIndex < 0 || frameIndex >= FrameRevision.Length)
-            return 0;
-
-        return FrameRevision[frameIndex];
     }
 
     private static Frame[] CloneRuntimeFrames(Frame[] source, SequenceTopology topology)

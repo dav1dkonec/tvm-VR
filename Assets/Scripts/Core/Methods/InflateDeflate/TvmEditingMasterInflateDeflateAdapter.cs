@@ -50,29 +50,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return ExecuteInternal(input, out profile);
         }
 
-        public void InvalidateFrameCaches(int[] frameIndices)
-        {
-            if (frameIndices == null || frameIndices.Length == 0)
-                return;
-
-            lock (_contextLock)
-            {
-                if (_cachedExecutionContext == null)
-                    return;
-
-                for (var i = 0; i < frameIndices.Length; i++)
-                {
-                    var frameIndex = frameIndices[i];
-                    _cachedExecutionContext.SurfaceDeformation?.InvalidateFrameCache(frameIndex);
-                    _cachedExecutionContext.TransformPropagation?.InvalidateFrameCache(frameIndex);
-                }
-
-                UnityEngine.Debug.Log(
-                    $"InflateDeflateCache: invalidated runtime frame caches for {frameIndices.Length} frame(s) " +
-                    $"[{string.Join(", ", frameIndices)}].");
-            }
-        }
-
         public bool ResetExecutionContextToDefaultCache(
             string sequenceId,
             Frame[] frames,

@@ -44,14 +44,6 @@ namespace TVMEditor.Editing.SurfaceDeformation
             frameWeightCaches.Clear();
         }
 
-        public void InvalidateFrameCache(int frameIndex)
-        {
-            if (frameIndex < 0)
-                return;
-
-            frameWeightCaches.TryRemove(frameIndex, out _);
-        }
-
         public void PrecomputeFrameWeightCache(Vector3[] vertices, Vector3[] oldCenters, int frameIndex)
         {
             if (vertices == null || oldCenters == null)

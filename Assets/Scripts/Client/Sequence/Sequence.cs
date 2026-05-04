@@ -260,7 +260,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         SetPendingEdits(false);
         Debug.Log(
             $"Sequence: loaded '{sequenceName}' in {loadTimer.Elapsed.TotalMilliseconds:F2} ms " +
-            $"(frames={frames?.Length ?? 0}, topologyFrames={sequenceData?.Topology?.FrameCount ?? 0}, runtimeRevisions={runtimeState?.FrameRevision?.Length ?? 0}).");
+            $"(frames={frames?.Length ?? 0}, topologyFrames={sequenceData?.Topology?.FrameCount ?? 0}).");
         if (pl) Play();
     }
 
@@ -346,7 +346,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         reloadTimer.Stop();
         Debug.Log(
             $"Sequence: runtime state reloaded from SequenceData for '{loadedName ?? string.Empty}' in {reloadTimer.Elapsed.TotalMilliseconds:F2} ms " +
-            $"(frames={frames?.Length ?? 0}, dirtyFramesCleared=true, cacheRehydrated={cacheRehydrated}, cacheHydrationState={cacheHydrationState}, cacheResetMs={cacheResetTimer.Elapsed.TotalMilliseconds:F2}).");
+            $"(frames={frames?.Length ?? 0}, cacheRehydrated={cacheRehydrated}, cacheHydrationState={cacheHydrationState}, cacheResetMs={cacheResetTimer.Elapsed.TotalMilliseconds:F2}).");
 
         if (pl) Play();
     }

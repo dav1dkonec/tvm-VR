@@ -78,15 +78,6 @@ namespace TVMEditor.Editing.TransformPropagation
             NeighborWeightsSums.Clear();
         }
 
-        public void InvalidateFrameCache(int frameIndex)
-        {
-            if (frameIndex < 0)
-                return;
-
-            NeighborWeights.TryRemove(frameIndex, out _);
-            NeighborWeightsSums.TryRemove(frameIndex, out _);
-        }
-
         public void PrecomputeNeighborWeights(int frameIndex, Vector3[] centers)
         {
             if (centers == null || centers.Length == 0)

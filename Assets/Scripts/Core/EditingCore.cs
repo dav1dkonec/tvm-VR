@@ -108,14 +108,6 @@ namespace TvmVr2.Core
             return _basicTranslatePipeline.RebuildSurface(frames, surfaceNeighborCount);
         }
 
-        public void InvalidateInflateDeflateFrameCaches(int[] frameIndices)
-        {
-            if (_inflateDeflateAdapter == null || frameIndices == null || frameIndices.Length == 0)
-                return;
-
-            _inflateDeflateAdapter.InvalidateFrameCaches(frameIndices);
-        }
-
         public IMethodInput MapRequest(EditOperationRequest request, SequenceRuntimeContext runtimeContext)
         {
             return request.MethodKind switch

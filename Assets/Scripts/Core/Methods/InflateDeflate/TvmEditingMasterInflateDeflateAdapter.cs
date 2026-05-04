@@ -456,7 +456,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             diagnostics.PatchMinAffinity = minAffinity;
             diagnostics.PatchMaxAffinity = maxAffinity;
 
-            var expansionOrigin = ResolveExpansionOrigin(selectedCandidates, activeCount, minAffinity, maxAffinity, selectedCenter);
+            var expansionOrigin = ResolveExpansionOrigin(selectedCandidates, activeCount + transitionCount, minAffinity, maxAffinity, selectedCenter);
             var activePatchRadius = ResolvePatchRadius(selectedCandidates, 0, activeCount, expansionOrigin);
             var supportPatchRadius = ResolvePatchRadius(selectedCandidates, activeCount, transitionCount, expansionOrigin);
             var directionSign = input.Mode == InflateDeflateMode.Inflate ? 1f : -1f;
@@ -496,7 +496,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 translations.Add(translation);
             }
 
+            ResolveTranslationDiagnostics(translations, out _, out var originalAverageTranslationMagnitude);
             SmoothEffectorTranslations(indices, translations, affinity);
+            PreserveAverageTranslationMagnitude(translations, originalAverageTranslationMagnitude);
             ResolveTranslationDiagnostics(translations, out diagnostics.TranslationMagnitudeMax, out diagnostics.TranslationMagnitudeAverage);
 
             return new InflateDeflateResolvedEffectors
@@ -610,6 +612,22 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             translationMagnitudeAverage = translationMagnitudeCount > 0
                 ? translationMagnitudeSum / translationMagnitudeCount
                 : 0f;
+        }
+
+        private static void PreserveAverageTranslationMagnitude(
+            List<Vector3> translations,
+            float targetAverageMagnitude)
+        {
+            if (translations == null || targetAverageMagnitude <= 1e-8f)
+                return;
+
+            ResolveTranslationDiagnostics(translations, out _, out var currentAverageMagnitude);
+            if (currentAverageMagnitude <= 1e-8f)
+                return;
+
+            var scale = Math.Clamp(targetAverageMagnitude / currentAverageMagnitude, 0.75f, 1.6f);
+            for (var i = 0; i < translations.Count; i++)
+                translations[i] *= scale;
         }
 
         private static float ResolvePatchRadius(

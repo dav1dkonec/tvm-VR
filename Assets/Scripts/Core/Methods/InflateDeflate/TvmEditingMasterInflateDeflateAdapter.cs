@@ -163,21 +163,21 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 input.CenterTranslations = resolvedEffectors.Translations;
                 profile.AffectedCenterCount = input.SelectedCenterIndices.Length;
                 profile.MovingEffectorCount = plannerDiagnostics.MovingEffectorCount;
+                profile.FixedEffectorCount = plannerDiagnostics.FixedEffectorCount;
                 profile.CandidatePoolCount = plannerDiagnostics.CandidatePoolCount;
                 profile.DiscardedCandidateCount = plannerDiagnostics.DiscardedCandidateCount;
                 profile.PatchMinAffinity = plannerDiagnostics.PatchMinAffinity;
                 profile.PatchMaxAffinity = plannerDiagnostics.PatchMaxAffinity;
                 profile.TranslationMagnitudeMax = plannerDiagnostics.TranslationMagnitudeMax;
                 profile.TranslationMagnitudeAverage = plannerDiagnostics.TranslationMagnitudeAverage;
-                profile.ShapeElongation = plannerDiagnostics.ShapeElongation;
 
                 UnityEngine.Debug.Log(
                     $"InflateDeflatePlanner: selectedCenter={input.SelectedCenterIndex}, mode={input.Mode}, " +
                     $"selection=sparseAffinity, radiusIgnored=True, affectedCenters={profile.AffectedCenterCount}, " +
-                    $"anchorEffectors=0, movingEffectors={profile.MovingEffectorCount}, candidatePool={profile.CandidatePoolCount}, " +
+                    $"movingEffectors={profile.MovingEffectorCount}, fixedEffectors={profile.FixedEffectorCount}, candidatePool={profile.CandidatePoolCount}, " +
                     $"discardedCandidates={profile.DiscardedCandidateCount}, " +
                     $"patchMinAffinity={profile.PatchMinAffinity:F4}, patchMaxAffinity={profile.PatchMaxAffinity:F4}, " +
-                    $"shapeElongation={profile.ShapeElongation:F3}, maxTranslation={profile.TranslationMagnitudeMax:F6}, avgTranslation={profile.TranslationMagnitudeAverage:F6}, " +
+                    $"maxTranslation={profile.TranslationMagnitudeMax:F6}, avgTranslation={profile.TranslationMagnitudeAverage:F6}, " +
                     $"cacheContextHit={profile.ExecutionContextCacheHit}, cacheHydration={profile.CacheHydrationState}, " +
                     $"affinityCalculatedDuringRun={profile.AffinityCalculatedDuringRun}.");
 
@@ -359,15 +359,15 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             float[,] affinity,
             out AffinityPlannerDiagnostics diagnostics)
         {
-            const int minMovingEffectorCount = 24;
-            const int maxMovingEffectorCount = 96;
+            const int minMovingEffectorCount = 16;
+            const int maxMovingEffectorCount = 56;
+            const int targetFixedEffectorCount = 32;
+            const int fixedEffectorPoolSize = 160;
             const float minCandidateAffinity = 1e-6f;
-            const float minRelativeEffectorAffinity = 0.22f;
-            const float minEffectorInfluence = 0.35f;
-            const float compactInflateTranslationScale = 1.08f;
-            const float elongatedInflateTranslationScale = 0.72f;
-            const float deflateTranslationScale = 0.45f;
-            const float elongatedShapeThreshold = 1.75f;
+            const float minRelativeMovingAffinity = 0.38f;
+            const float minMovingInfluence = 0.55f;
+            const float inflateTranslationScale = 1.35f;
+            const float deflateTranslationScale = 0.65f;
 
             diagnostics = default;
 
@@ -411,62 +411,68 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             });
 
             var maxCandidateAffinity = candidates[0].Affinity;
-            var minSelectedAffinity = Math.Max(minCandidateAffinity, maxCandidateAffinity * minRelativeEffectorAffinity);
-            var selectedCandidates = candidates
-                .Where(candidate => candidate.Affinity >= minSelectedAffinity)
+            var minMovingAffinity = Math.Max(minCandidateAffinity, maxCandidateAffinity * minRelativeMovingAffinity);
+            var movingCandidates = candidates
+                .Where(candidate => candidate.Affinity >= minMovingAffinity)
                 .Take(maxMovingEffectorCount)
                 .ToList();
 
-            if (selectedCandidates.Count < Math.Min(minMovingEffectorCount, candidates.Count))
+            if (movingCandidates.Count < Math.Min(minMovingEffectorCount, candidates.Count))
             {
-                selectedCandidates = candidates
+                movingCandidates = candidates
                     .Take(Math.Min(minMovingEffectorCount, candidates.Count))
                     .ToList();
             }
 
-            var expansionOrigin = ResolveAffinityCentroid(selectedCenter, selectedCandidates);
+            var fixedCandidates = SelectFixedEffectors(
+                candidates,
+                movingCandidates.Count,
+                targetFixedEffectorCount,
+                fixedEffectorPoolSize);
 
-            if (selectedCandidates.Count == 0)
+            var expansionOrigin = ResolveAffinityCentroid(selectedCenter, movingCandidates);
+
+            if (movingCandidates.Count == 0)
                 return new InflateDeflateResolvedEffectors();
 
-            var minAffinity = selectedCandidates.Min(candidate => candidate.Affinity);
-            var maxAffinity = selectedCandidates.Max(candidate => candidate.Affinity);
-            var shape = AnalyzeEffectorShape(selectedCandidates, expansionOrigin, elongatedShapeThreshold);
-            diagnostics.MovingEffectorCount = selectedCandidates.Count;
-            diagnostics.CandidatePoolCount = selectedCandidates.Count;
-            diagnostics.DiscardedCandidateCount = candidates.Count - selectedCandidates.Count;
+            var minAffinity = movingCandidates.Min(candidate => candidate.Affinity);
+            var maxAffinity = movingCandidates.Max(candidate => candidate.Affinity);
+            diagnostics.MovingEffectorCount = movingCandidates.Count;
+            diagnostics.FixedEffectorCount = fixedCandidates.Count;
+            diagnostics.CandidatePoolCount = movingCandidates.Count + fixedCandidates.Count;
+            diagnostics.DiscardedCandidateCount = candidates.Count - movingCandidates.Count - fixedCandidates.Count;
             diagnostics.PatchMinAffinity = minAffinity;
             diagnostics.PatchMaxAffinity = maxAffinity;
-            diagnostics.ShapeElongation = shape.Elongation;
 
             var directionSign = input.Mode == InflateDeflateMode.Inflate ? 1f : -1f;
             var translationScale = input.Mode == InflateDeflateMode.Inflate
-                ? (shape.IsElongated ? elongatedInflateTranslationScale : compactInflateTranslationScale)
+                ? inflateTranslationScale
                 : deflateTranslationScale;
-            var localScale = ResolveAverageDistanceFromOrigin(selectedCandidates, expansionOrigin);
-            var indices = new List<int>(selectedCandidates.Count);
-            var translations = new List<Vector3>(selectedCandidates.Count);
+            var localScale = ResolveAverageDistanceFromOrigin(movingCandidates, expansionOrigin);
+            var indices = new List<int>(movingCandidates.Count + fixedCandidates.Count);
+            var translations = new List<Vector3>(movingCandidates.Count + fixedCandidates.Count);
 
             var translationMagnitude = input.Strength * localScale * translationScale;
 
-            for (var i = 0; i < selectedCandidates.Count; i++)
+            for (var i = 0; i < movingCandidates.Count; i++)
             {
-                var candidate = selectedCandidates[i];
+                var candidate = movingCandidates[i];
                 var offset = candidate.Position - expansionOrigin;
-                var directionOffset = shape.IsElongated
-                    ? RemoveAxisComponent(offset, shape.PrincipalAxis)
-                    : offset;
-                if (directionOffset.LengthSquared() <= 1e-8f)
-                    directionOffset = offset;
 
                 var normalizedAffinity = Normalize(candidate.Affinity, minAffinity, maxAffinity);
-                var influence = minEffectorInfluence + (1f - minEffectorInfluence) * SmoothStep(normalizedAffinity);
-                var translation = directionOffset.LengthSquared() >= 1e-8f
-                    ? Vector3.Normalize(directionOffset) * (directionSign * translationMagnitude * influence)
+                var influence = minMovingInfluence + (1f - minMovingInfluence) * SmoothStep(normalizedAffinity);
+                var translation = offset.LengthSquared() >= 1e-8f
+                    ? Vector3.Normalize(offset) * (directionSign * translationMagnitude * influence)
                     : Vector3.Zero;
 
                 indices.Add(candidate.Index);
                 translations.Add(translation);
+            }
+
+            for (var i = 0; i < fixedCandidates.Count; i++)
+            {
+                indices.Add(fixedCandidates[i].Index);
+                translations.Add(Vector3.Zero);
             }
 
             ResolveTranslationDiagnostics(translations, out diagnostics.TranslationMagnitudeMax, out diagnostics.TranslationMagnitudeAverage);
@@ -518,90 +524,37 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return t * t * (3f - 2f * t);
         }
 
-        private static EffectorShapeAnalysis AnalyzeEffectorShape(
+        private static List<AffinityCandidate> SelectFixedEffectors(
             IReadOnlyList<AffinityCandidate> candidates,
-            Vector3 origin,
-            float elongatedShapeThreshold)
+            int movingCount,
+            int targetCount,
+            int poolSize)
         {
-            if (candidates == null || candidates.Count == 0)
-                return new EffectorShapeAnalysis
-                {
-                    PrincipalAxis = Vector3.UnitX,
-                    Elongation = 1f,
-                    IsElongated = false
-                };
+            var fixedCandidates = new List<AffinityCandidate>(Math.Max(0, targetCount));
+            if (candidates == null || targetCount <= 0 || movingCount >= candidates.Count)
+                return fixedCandidates;
 
-            var axis = ResolvePrincipalAxis(candidates, origin);
-            var axialVariance = 0f;
-            var perpendicularVariance = 0f;
-            var count = 0;
+            var available = candidates.Count - movingCount;
+            var sampledPoolSize = Math.Min(Math.Max(targetCount, poolSize), available);
+            var endExclusive = movingCount + sampledPoolSize;
+            var sampleCount = Math.Min(targetCount, sampledPoolSize);
+            if (sampleCount <= 0)
+                return fixedCandidates;
 
-            for (var i = 0; i < candidates.Count; i++)
+            if (sampleCount == 1)
             {
-                var offset = candidates[i].Position - origin;
-                var axial = Vector3.Dot(offset, axis);
-                var axialSquared = axial * axial;
-                var perpendicularSquared = Math.Max(offset.LengthSquared() - axialSquared, 0f);
-
-                axialVariance += axialSquared;
-                perpendicularVariance += perpendicularSquared * 0.5f;
-                count++;
+                fixedCandidates.Add(candidates[movingCount]);
+                return fixedCandidates;
             }
 
-            if (count == 0)
+            for (var i = 0; i < sampleCount; i++)
             {
-                return new EffectorShapeAnalysis
-                {
-                    PrincipalAxis = axis,
-                    Elongation = 1f,
-                    IsElongated = false
-                };
+                var t = (float)i / (sampleCount - 1);
+                var index = movingCount + (int)MathF.Round(t * (endExclusive - movingCount - 1));
+                fixedCandidates.Add(candidates[index]);
             }
 
-            axialVariance /= count;
-            perpendicularVariance /= count;
-            var elongation = perpendicularVariance > 1e-8f
-                ? MathF.Sqrt(axialVariance / perpendicularVariance)
-                : 1f;
-
-            return new EffectorShapeAnalysis
-            {
-                PrincipalAxis = axis,
-                Elongation = elongation,
-                IsElongated = elongation >= elongatedShapeThreshold
-            };
-        }
-
-        private static Vector3 ResolvePrincipalAxis(
-            IReadOnlyList<AffinityCandidate> candidates,
-            Vector3 origin)
-        {
-            var axis = Vector3.UnitX;
-            for (var iteration = 0; iteration < 8; iteration++)
-            {
-                var next = Vector3.Zero;
-                for (var i = 0; i < candidates.Count; i++)
-                {
-                    var offset = candidates[i].Position - origin;
-                    next += offset * Vector3.Dot(offset, axis);
-                }
-
-                if (next.LengthSquared() <= 1e-8f)
-                    return axis;
-
-                axis = Vector3.Normalize(next);
-            }
-
-            return axis;
-        }
-
-        private static Vector3 RemoveAxisComponent(Vector3 offset, Vector3 axis)
-        {
-            if (axis.LengthSquared() <= 1e-8f)
-                return offset;
-
-            var normalizedAxis = Vector3.Normalize(axis);
-            return offset - normalizedAxis * Vector3.Dot(offset, normalizedAxis);
+            return fixedCandidates;
         }
 
         private static float ResolveAverageDistanceFromOrigin(
@@ -992,20 +945,13 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         private struct AffinityPlannerDiagnostics
         {
             public int MovingEffectorCount;
+            public int FixedEffectorCount;
             public int CandidatePoolCount;
             public int DiscardedCandidateCount;
             public float PatchMinAffinity;
             public float PatchMaxAffinity;
-            public float ShapeElongation;
             public float TranslationMagnitudeMax;
             public float TranslationMagnitudeAverage;
-        }
-
-        private struct EffectorShapeAnalysis
-        {
-            public Vector3 PrincipalAxis;
-            public float Elongation;
-            public bool IsElongated;
         }
 
         private struct AffinityCandidate
@@ -1033,13 +979,12 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             builder.AppendLine($"Planner.AffectedCenters: {profile.AffectedCenterCount}");
             builder.AppendLine("Planner.Selection: sparseAffinity");
             builder.AppendLine("Planner.RadiusIgnored: True");
-            builder.AppendLine("Planner.AnchorEffectors: 0");
             builder.AppendLine($"Planner.MovingEffectors: {profile.MovingEffectorCount}");
+            builder.AppendLine($"Planner.FixedEffectors: {profile.FixedEffectorCount}");
             builder.AppendLine($"Planner.CandidatePool: {profile.CandidatePoolCount}");
             builder.AppendLine($"Planner.DiscardedCandidates: {profile.DiscardedCandidateCount}");
             builder.AppendLine($"Planner.PatchMinAffinity: {profile.PatchMinAffinity:F4}");
             builder.AppendLine($"Planner.PatchMaxAffinity: {profile.PatchMaxAffinity:F4}");
-            builder.AppendLine($"Planner.ShapeElongation: {profile.ShapeElongation:F3}");
             builder.AppendLine($"Planner.TranslationMagnitudeMax: {profile.TranslationMagnitudeMax:F6}");
             builder.AppendLine($"Planner.TranslationMagnitudeAverage: {profile.TranslationMagnitudeAverage:F6}");
             builder.AppendLine($"Frames.PropagatedSurface: {profile.DeformPropagatedSurfaceFrames}");

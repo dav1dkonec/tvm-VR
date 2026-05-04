@@ -10,11 +10,11 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
         public int CenterIndex { get; set; }
         public int AffectedCenterCount { get; set; }
         public int MovingEffectorCount { get; set; }
+        public int FixedEffectorCount { get; set; }
         public int CandidatePoolCount { get; set; }
         public int DiscardedCandidateCount { get; set; }
         public float PatchMinAffinity { get; set; }
         public float PatchMaxAffinity { get; set; }
-        public float ShapeElongation { get; set; }
         public float TranslationMagnitudeMax { get; set; }
         public float TranslationMagnitudeAverage { get; set; }
         public bool ExecutionContextCacheHit { get; set; }
@@ -66,13 +66,12 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             builder.AppendLine($"AffectedCenters: {AffectedCenterCount}");
             builder.AppendLine("Planner.Selection: sparseAffinity");
             builder.AppendLine("Planner.RadiusIgnored: True");
-            builder.AppendLine("Planner.AnchorEffectors: 0");
             builder.AppendLine($"Planner.MovingEffectors: {MovingEffectorCount}");
+            builder.AppendLine($"Planner.FixedEffectors: {FixedEffectorCount}");
             builder.AppendLine($"Planner.CandidatePool: {CandidatePoolCount}");
             builder.AppendLine($"Planner.DiscardedCandidates: {DiscardedCandidateCount}");
             builder.AppendLine($"Planner.PatchMinAffinity: {PatchMinAffinity:F4}");
             builder.AppendLine($"Planner.PatchMaxAffinity: {PatchMaxAffinity:F4}");
-            builder.AppendLine($"Planner.ShapeElongation: {ShapeElongation:F3}");
             builder.AppendLine($"Planner.TranslationMagnitudeMax: {TranslationMagnitudeMax:F6}");
             builder.AppendLine($"Planner.TranslationMagnitudeAverage: {TranslationMagnitudeAverage:F6}");
             builder.AppendLine($"Cache.ExecutionContextHit: {ExecutionContextCacheHit}");
@@ -136,11 +135,11 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             {
                 average.AffectedCenterCount += profile.AffectedCenterCount;
                 average.MovingEffectorCount += profile.MovingEffectorCount;
+                average.FixedEffectorCount += profile.FixedEffectorCount;
                 average.CandidatePoolCount += profile.CandidatePoolCount;
                 average.DiscardedCandidateCount += profile.DiscardedCandidateCount;
                 average.PatchMinAffinity += profile.PatchMinAffinity;
                 average.PatchMaxAffinity += profile.PatchMaxAffinity;
-                average.ShapeElongation += profile.ShapeElongation;
                 average.TranslationMagnitudeMax += profile.TranslationMagnitudeMax;
                 average.TranslationMagnitudeAverage += profile.TranslationMagnitudeAverage;
                 average.ExecutionContextCacheHit |= profile.ExecutionContextCacheHit;
@@ -182,11 +181,11 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
 
             average.AffectedCenterCount /= profiles.Count;
             average.MovingEffectorCount /= profiles.Count;
+            average.FixedEffectorCount /= profiles.Count;
             average.CandidatePoolCount /= profiles.Count;
             average.DiscardedCandidateCount /= profiles.Count;
             average.PatchMinAffinity /= profiles.Count;
             average.PatchMaxAffinity /= profiles.Count;
-            average.ShapeElongation /= profiles.Count;
             average.TranslationMagnitudeMax /= profiles.Count;
             average.TranslationMagnitudeAverage /= profiles.Count;
             average.TotalAffectedFrames /= profiles.Count;

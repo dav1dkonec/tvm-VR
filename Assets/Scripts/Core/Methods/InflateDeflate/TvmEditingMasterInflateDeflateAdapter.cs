@@ -456,7 +456,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             diagnostics.PatchMinAffinity = minAffinity;
             diagnostics.PatchMaxAffinity = maxAffinity;
 
-            var expansionOrigin = ResolveExpansionOrigin(selectedCandidates, activeCount + transitionCount, minAffinity, maxAffinity, selectedCenter);
+            var expansionOrigin = ResolveExpansionOrigin(centers, selectedCenter, input.Radius);
             var activePatchRadius = ResolvePatchRadius(selectedCandidates, 0, activeCount, expansionOrigin);
             var supportPatchRadius = ResolvePatchRadius(selectedCandidates, activeCount, transitionCount, expansionOrigin);
             var directionSign = input.Mode == InflateDeflateMode.Inflate ? 1f : -1f;
@@ -661,27 +661,27 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         }
 
         private static Vector3 ResolveExpansionOrigin(
-            IReadOnlyList<AffinityCandidate> selectedCandidates,
-            int activeCount,
-            float minAffinity,
-            float maxAffinity,
-            Vector3 fallback)
+            IReadOnlyList<Vector3> centers,
+            Vector3 selectedCenter,
+            float radius)
         {
-            var weightedPositionSum = Vector3.Zero;
-            var weightSum = 0f;
-            var count = Math.Min(activeCount, selectedCandidates?.Count ?? 0);
+            if (centers == null || centers.Count == 0 || radius <= 0f)
+                return selectedCenter;
 
-            for (var i = 0; i < count; i++)
+            var positionSum = Vector3.Zero;
+            var count = 0;
+            for (var i = 0; i < centers.Count; i++)
             {
-                var normalizedAffinity = NormalizeAffinity(selectedCandidates[i].Affinity, minAffinity, maxAffinity);
-                var weight = 0.25f + normalizedAffinity;
-                weightedPositionSum += selectedCandidates[i].Position * weight;
-                weightSum += weight;
+                if (Vector3.Distance(centers[i], selectedCenter) > radius)
+                    continue;
+
+                positionSum += centers[i];
+                count++;
             }
 
-            return weightSum > 1e-8f
-                ? weightedPositionSum / weightSum
-                : fallback;
+            return count > 0
+                ? positionSum / count
+                : selectedCenter;
         }
 
         private static int ResolveActiveCountFromRadius(

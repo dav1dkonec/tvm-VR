@@ -169,6 +169,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 profile.PatchMaxAffinity = plannerDiagnostics.PatchMaxAffinity;
                 profile.TranslationMagnitudeMax = plannerDiagnostics.TranslationMagnitudeMax;
                 profile.TranslationMagnitudeAverage = plannerDiagnostics.TranslationMagnitudeAverage;
+                profile.ShapeElongation = plannerDiagnostics.ShapeElongation;
 
                 UnityEngine.Debug.Log(
                     $"InflateDeflatePlanner: selectedCenter={input.SelectedCenterIndex}, mode={input.Mode}, " +
@@ -176,7 +177,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                     $"anchorEffectors=0, movingEffectors={profile.MovingEffectorCount}, candidatePool={profile.CandidatePoolCount}, " +
                     $"discardedCandidates={profile.DiscardedCandidateCount}, " +
                     $"patchMinAffinity={profile.PatchMinAffinity:F4}, patchMaxAffinity={profile.PatchMaxAffinity:F4}, " +
-                    $"maxTranslation={profile.TranslationMagnitudeMax:F6}, avgTranslation={profile.TranslationMagnitudeAverage:F6}, " +
+                    $"shapeElongation={profile.ShapeElongation:F3}, maxTranslation={profile.TranslationMagnitudeMax:F6}, avgTranslation={profile.TranslationMagnitudeAverage:F6}, " +
                     $"cacheContextHit={profile.ExecutionContextCacheHit}, cacheHydration={profile.CacheHydrationState}, " +
                     $"affinityCalculatedDuringRun={profile.AffinityCalculatedDuringRun}.");
 
@@ -363,8 +364,10 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             const float minCandidateAffinity = 1e-6f;
             const float minRelativeEffectorAffinity = 0.22f;
             const float minEffectorInfluence = 0.35f;
-            const float inflateTranslationScale = 0.75f;
+            const float compactInflateTranslationScale = 1.08f;
+            const float elongatedInflateTranslationScale = 0.72f;
             const float deflateTranslationScale = 0.45f;
+            const float elongatedShapeThreshold = 1.75f;
 
             diagnostics = default;
 
@@ -428,15 +431,17 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
             var minAffinity = selectedCandidates.Min(candidate => candidate.Affinity);
             var maxAffinity = selectedCandidates.Max(candidate => candidate.Affinity);
+            var shape = AnalyzeEffectorShape(selectedCandidates, expansionOrigin, elongatedShapeThreshold);
             diagnostics.MovingEffectorCount = selectedCandidates.Count;
             diagnostics.CandidatePoolCount = selectedCandidates.Count;
             diagnostics.DiscardedCandidateCount = candidates.Count - selectedCandidates.Count;
             diagnostics.PatchMinAffinity = minAffinity;
             diagnostics.PatchMaxAffinity = maxAffinity;
+            diagnostics.ShapeElongation = shape.Elongation;
 
             var directionSign = input.Mode == InflateDeflateMode.Inflate ? 1f : -1f;
             var translationScale = input.Mode == InflateDeflateMode.Inflate
-                ? inflateTranslationScale
+                ? (shape.IsElongated ? elongatedInflateTranslationScale : compactInflateTranslationScale)
                 : deflateTranslationScale;
             var localScale = ResolveAverageDistanceFromOrigin(selectedCandidates, expansionOrigin);
             var indices = new List<int>(selectedCandidates.Count);
@@ -448,10 +453,16 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             {
                 var candidate = selectedCandidates[i];
                 var offset = candidate.Position - expansionOrigin;
+                var directionOffset = shape.IsElongated
+                    ? RemoveAxisComponent(offset, shape.PrincipalAxis)
+                    : offset;
+                if (directionOffset.LengthSquared() <= 1e-8f)
+                    directionOffset = offset;
+
                 var normalizedAffinity = Normalize(candidate.Affinity, minAffinity, maxAffinity);
                 var influence = minEffectorInfluence + (1f - minEffectorInfluence) * SmoothStep(normalizedAffinity);
-                var translation = offset.LengthSquared() >= 1e-8f
-                    ? Vector3.Normalize(offset) * (directionSign * translationMagnitude * influence)
+                var translation = directionOffset.LengthSquared() >= 1e-8f
+                    ? Vector3.Normalize(directionOffset) * (directionSign * translationMagnitude * influence)
                     : Vector3.Zero;
 
                 indices.Add(candidate.Index);
@@ -505,6 +516,92 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         {
             var t = Math.Clamp(value, 0f, 1f);
             return t * t * (3f - 2f * t);
+        }
+
+        private static EffectorShapeAnalysis AnalyzeEffectorShape(
+            IReadOnlyList<AffinityCandidate> candidates,
+            Vector3 origin,
+            float elongatedShapeThreshold)
+        {
+            if (candidates == null || candidates.Count == 0)
+                return new EffectorShapeAnalysis
+                {
+                    PrincipalAxis = Vector3.UnitX,
+                    Elongation = 1f,
+                    IsElongated = false
+                };
+
+            var axis = ResolvePrincipalAxis(candidates, origin);
+            var axialVariance = 0f;
+            var perpendicularVariance = 0f;
+            var count = 0;
+
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                var offset = candidates[i].Position - origin;
+                var axial = Vector3.Dot(offset, axis);
+                var axialSquared = axial * axial;
+                var perpendicularSquared = Math.Max(offset.LengthSquared() - axialSquared, 0f);
+
+                axialVariance += axialSquared;
+                perpendicularVariance += perpendicularSquared * 0.5f;
+                count++;
+            }
+
+            if (count == 0)
+            {
+                return new EffectorShapeAnalysis
+                {
+                    PrincipalAxis = axis,
+                    Elongation = 1f,
+                    IsElongated = false
+                };
+            }
+
+            axialVariance /= count;
+            perpendicularVariance /= count;
+            var elongation = perpendicularVariance > 1e-8f
+                ? MathF.Sqrt(axialVariance / perpendicularVariance)
+                : 1f;
+
+            return new EffectorShapeAnalysis
+            {
+                PrincipalAxis = axis,
+                Elongation = elongation,
+                IsElongated = elongation >= elongatedShapeThreshold
+            };
+        }
+
+        private static Vector3 ResolvePrincipalAxis(
+            IReadOnlyList<AffinityCandidate> candidates,
+            Vector3 origin)
+        {
+            var axis = Vector3.UnitX;
+            for (var iteration = 0; iteration < 8; iteration++)
+            {
+                var next = Vector3.Zero;
+                for (var i = 0; i < candidates.Count; i++)
+                {
+                    var offset = candidates[i].Position - origin;
+                    next += offset * Vector3.Dot(offset, axis);
+                }
+
+                if (next.LengthSquared() <= 1e-8f)
+                    return axis;
+
+                axis = Vector3.Normalize(next);
+            }
+
+            return axis;
+        }
+
+        private static Vector3 RemoveAxisComponent(Vector3 offset, Vector3 axis)
+        {
+            if (axis.LengthSquared() <= 1e-8f)
+                return offset;
+
+            var normalizedAxis = Vector3.Normalize(axis);
+            return offset - normalizedAxis * Vector3.Dot(offset, normalizedAxis);
         }
 
         private static float ResolveAverageDistanceFromOrigin(
@@ -899,8 +996,16 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             public int DiscardedCandidateCount;
             public float PatchMinAffinity;
             public float PatchMaxAffinity;
+            public float ShapeElongation;
             public float TranslationMagnitudeMax;
             public float TranslationMagnitudeAverage;
+        }
+
+        private struct EffectorShapeAnalysis
+        {
+            public Vector3 PrincipalAxis;
+            public float Elongation;
+            public bool IsElongated;
         }
 
         private struct AffinityCandidate
@@ -934,6 +1039,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             builder.AppendLine($"Planner.DiscardedCandidates: {profile.DiscardedCandidateCount}");
             builder.AppendLine($"Planner.PatchMinAffinity: {profile.PatchMinAffinity:F4}");
             builder.AppendLine($"Planner.PatchMaxAffinity: {profile.PatchMaxAffinity:F4}");
+            builder.AppendLine($"Planner.ShapeElongation: {profile.ShapeElongation:F3}");
             builder.AppendLine($"Planner.TranslationMagnitudeMax: {profile.TranslationMagnitudeMax:F6}");
             builder.AppendLine($"Planner.TranslationMagnitudeAverage: {profile.TranslationMagnitudeAverage:F6}");
             builder.AppendLine($"Frames.PropagatedSurface: {profile.DeformPropagatedSurfaceFrames}");

@@ -14,6 +14,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
         public int DiscardedCandidateCount { get; set; }
         public float PatchMinAffinity { get; set; }
         public float PatchMaxAffinity { get; set; }
+        public float ShapeElongation { get; set; }
         public float TranslationMagnitudeMax { get; set; }
         public float TranslationMagnitudeAverage { get; set; }
         public bool ExecutionContextCacheHit { get; set; }
@@ -71,6 +72,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             builder.AppendLine($"Planner.DiscardedCandidates: {DiscardedCandidateCount}");
             builder.AppendLine($"Planner.PatchMinAffinity: {PatchMinAffinity:F4}");
             builder.AppendLine($"Planner.PatchMaxAffinity: {PatchMaxAffinity:F4}");
+            builder.AppendLine($"Planner.ShapeElongation: {ShapeElongation:F3}");
             builder.AppendLine($"Planner.TranslationMagnitudeMax: {TranslationMagnitudeMax:F6}");
             builder.AppendLine($"Planner.TranslationMagnitudeAverage: {TranslationMagnitudeAverage:F6}");
             builder.AppendLine($"Cache.ExecutionContextHit: {ExecutionContextCacheHit}");
@@ -138,6 +140,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
                 average.DiscardedCandidateCount += profile.DiscardedCandidateCount;
                 average.PatchMinAffinity += profile.PatchMinAffinity;
                 average.PatchMaxAffinity += profile.PatchMaxAffinity;
+                average.ShapeElongation += profile.ShapeElongation;
                 average.TranslationMagnitudeMax += profile.TranslationMagnitudeMax;
                 average.TranslationMagnitudeAverage += profile.TranslationMagnitudeAverage;
                 average.ExecutionContextCacheHit |= profile.ExecutionContextCacheHit;
@@ -183,6 +186,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             average.DiscardedCandidateCount /= profiles.Count;
             average.PatchMinAffinity /= profiles.Count;
             average.PatchMaxAffinity /= profiles.Count;
+            average.ShapeElongation /= profiles.Count;
             average.TranslationMagnitudeMax /= profiles.Count;
             average.TranslationMagnitudeAverage /= profiles.Count;
             average.TotalAffectedFrames /= profiles.Count;

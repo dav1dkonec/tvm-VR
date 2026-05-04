@@ -9,11 +9,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
         public int FrameIndex { get; set; }
         public int CenterIndex { get; set; }
         public int AffectedCenterCount { get; set; }
-        public int ActivePatchCount { get; set; }
-        public int TransitionRingCount { get; set; }
-        public int PreferredCandidateCount { get; set; }
-        public int FallbackCandidateCount { get; set; }
-        public float GuardRadius { get; set; }
+        public int MovingEffectorCount { get; set; }
+        public int CandidatePoolCount { get; set; }
+        public int DiscardedCandidateCount { get; set; }
         public float PatchMinAffinity { get; set; }
         public float PatchMaxAffinity { get; set; }
         public float TranslationMagnitudeMax { get; set; }
@@ -65,11 +63,12 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             builder.AppendLine($"FrameIndex: {FrameIndex}");
             builder.AppendLine($"CenterIndex: {CenterIndex}");
             builder.AppendLine($"AffectedCenters: {AffectedCenterCount}");
-            builder.AppendLine($"Planner.ActivePatch: {ActivePatchCount}");
-            builder.AppendLine($"Planner.TransitionRing: {TransitionRingCount}");
-            builder.AppendLine($"Planner.PreferredCandidates: {PreferredCandidateCount}");
-            builder.AppendLine($"Planner.FallbackCandidates: {FallbackCandidateCount}");
-            builder.AppendLine($"Planner.GuardRadius: {GuardRadius:F4}");
+            builder.AppendLine("Planner.Selection: sparseAffinity");
+            builder.AppendLine("Planner.RadiusIgnored: True");
+            builder.AppendLine($"Planner.AnchorEffectors: {(AffectedCenterCount > 0 ? 1 : 0)}");
+            builder.AppendLine($"Planner.MovingEffectors: {MovingEffectorCount}");
+            builder.AppendLine($"Planner.CandidatePool: {CandidatePoolCount}");
+            builder.AppendLine($"Planner.DiscardedCandidates: {DiscardedCandidateCount}");
             builder.AppendLine($"Planner.PatchMinAffinity: {PatchMinAffinity:F4}");
             builder.AppendLine($"Planner.PatchMaxAffinity: {PatchMaxAffinity:F4}");
             builder.AppendLine($"Planner.TranslationMagnitudeMax: {TranslationMagnitudeMax:F6}");
@@ -134,11 +133,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             foreach (var profile in profiles)
             {
                 average.AffectedCenterCount += profile.AffectedCenterCount;
-                average.ActivePatchCount += profile.ActivePatchCount;
-                average.TransitionRingCount += profile.TransitionRingCount;
-                average.PreferredCandidateCount += profile.PreferredCandidateCount;
-                average.FallbackCandidateCount += profile.FallbackCandidateCount;
-                average.GuardRadius += profile.GuardRadius;
+                average.MovingEffectorCount += profile.MovingEffectorCount;
+                average.CandidatePoolCount += profile.CandidatePoolCount;
+                average.DiscardedCandidateCount += profile.DiscardedCandidateCount;
                 average.PatchMinAffinity += profile.PatchMinAffinity;
                 average.PatchMaxAffinity += profile.PatchMaxAffinity;
                 average.TranslationMagnitudeMax += profile.TranslationMagnitudeMax;
@@ -181,11 +178,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             }
 
             average.AffectedCenterCount /= profiles.Count;
-            average.ActivePatchCount /= profiles.Count;
-            average.TransitionRingCount /= profiles.Count;
-            average.PreferredCandidateCount /= profiles.Count;
-            average.FallbackCandidateCount /= profiles.Count;
-            average.GuardRadius /= profiles.Count;
+            average.MovingEffectorCount /= profiles.Count;
+            average.CandidatePoolCount /= profiles.Count;
+            average.DiscardedCandidateCount /= profiles.Count;
             average.PatchMinAffinity /= profiles.Count;
             average.PatchMaxAffinity /= profiles.Count;
             average.TranslationMagnitudeMax /= profiles.Count;

@@ -56,9 +56,6 @@ namespace TvmVr2.Core
                 if (inflateDeflateRequest.SelectedCenterIndex < 0)
                     return ValidationResult.Invalid("SelectedCenterIndex must be non-negative.");
 
-                if (inflateDeflateRequest.Radius <= 0f)
-                    return ValidationResult.Invalid("Radius must be greater than zero.");
-
                 if (inflateDeflateRequest.Strength <= 0f)
                     return ValidationResult.Invalid("Strength must be greater than zero.");
             }

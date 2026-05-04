@@ -765,9 +765,9 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             return;
         }
 
-        if (radius <= 0f || strength <= 0f)
+        if (strength <= 0f)
         {
-            Debug.LogWarning("Sequence: Debug apply requires positive radius and strength.");
+            Debug.LogWarning("Sequence: Debug apply requires positive strength.");
             return;
         }
 
@@ -866,9 +866,9 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             return;
         }
 
-        if (radius <= 0f || strength <= 0f)
+        if (strength <= 0f)
         {
-            Debug.LogWarning("Sequence: Quick profile requires positive radius and strength.");
+            Debug.LogWarning("Sequence: Quick profile requires positive strength.");
             return;
         }
 

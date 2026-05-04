@@ -715,9 +715,10 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             if (maxAvailable <= activeCount)
                 return 0;
 
-            var desired = mode == InflateDeflateMode.Deflate
-                ? Math.Max(2, (int)MathF.Ceiling(activeCount * 0.6f))
-                : Math.Max(1, activeCount / 2);
+            if (mode == InflateDeflateMode.Inflate)
+                return 0;
+
+            var desired = Math.Max(2, (int)MathF.Ceiling(activeCount * 0.6f));
             return Math.Clamp(desired, 0, maxAvailable - activeCount);
         }
 

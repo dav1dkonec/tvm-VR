@@ -23,6 +23,8 @@ using Stopwatch = System.Diagnostics.Stopwatch;
 /// </summary>
 public class Sequence : MonoBehaviour, ICenterSelectionListener
 {
+    private const float IgnoredInflateDeflateRadius = 0f;
+
     private TvmEditingMasterInflateDeflateAdapter inflateDeflateAdapter;
     private SequenceLoader sequenceLoader;
     private SequenceSaver sequenceSaver;
@@ -704,7 +706,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
                         SequenceId = loadedName ?? string.Empty,
                         FrameIndex = currentFrame,
                         SelectedCenterIndex = selectedCenterIndex,
-                        Radius = methodSettings != null ? methodSettings.InflateRadius : 0.08f,
+                        Radius = IgnoredInflateDeflateRadius,
                         Strength = methodSettings != null ? methodSettings.InflateStrength : 0.02f,
                         Mode = methodSettings != null ? methodSettings.InflateMode : InflateDeflateMode.Inflate
                     },
@@ -987,7 +989,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         return BuildRuntimeContext(
             frames,
             currentFrame,
-            methodSettings != null ? methodSettings.InflateRadius : 0.08f,
+            IgnoredInflateDeflateRadius,
             methodSettings != null ? methodSettings.InflateStrength : 0.02f,
             methodSettings != null ? methodSettings.InflateMode : InflateDeflateMode.Inflate);
     }

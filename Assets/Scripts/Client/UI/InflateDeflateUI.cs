@@ -31,7 +31,6 @@ public class InflateDeflateUI : MonoBehaviour
 
         if (target != null)
         {
-            target.SetInflateRadius(0.10f);
             target.SetInflateStrength(0.20f);
             target.SetInflateMode(0);
         }

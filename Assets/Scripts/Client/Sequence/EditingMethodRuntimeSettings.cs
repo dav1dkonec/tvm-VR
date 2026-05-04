@@ -9,7 +9,7 @@ namespace TvmVr2.Client.Sequence
         public float CenterSigma = 1f;
         public int SequenceNeighborCount = 4;
         public int SurfaceNeighborCount = 6;
-        public float InflateRadius = 0.10f;
+        [HideInInspector] public float InflateRadius = 0.10f;
         public float InflateStrength = 0.20f;
         public InflateDeflateMode InflateMode = InflateDeflateMode.Inflate;
 
@@ -28,6 +28,7 @@ namespace TvmVr2.Client.Sequence
             CenterSigma = Mathf.Max(0f, value);
         }
 
+        [System.Obsolete("Radius is ignored by the inflate/deflate method. Kept only for old scene serialization.")]
         public void SetInflateRadius(float value)
         {
             InflateRadius = Mathf.Max(0.001f, value);

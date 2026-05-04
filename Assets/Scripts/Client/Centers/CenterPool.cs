@@ -11,6 +11,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class CenterPool : MonoBehaviour, ICenterHoverListener
 {
     private const float InflateStrengthPreviewReference = 0.5f;
+    private const float InflateDeflatePreviewRadius = 0.10f;
     private const float PreviewEmissionMultiplier = 1f;
 
     /// <summary>
@@ -78,10 +79,26 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
         for (int i = 0; i < count; i++)
         {
             var c = Instantiate(prefab, transform);
+            ConfigureCenterPhysics(c);
             centers[i] = c.GetComponent<CenterUI>();
             centers[i].transform.localPosition = centers[i].transform.localPosition + MathUtils.RandomUnitVector3() * 0.5f;
             centers[i].centerIndex = i;
         }
+    }
+
+    private static void ConfigureCenterPhysics(GameObject center)
+    {
+        var centerCollider = center.GetComponent<Collider>();
+        if (centerCollider != null)
+            centerCollider.isTrigger = true;
+
+        var rigidbody = center.GetComponent<Rigidbody>();
+        if (rigidbody == null)
+            return;
+
+        rigidbody.useGravity = false;
+        rigidbody.isKinematic = true;
+        rigidbody.constraints = RigidbodyConstraints.FreezeAll;
     }
 
     public void PrepareForSequence(int count)
@@ -200,7 +217,7 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
         if (methodSettings == null)
             methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
 
-        var radius = methodSettings != null ? methodSettings.InflateRadius : 0.08f;
+        var radius = InflateDeflatePreviewRadius;
         var strength = methodSettings != null ? methodSettings.InflateStrength : 0.02f;
         if (radius <= 0f || strength <= 0f)
         {

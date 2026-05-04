@@ -19,15 +19,17 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
     public Button minus;
     public Button plus;
     public Slider slider;
-    public float radiusMinValue = 0.02f;
-    public float radiusMaxValue = 0.30f;
     public float strengthMinValue = 0.01f;
     public float strengthMaxValue = 0.40f;
 
     private bool suppressSliderCallback;
+    private bool IsLegacyRadiusControl => parameterKind == ParameterKind.Radius;
 
     private void Awake()
     {
+        if (DisableLegacyRadiusControl())
+            return;
+
         if (controller == null)
             controller = FindFirstObjectByType<InflateDeflateUI>();
 
@@ -49,11 +51,17 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
 
     private void Start()
     {
+        if (DisableLegacyRadiusControl())
+            return;
+
         SyncVisuals();
     }
 
     private void OnEnable()
     {
+        if (DisableLegacyRadiusControl())
+            return;
+
         SyncVisuals();
     }
 
@@ -69,6 +77,9 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
 
     private void ChangeValue(float delta)
     {
+        if (IsLegacyRadiusControl)
+            return;
+
         if (target == null)
             return;
 
@@ -77,6 +88,9 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
 
     private void HandleSliderValueChanged(float value)
     {
+        if (IsLegacyRadiusControl)
+            return;
+
         if (suppressSliderCallback)
             return;
 
@@ -85,16 +99,16 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
 
     private void SetValue(float value)
     {
+        if (IsLegacyRadiusControl)
+            return;
+
         if (target == null)
             return;
 
         GetRange(out float minValue, out float maxValue);
         value = Mathf.Clamp(value, minValue, maxValue);
 
-        if (parameterKind == ParameterKind.Radius)
-            target.SetInflateRadius(value);
-        else
-            target.SetInflateStrength(value);
+        target.SetInflateStrength(value);
 
         SyncVisuals();
         controller?.RefreshSelectionPreview();
@@ -105,9 +119,7 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
         if (target == null)
             return 0f;
 
-        return parameterKind == ParameterKind.Radius
-            ? target.InflateRadius
-            : target.InflateStrength;
+        return target.InflateStrength;
     }
 
     private void SyncVisuals()
@@ -136,15 +148,19 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
 
     private void GetRange(out float minValue, out float maxValue)
     {
-        if (parameterKind == ParameterKind.Radius)
-        {
-            minValue = radiusMinValue;
-            maxValue = radiusMaxValue;
-            return;
-        }
-
         minValue = strengthMinValue;
         maxValue = strengthMaxValue;
+    }
+
+    private bool DisableLegacyRadiusControl()
+    {
+        if (!IsLegacyRadiusControl)
+            return false;
+
+        if (gameObject.activeSelf)
+            gameObject.SetActive(false);
+
+        return true;
     }
 
 }

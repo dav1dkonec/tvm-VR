@@ -8,6 +8,7 @@ namespace TvmVr2.Api.Sequence
         public int FrameCount { get; set; }
         public int CenterCount { get; set; }
         public Frame[] Frames { get; set; }
+        public Frame[] CacheFrames { get; set; }
         public string LoadedName { get; set; } = string.Empty;
         public BasicTranslateRuntimeConfiguration BasicTranslate { get; set; } = new BasicTranslateRuntimeConfiguration();
         public InflateDeflateRuntimeConfiguration InflateDeflate { get; set; } = new InflateDeflateRuntimeConfiguration();

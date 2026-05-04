@@ -8,6 +8,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         public MethodKind MethodKind => MethodKind.InflateDeflate;
         public string SequenceId { get; set; } = string.Empty;
         public Frame[] Frames { get; set; }
+        public Frame[] CacheFrames { get; set; }
         public int FrameIndex { get; set; }
         public int SelectedCenterIndex { get; set; } = -1;
         public float Radius { get; set; }

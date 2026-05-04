@@ -520,8 +520,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         }
 
         centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
-        runtimeState?.MarkFrameEdited(currentFrame);
-        InvalidateInflateDeflateRuntimeCaches();
         SetPendingEdits(true);
 
         busyStateController.Exit(leftHand, rightHand, waitCanvas);
@@ -541,7 +539,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         }
 
         var pl = playing;
-        var beforeFrames = FrameSnapshot.Clone(frames);
         var beforeVertices = CloneVertices(frames[currentFrame]?.vertices);
         Pause();
         busyStateController.Enter(leftHand, rightHand, waitCanvas);
@@ -572,9 +569,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
 
         centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
         RedrawMesh();
-        var changedFrames = CollectChangedFrames(beforeFrames, frames);
-        runtimeState?.MarkFramesEdited(changedFrames);
-        InvalidateInflateDeflateRuntimeCaches();
 
         busyStateController.Exit(leftHand, rightHand, waitCanvas);
         if (pl) Play();
@@ -729,13 +723,11 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
             RedrawMesh();
             var changedFrames = CollectChangedFrames(beforeFrames, frames);
-            runtimeState?.MarkFramesEdited(changedFrames);
             LogInflateDeflateFrameChangeDiagnostics("commit", currentFrame, changedFrames, frames?.Length ?? 0);
-            InvalidateInflateDeflateRuntimeCaches();
             SetPendingEdits(true);
             Debug.Log(
                 $"Sequence: inflate/deflate commit completed in {commitTimer.Elapsed.TotalMilliseconds:F2} ms " +
-                $"(frame={currentFrame}, changedFrames={changedFrames.Length}, cacheEnabled={inflateDeflateAdapter?.IsStreamingAssetsCacheEnabled ?? false}).");
+                $"(frame={currentFrame}, changedFrames={changedFrames.Length}, cacheEnabled={inflateDeflateAdapter?.IsStreamingAssetsCacheEnabled ?? false}, cacheSource=OriginalFrames).");
         }
         catch (Exception ex)
         {
@@ -827,13 +819,11 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
             RedrawMesh();
             var changedFrames = CollectChangedFrames(beforeFrames, frames);
-            runtimeState?.MarkFramesEdited(changedFrames);
             LogInflateDeflateFrameChangeDiagnostics("debug apply", frameIndex, changedFrames, frames?.Length ?? 0);
-            InvalidateInflateDeflateRuntimeCaches();
             SetPendingEdits(true);
             Debug.Log(
                 $"Sequence: inflate/deflate debug apply completed in {debugApplyTimer.Elapsed.TotalMilliseconds:F2} ms " +
-                $"(frame={frameIndex}, changedFrames={changedFrames.Length}, cacheEnabled={inflateDeflateAdapter?.IsStreamingAssetsCacheEnabled ?? false}).");
+                $"(frame={frameIndex}, changedFrames={changedFrames.Length}, cacheEnabled={inflateDeflateAdapter?.IsStreamingAssetsCacheEnabled ?? false}, cacheSource=OriginalFrames).");
         }
         catch (Exception ex)
         {
@@ -1012,6 +1002,7 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         return new SequenceRuntimeContext
         {
             Frames = runtimeFrames,
+            CacheFrames = sequenceData?.OriginalFrames ?? runtimeFrames,
             SequenceId = loadedName ?? string.Empty,
             LoadedName = loadedName ?? string.Empty,
             CurrentFrameIndex = runtimeFrameIndex,
@@ -1041,24 +1032,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         settings = sequenceData?.Settings ?? new SequenceSettings();
     }
 
-    private void InvalidateInflateDeflateRuntimeCaches()
-    {
-        if (runtimeState == null || editingCore == null)
-            return;
-
-        var dirtyFrames = runtimeState.ConsumeDirtyFrames();
-        if (dirtyFrames.Length == 0)
-        {
-            Debug.Log("Sequence: no inflate/deflate runtime caches needed invalidation.");
-            return;
-        }
-
-        LogInflateDeflateDirtyFrameDiagnostics(dirtyFrames, frames?.Length ?? 0);
-        editingCore.InvalidateInflateDeflateFrameCaches(dirtyFrames);
-        Debug.Log(
-            $"Sequence: invalidated inflate/deflate runtime caches for frames [{string.Join(", ", dirtyFrames)}].");
-    }
-
     private static void LogInflateDeflateFrameChangeDiagnostics(string operation, int frameIndex, int[] changedFrames, int totalFrameCount)
     {
         var changedCount = changedFrames != null ? changedFrames.Length : 0;
@@ -1074,24 +1047,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             Debug.LogWarning(
                 $"Sequence: inflate/deflate {operation} touched the entire runtime state. " +
                 "This is only expected when the deformation propagates to every frame.");
-        }
-    }
-
-    private static void LogInflateDeflateDirtyFrameDiagnostics(int[] dirtyFrames, int totalFrameCount)
-    {
-        var dirtyCount = dirtyFrames != null ? dirtyFrames.Length : 0;
-        var fullInvalidation = totalFrameCount > 0 && dirtyCount == totalFrameCount;
-
-        Debug.Log(
-            $"Sequence: inflate/deflate dirty frame diagnostics | " +
-            $"dirtyFrames={dirtyCount}/{totalFrameCount}, fullInvalidation={fullInvalidation}, " +
-            $"dirtyFrameIndices=[{string.Join(", ", dirtyFrames ?? Array.Empty<int>())}].");
-
-        if (fullInvalidation)
-        {
-            Debug.LogWarning(
-                "Sequence: inflate/deflate dirty frame set covers the entire runtime state. " +
-                "That means cache invalidation is currently global for this edit.");
         }
     }
 

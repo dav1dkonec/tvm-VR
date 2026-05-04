@@ -162,6 +162,8 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
             UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase PrepareTransforms.");
             var centers = input.Frames.Select(frame => frame.centers).ToArray();
+            var cacheFrames = ResolveCacheFrames(input);
+            var cacheCenters = cacheFrames.Select(frame => frame.centers).ToArray();
 
             _operationGate.Wait();
             try
@@ -169,7 +171,10 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 var executionContext = GetOrCreateExecutionContext(input, out var executionContextCacheHit, out var cacheHydrationState);
                 profile.ExecutionContextCacheHit = executionContextCacheHit;
                 profile.CacheHydrationState = cacheHydrationState;
-                EnsureAffinityAvailable(executionContext, centers, out var affinityWasAvailableBeforeEnsure, out var affinityCalculatedDuringRun);
+                if (!executionContextCacheHit && !string.Equals(cacheHydrationState, "hit", StringComparison.Ordinal))
+                    PrecomputeCache(executionContext, cacheFrames);
+
+                EnsureAffinityAvailable(executionContext, cacheCenters, out var affinityWasAvailableBeforeEnsure, out var affinityCalculatedDuringRun);
                 profile.AffinityWasAvailableBeforeEnsure = affinityWasAvailableBeforeEnsure;
                 profile.AffinityCalculatedDuringRun = affinityCalculatedDuringRun;
 
@@ -823,18 +828,19 @@ namespace TvmVr2.Core.Methods.InflateDeflate
         private static string BuildCacheKey(InflateDeflateMethodInput input)
         {
             var builder = new StringBuilder();
+            var frames = ResolveCacheFrames(input);
             builder.Append(input.MethodKind);
             builder.Append('|');
             builder.Append(input.SequenceId ?? string.Empty);
             builder.Append('|');
-            builder.Append(input.Frames?.Length ?? 0);
+            builder.Append(frames?.Length ?? 0);
 
-            if (input.Frames == null)
+            if (frames == null)
                 return builder.ToString();
 
-            for (var i = 0; i < input.Frames.Length; i++)
+            for (var i = 0; i < frames.Length; i++)
             {
-                var frame = input.Frames[i];
+                var frame = frames[i];
                 builder.Append('|');
                 builder.Append(frame?.centers?.Length ?? 0);
                 builder.Append(':');
@@ -981,6 +987,13 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             }
         }
 
+        private static Frame[] ResolveCacheFrames(InflateDeflateMethodInput input)
+        {
+            return input?.CacheFrames != null && input.CacheFrames.Length > 0
+                ? input.CacheFrames
+                : input?.Frames ?? Array.Empty<Frame>();
+        }
+
         private static InflateDeflateCacheBundle BuildCacheBundle(CachedExecutionContext context, InflateDeflateMethodInput input)
         {
             var bundle = new InflateDeflateCacheBundle
@@ -990,7 +1003,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 NeighborIndices = context.TransformPropagation?.GetNeighborIndices()
             };
 
-            var frames = input.Frames ?? Array.Empty<Frame>();
+            var frames = ResolveCacheFrames(input);
             for (var frameIndex = 0; frameIndex < frames.Length; frameIndex++)
             {
                 if (context.SurfaceDeformation != null &&
@@ -1011,12 +1024,13 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
         private static InflateDeflateCacheManifest BuildCacheManifest(InflateDeflateMethodInput input, CachedExecutionContext context)
         {
-            var firstFrame = input.Frames != null && input.Frames.Length > 0 ? input.Frames[0] : null;
+            var frames = ResolveCacheFrames(input);
+            var firstFrame = frames != null && frames.Length > 0 ? frames[0] : null;
             return new InflateDeflateCacheManifest
             {
                 SchemaVersion = InflateDeflateCacheManifest.CurrentSchemaVersion,
                 SequenceId = input.SequenceId ?? string.Empty,
-                FrameCount = input.Frames?.Length ?? 0,
+                FrameCount = frames?.Length ?? 0,
                 CenterCount = firstFrame?.centers?.Length ?? 0,
                 VertexCount = firstFrame?.vertices?.Length ?? 0,
                 FaceCount = firstFrame?.faces?.Length ?? 0,

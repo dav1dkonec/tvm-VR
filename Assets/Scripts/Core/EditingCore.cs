@@ -137,6 +137,7 @@ namespace TvmVr2.Core
                 {
                     SequenceId = runtimeContext?.SequenceId ?? string.Empty,
                     Frames = runtimeContext?.Frames,
+                    CacheFrames = runtimeContext?.CacheFrames,
                     FrameIndex = request.FrameIndex,
                     SelectedCenterIndex = ((InflateDeflateRequest)request).SelectedCenterIndex,
                     Radius = ((InflateDeflateRequest)request).Radius,

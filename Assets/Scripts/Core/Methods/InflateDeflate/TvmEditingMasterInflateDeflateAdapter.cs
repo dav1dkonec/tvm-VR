@@ -462,9 +462,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             var directionSign = input.Mode == InflateDeflateMode.Inflate ? 1f : -1f;
             var indices = new List<int>(1 + selectedCandidates.Count);
             var translations = new List<Vector3>(1 + selectedCandidates.Count);
-            var translationMagnitudeSum = 0f;
-            var translationMagnitudeCount = 0;
-            var translationMagnitudeMax = 0f;
 
             var selectedTranslation = Vector3.Zero;
             var selectedOffset = selectedCenter - expansionOrigin;
@@ -478,13 +475,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
             indices.Add(input.SelectedCenterIndex);
             translations.Add(selectedTranslation);
-            var selectedTranslationMagnitude = selectedTranslation.Length();
-            if (selectedTranslationMagnitude > 1e-8f)
-            {
-                translationMagnitudeSum += selectedTranslationMagnitude;
-                translationMagnitudeCount++;
-                translationMagnitudeMax = selectedTranslationMagnitude;
-            }
 
             for (var i = 0; i < selectedCandidates.Count; i++)
             {
@@ -502,23 +492,12 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                     translation = offset * (directionSign * input.Strength * influence);
                 }
 
-                var translationMagnitude = translation.Length();
-
                 indices.Add(candidate.Index);
                 translations.Add(translation);
-                if (translationMagnitude > 1e-8f)
-                {
-                    translationMagnitudeSum += translationMagnitude;
-                    translationMagnitudeCount++;
-                    if (translationMagnitude > translationMagnitudeMax)
-                        translationMagnitudeMax = translationMagnitude;
-                }
             }
 
-            diagnostics.TranslationMagnitudeMax = translationMagnitudeMax;
-            diagnostics.TranslationMagnitudeAverage = translationMagnitudeCount > 0
-                ? translationMagnitudeSum / translationMagnitudeCount
-                : 0f;
+            SmoothEffectorTranslations(indices, translations, affinity);
+            ResolveTranslationDiagnostics(translations, out diagnostics.TranslationMagnitudeMax, out diagnostics.TranslationMagnitudeAverage);
 
             return new InflateDeflateResolvedEffectors
             {
@@ -549,6 +528,88 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             }
 
             return candidates;
+        }
+
+        private static void SmoothEffectorTranslations(
+            IReadOnlyList<int> indices,
+            List<Vector3> translations,
+            float[,] affinity)
+        {
+            const int smoothingIterations = 2;
+            const float smoothingBlend = 0.35f;
+            const float selfWeight = 0.35f;
+
+            if (indices == null || translations == null || affinity == null || indices.Count != translations.Count)
+                return;
+
+            for (var iteration = 0; iteration < smoothingIterations; iteration++)
+            {
+                var source = translations.ToArray();
+                for (var i = 0; i < source.Length; i++)
+                {
+                    var centerIndex = indices[i];
+                    if (centerIndex < 0 || centerIndex >= affinity.GetLength(0))
+                        continue;
+
+                    var weightedSum = source[i] * selfWeight;
+                    var weightSum = selfWeight;
+
+                    for (var j = 0; j < source.Length; j++)
+                    {
+                        if (i == j)
+                            continue;
+
+                        var neighborIndex = indices[j];
+                        if (neighborIndex < 0 || neighborIndex >= affinity.GetLength(1))
+                            continue;
+
+                        var weight = Math.Max(affinity[centerIndex, neighborIndex], 0f);
+                        if (weight <= 1e-6f)
+                            continue;
+
+                        weightedSum += source[j] * weight;
+                        weightSum += weight;
+                    }
+
+                    if (weightSum <= 1e-8f)
+                        continue;
+
+                    var smoothed = weightedSum / weightSum;
+                    translations[i] = source[i] * (1f - smoothingBlend) + smoothed * smoothingBlend;
+                }
+            }
+        }
+
+        private static void ResolveTranslationDiagnostics(
+            IReadOnlyList<Vector3> translations,
+            out float translationMagnitudeMax,
+            out float translationMagnitudeAverage)
+        {
+            var translationMagnitudeSum = 0f;
+            var translationMagnitudeCount = 0;
+            translationMagnitudeMax = 0f;
+
+            if (translations == null)
+            {
+                translationMagnitudeAverage = 0f;
+                return;
+            }
+
+            for (var i = 0; i < translations.Count; i++)
+            {
+                var translationMagnitude = translations[i].Length();
+                if (translationMagnitude <= 1e-8f)
+                    continue;
+
+                translationMagnitudeSum += translationMagnitude;
+                translationMagnitudeCount++;
+                if (translationMagnitude > translationMagnitudeMax)
+                    translationMagnitudeMax = translationMagnitude;
+            }
+
+            translationMagnitudeAverage = translationMagnitudeCount > 0
+                ? translationMagnitudeSum / translationMagnitudeCount
+                : 0f;
         }
 
         private static float ResolvePatchRadius(

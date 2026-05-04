@@ -456,35 +456,47 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             diagnostics.PatchMinAffinity = minAffinity;
             diagnostics.PatchMaxAffinity = maxAffinity;
 
-            var indices = new List<int>(1 + selectedCandidates.Count)
-            {
-                input.SelectedCenterIndex
-            };
-            var translations = new List<Vector3>(1 + selectedCandidates.Count)
-            {
-                Vector3.Zero
-            };
+            var expansionOrigin = ResolveExpansionOrigin(selectedCandidates, activeCount, minAffinity, maxAffinity, selectedCenter);
+            var directionSign = input.Mode == InflateDeflateMode.Inflate ? 1f : -1f;
+            var indices = new List<int>(1 + selectedCandidates.Count);
+            var translations = new List<Vector3>(1 + selectedCandidates.Count);
             var translationMagnitudeSum = 0f;
             var translationMagnitudeCount = 0;
             var translationMagnitudeMax = 0f;
+
+            var selectedTranslation = Vector3.Zero;
+            var selectedOffset = selectedCenter - expansionOrigin;
+            if (selectedOffset.LengthSquared() >= 1e-8f)
+            {
+                var selectedInfluence = input.Mode == InflateDeflateMode.Inflate
+                    ? ComputeInflateAffinityInfluence(1f, false)
+                    : ComputeDeflateAffinityInfluence(1f, false);
+                selectedTranslation = selectedOffset * (directionSign * input.Strength * selectedInfluence);
+            }
+
+            indices.Add(input.SelectedCenterIndex);
+            translations.Add(selectedTranslation);
+            var selectedTranslationMagnitude = selectedTranslation.Length();
+            if (selectedTranslationMagnitude > 1e-8f)
+            {
+                translationMagnitudeSum += selectedTranslationMagnitude;
+                translationMagnitudeCount++;
+                translationMagnitudeMax = selectedTranslationMagnitude;
+            }
 
             for (var i = 0; i < selectedCandidates.Count; i++)
             {
                 var candidate = selectedCandidates[i];
                 var translation = Vector3.Zero;
-                var isSupportSubset = i >= activeCount;
-                if (!isSupportSubset)
+                var inSupportSubset = i >= activeCount;
+                var offset = candidate.Position - expansionOrigin;
+                if (offset.LengthSquared() >= 1e-8f)
                 {
-                    var offset = candidate.Position - selectedCenter;
-                    if (offset.LengthSquared() >= 1e-8f)
-                    {
-                        var normalizedAffinity = NormalizeAffinity(candidate.Affinity, minAffinity, maxAffinity);
-                        var influence = input.Mode == InflateDeflateMode.Inflate
-                            ? ComputeInflateAffinityInfluence(normalizedAffinity, false)
-                            : ComputeDeflateAffinityInfluence(normalizedAffinity, false);
-                        var directionSign = input.Mode == InflateDeflateMode.Inflate ? 1f : -1f;
-                        translation = offset * (directionSign * input.Strength * influence);
-                    }
+                    var normalizedAffinity = NormalizeAffinity(candidate.Affinity, minAffinity, maxAffinity);
+                    var influence = input.Mode == InflateDeflateMode.Inflate
+                        ? ComputeInflateAffinityInfluence(normalizedAffinity, inSupportSubset)
+                        : ComputeDeflateAffinityInfluence(normalizedAffinity, inSupportSubset);
+                    translation = offset * (directionSign * input.Strength * influence);
                 }
 
                 var translationMagnitude = translation.Length();
@@ -534,6 +546,30 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             }
 
             return candidates;
+        }
+
+        private static Vector3 ResolveExpansionOrigin(
+            IReadOnlyList<AffinityCandidate> selectedCandidates,
+            int activeCount,
+            float minAffinity,
+            float maxAffinity,
+            Vector3 fallback)
+        {
+            var weightedPositionSum = Vector3.Zero;
+            var weightSum = 0f;
+            var count = Math.Min(activeCount, selectedCandidates?.Count ?? 0);
+
+            for (var i = 0; i < count; i++)
+            {
+                var normalizedAffinity = NormalizeAffinity(selectedCandidates[i].Affinity, minAffinity, maxAffinity);
+                var weight = 0.25f + normalizedAffinity;
+                weightedPositionSum += selectedCandidates[i].Position * weight;
+                weightSum += weight;
+            }
+
+            return weightSum > 1e-8f
+                ? weightedPositionSum / weightSum
+                : fallback;
         }
 
         private static int ResolveActiveCountFromRadius(

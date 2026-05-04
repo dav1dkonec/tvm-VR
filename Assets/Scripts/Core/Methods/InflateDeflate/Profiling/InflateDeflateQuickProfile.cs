@@ -65,7 +65,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Profiling
             builder.AppendLine($"AffectedCenters: {AffectedCenterCount}");
             builder.AppendLine("Planner.Selection: sparseAffinity");
             builder.AppendLine("Planner.RadiusIgnored: True");
-            builder.AppendLine($"Planner.AnchorEffectors: {(AffectedCenterCount > 0 ? 1 : 0)}");
+            builder.AppendLine("Planner.AnchorEffectors: 0");
             builder.AppendLine($"Planner.MovingEffectors: {MovingEffectorCount}");
             builder.AppendLine($"Planner.CandidatePool: {CandidatePoolCount}");
             builder.AppendLine($"Planner.DiscardedCandidates: {DiscardedCandidateCount}");

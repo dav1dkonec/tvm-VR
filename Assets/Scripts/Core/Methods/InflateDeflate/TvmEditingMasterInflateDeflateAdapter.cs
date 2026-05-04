@@ -173,7 +173,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 UnityEngine.Debug.Log(
                     $"InflateDeflatePlanner: selectedCenter={input.SelectedCenterIndex}, mode={input.Mode}, " +
                     $"selection=sparseAffinity, radiusIgnored=True, affectedCenters={profile.AffectedCenterCount}, " +
-                    $"anchorEffectors=1, movingEffectors={profile.MovingEffectorCount}, candidatePool={profile.CandidatePoolCount}, " +
+                    $"anchorEffectors=0, movingEffectors={profile.MovingEffectorCount}, candidatePool={profile.CandidatePoolCount}, " +
                     $"discardedCandidates={profile.DiscardedCandidateCount}, " +
                     $"patchMinAffinity={profile.PatchMinAffinity:F4}, patchMaxAffinity={profile.PatchMaxAffinity:F4}, " +
                     $"maxTranslation={profile.TranslationMagnitudeMax:F6}, avgTranslation={profile.TranslationMagnitudeAverage:F6}, " +
@@ -358,13 +358,13 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             float[,] affinity,
             out AffinityPlannerDiagnostics diagnostics)
         {
-            const int targetMovingEffectorCount = 8;
-            const int minCandidatePoolSize = 24;
-            const int candidatePoolMultiplier = 6;
+            const int minMovingEffectorCount = 24;
+            const int maxMovingEffectorCount = 96;
             const float minCandidateAffinity = 1e-6f;
-            const float inflateTranslationScale = 2.25f;
-            const float deflateTranslationScale = 0.75f;
-            const float minDirectionalRadiusRatio = 0.12f;
+            const float minRelativeEffectorAffinity = 0.22f;
+            const float minEffectorInfluence = 0.35f;
+            const float inflateTranslationScale = 0.75f;
+            const float deflateTranslationScale = 0.45f;
 
             diagnostics = default;
 
@@ -407,17 +407,21 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 return a.Index.CompareTo(b.Index);
             });
 
-            var targetMovingCount = Math.Min(targetMovingEffectorCount, candidates.Count);
-            var poolSize = Math.Min(
-                candidates.Count,
-                Math.Max(minCandidatePoolSize, targetMovingEffectorCount * candidatePoolMultiplier));
-            var candidatePool = candidates.Take(poolSize).ToList();
-            var expansionOrigin = ResolveAffinityCentroid(selectedCenter, candidatePool);
-            var selectedCandidates = SelectBalancedEffectors(
-                candidatePool,
-                targetMovingCount,
-                expansionOrigin,
-                minDirectionalRadiusRatio);
+            var maxCandidateAffinity = candidates[0].Affinity;
+            var minSelectedAffinity = Math.Max(minCandidateAffinity, maxCandidateAffinity * minRelativeEffectorAffinity);
+            var selectedCandidates = candidates
+                .Where(candidate => candidate.Affinity >= minSelectedAffinity)
+                .Take(maxMovingEffectorCount)
+                .ToList();
+
+            if (selectedCandidates.Count < Math.Min(minMovingEffectorCount, candidates.Count))
+            {
+                selectedCandidates = candidates
+                    .Take(Math.Min(minMovingEffectorCount, candidates.Count))
+                    .ToList();
+            }
+
+            var expansionOrigin = ResolveAffinityCentroid(selectedCenter, selectedCandidates);
 
             if (selectedCandidates.Count == 0)
                 return new InflateDeflateResolvedEffectors();
@@ -425,8 +429,8 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             var minAffinity = selectedCandidates.Min(candidate => candidate.Affinity);
             var maxAffinity = selectedCandidates.Max(candidate => candidate.Affinity);
             diagnostics.MovingEffectorCount = selectedCandidates.Count;
-            diagnostics.CandidatePoolCount = candidatePool.Count;
-            diagnostics.DiscardedCandidateCount = candidates.Count - candidatePool.Count;
+            diagnostics.CandidatePoolCount = selectedCandidates.Count;
+            diagnostics.DiscardedCandidateCount = candidates.Count - selectedCandidates.Count;
             diagnostics.PatchMinAffinity = minAffinity;
             diagnostics.PatchMaxAffinity = maxAffinity;
 
@@ -435,8 +439,8 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 ? inflateTranslationScale
                 : deflateTranslationScale;
             var localScale = ResolveAverageDistanceFromOrigin(selectedCandidates, expansionOrigin);
-            var indices = new List<int>(1 + selectedCandidates.Count) { input.SelectedCenterIndex };
-            var translations = new List<Vector3>(1 + selectedCandidates.Count) { Vector3.Zero };
+            var indices = new List<int>(selectedCandidates.Count);
+            var translations = new List<Vector3>(selectedCandidates.Count);
 
             var translationMagnitude = input.Strength * localScale * translationScale;
 
@@ -444,8 +448,10 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             {
                 var candidate = selectedCandidates[i];
                 var offset = candidate.Position - expansionOrigin;
+                var normalizedAffinity = Normalize(candidate.Affinity, minAffinity, maxAffinity);
+                var influence = minEffectorInfluence + (1f - minEffectorInfluence) * SmoothStep(normalizedAffinity);
                 var translation = offset.LengthSquared() >= 1e-8f
-                    ? Vector3.Normalize(offset) * (directionSign * translationMagnitude)
+                    ? Vector3.Normalize(offset) * (directionSign * translationMagnitude * influence)
                     : Vector3.Zero;
 
                 indices.Add(candidate.Index);
@@ -486,105 +492,19 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 : selectedCenter;
         }
 
-        private static List<AffinityCandidate> SelectBalancedEffectors(
-            IReadOnlyList<AffinityCandidate> candidates,
-            int targetCount,
-            Vector3 origin,
-            float minDirectionalRadiusRatio)
+        private static float Normalize(float value, float min, float max)
         {
-            var selected = new List<AffinityCandidate>(Math.Max(0, targetCount));
-            if (candidates == null || candidates.Count == 0 || targetCount <= 0)
-                return selected;
-
-            var maxDistanceFromOrigin = 0f;
-            var maxAffinity = 0f;
-            for (var i = 0; i < candidates.Count; i++)
-            {
-                maxDistanceFromOrigin = Math.Max(maxDistanceFromOrigin, Vector3.Distance(candidates[i].Position, origin));
-                maxAffinity = Math.Max(maxAffinity, candidates[i].Affinity);
-            }
-
-            var minDirectionalDistance = maxDistanceFromOrigin * Math.Clamp(minDirectionalRadiusRatio, 0f, 1f);
-            while (selected.Count < targetCount)
-            {
-                var bestIndex = -1;
-                var bestScore = float.NegativeInfinity;
-
-                for (var i = 0; i < candidates.Count; i++)
-                {
-                    var candidate = candidates[i];
-                    if (ContainsCandidate(selected, candidate.Index))
-                        continue;
-
-                    var offset = candidate.Position - origin;
-                    var distanceFromOrigin = offset.Length();
-                    if (distanceFromOrigin < minDirectionalDistance && selected.Count + 1 < targetCount)
-                        continue;
-
-                    var affinityScore = maxAffinity > 1e-8f
-                        ? candidate.Affinity / maxAffinity
-                        : 0f;
-                    var distanceScore = maxDistanceFromOrigin > 1e-8f
-                        ? distanceFromOrigin / maxDistanceFromOrigin
-                        : 0f;
-                    var baseScore = affinityScore * 0.7f + distanceScore * 0.3f;
-                    var diversityScore = ResolveDirectionalDiversityScore(candidate, selected, origin);
-                    var score = baseScore * (0.55f + 0.45f * diversityScore);
-
-                    if (score <= bestScore)
-                        continue;
-
-                    bestScore = score;
-                    bestIndex = i;
-                }
-
-                if (bestIndex < 0)
-                    break;
-
-                selected.Add(candidates[bestIndex]);
-            }
-
-            return selected;
-        }
-
-        private static float ResolveDirectionalDiversityScore(
-            AffinityCandidate candidate,
-            IReadOnlyList<AffinityCandidate> selected,
-            Vector3 origin)
-        {
-            if (selected == null || selected.Count == 0)
+            var span = max - min;
+            if (span <= 1e-8f)
                 return 1f;
 
-            var offset = candidate.Position - origin;
-            if (offset.LengthSquared() <= 1e-8f)
-                return 0f;
-
-            var direction = Vector3.Normalize(offset);
-            var weakestSeparation = 1f;
-            for (var i = 0; i < selected.Count; i++)
-            {
-                var selectedOffset = selected[i].Position - origin;
-                if (selectedOffset.LengthSquared() <= 1e-8f)
-                    continue;
-
-                var selectedDirection = Vector3.Normalize(selectedOffset);
-                var separation = Math.Clamp(1f - Vector3.Dot(direction, selectedDirection), 0f, 1f);
-                if (separation < weakestSeparation)
-                    weakestSeparation = separation;
-            }
-
-            return weakestSeparation;
+            return Math.Clamp((value - min) / span, 0f, 1f);
         }
 
-        private static bool ContainsCandidate(IReadOnlyList<AffinityCandidate> candidates, int index)
+        private static float SmoothStep(float value)
         {
-            for (var i = 0; i < (candidates?.Count ?? 0); i++)
-            {
-                if (candidates[i].Index == index)
-                    return true;
-            }
-
-            return false;
+            var t = Math.Clamp(value, 0f, 1f);
+            return t * t * (3f - 2f * t);
         }
 
         private static float ResolveAverageDistanceFromOrigin(
@@ -1008,7 +928,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             builder.AppendLine($"Planner.AffectedCenters: {profile.AffectedCenterCount}");
             builder.AppendLine("Planner.Selection: sparseAffinity");
             builder.AppendLine("Planner.RadiusIgnored: True");
-            builder.AppendLine($"Planner.AnchorEffectors: {(profile.AffectedCenterCount > 0 ? 1 : 0)}");
+            builder.AppendLine("Planner.AnchorEffectors: 0");
             builder.AppendLine($"Planner.MovingEffectors: {profile.MovingEffectorCount}");
             builder.AppendLine($"Planner.CandidatePool: {profile.CandidatePoolCount}");
             builder.AppendLine($"Planner.DiscardedCandidates: {profile.DiscardedCandidateCount}");

@@ -1,7 +1,7 @@
 using System;
 
 /// <summary>
-/// Immutable sequence payload loaded from disk or baked into the application.
+/// Immutable sequence payload loaded from disk or inserted into the application.
 /// </summary>
 public sealed class SequenceData
 {

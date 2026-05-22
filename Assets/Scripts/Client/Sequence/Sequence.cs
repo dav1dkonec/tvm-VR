@@ -15,6 +15,7 @@ using TvmVr2.Client.Sequence;
 using TvmVr2.Core;
 using TvmVr2.Core.Methods.BasicTranslate;
 using TvmVr2.Core.Methods.InflateDeflate;
+using Stopwatch = System.Diagnostics.Stopwatch;
 
 /// <summary>
 /// Manages the loading, playback, editing and saving of the sequence
@@ -229,6 +230,8 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         var pl = playing;
         Pause();
 
+        var loadTimer = Stopwatch.StartNew();
+        Debug.Log($"Sequence: starting load for '{sequenceName}' from '{sequencePath}'.");
         busyStateController.Enter(leftHand, rightHand, waitCanvas);
         var loadResult = await sequenceLoader.LoadAsync(new SequenceLoadRequest
         {
@@ -246,6 +249,8 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             if (pl) Play();
             return;
         }
+        loadTimer.Stop();
+
         sequenceData = loadResult.SequenceData ?? new SequenceData
         {
             SequenceId = sequenceName,
@@ -266,6 +271,9 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         loadedName = sequenceName;
         saveButton.interactable = true;
         SetPendingEdits(false);
+        Debug.Log(
+            $"Sequence: loaded '{sequenceName}' in {loadTimer.Elapsed.TotalMilliseconds:F2} ms " +
+            $"(frames={frames?.Length ?? 0}, topologyFrames={sequenceData?.Topology?.FrameCount ?? 0}).");
         if (pl) Play();
     }
 

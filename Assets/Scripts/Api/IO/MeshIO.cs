@@ -18,7 +18,7 @@ public class MeshIO
         List<Vector3> v = new();
         List<Face> f = new();
 
-        using (StreamReader reader = new(new FileStream(file, FileMode.Open)))
+        using (StreamReader reader = new(OpenReadShared(file)))
         {
             while (!reader.EndOfStream)
             {
@@ -36,7 +36,7 @@ public class MeshIO
             }
         }
 
-        using (StreamReader reader = new(new FileStream(file, FileMode.Open)))
+        using (StreamReader reader = new(OpenReadShared(file)))
         {
             while (!reader.EndOfStream)
             {
@@ -85,6 +85,11 @@ public class MeshIO
             var f = faces[i];
             sw.WriteLine($"f {f.V1 + 1} {f.V2 + 1} {f.V3 + 1}");
         }
+    }
+
+    private static FileStream OpenReadShared(string file)
+    {
+        return new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
     }
 
 }

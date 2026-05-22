@@ -1,6 +1,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using TvmVr2.Api.Sequence;
+using Stopwatch = System.Diagnostics.Stopwatch;
 
 namespace TvmVr2.Client.Sequence
 {
@@ -34,6 +35,7 @@ namespace TvmVr2.Client.Sequence
             var centersPath = Path.Combine(request.SequencePath, "centers");
             var meshesPath = Path.Combine(request.SequencePath, "meshes");
             var settingsPath = Path.Combine(request.SequencePath, "settings.xml");
+            var totalTimer = Stopwatch.StartNew();
 
             var centersExist = Directory.Exists(centersPath);
             var meshesExist = Directory.Exists(meshesPath);
@@ -64,8 +66,9 @@ namespace TvmVr2.Client.Sequence
                 };
 
                 MeshIO.LoadMesh(meshes[i], out loadedFrames[i].vertices, out loadedFrames[i].faces);
-                MeshIO.LoadMesh(meshes[i], out loadedFrames[i].verticesUnedited, out loadedFrames[i].faces);
+                loadedFrames[i].verticesUnedited = (System.Numerics.Vector3[])loadedFrames[i].vertices.Clone();
                 loadedFrames[i].FindNearest(request.NearestCenterCount);
+                UnityEngine.Debug.Log($"SequenceLoader: loaded frame {i + 1}/{loadedFrames.Length}");
             }
 
             var settings = settingsExist
@@ -80,6 +83,11 @@ namespace TvmVr2.Client.Sequence
                 Topology = SequenceTopology.FromFrames(loadedFrames),
                 OriginalFrames = loadedFrames
             };
+
+            totalTimer.Stop();
+            UnityEngine.Debug.Log(
+                $"SequenceLoader: completed load for '{request.SequenceName}' in {totalTimer.Elapsed.TotalMilliseconds:F2} ms " +
+                $"(frames={loadedFrames.Length}, centersPathExists={centersExist}, meshesPathExists={meshesExist}, settingsPathExists={settingsExist}).");
 
             return new SequenceLoadResult
             {

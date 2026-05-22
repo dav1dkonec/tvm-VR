@@ -21,8 +21,14 @@ public class CenterUI : MonoBehaviour
 
     private static int activeSelectionCount;
 
+    /// <summary>
+    /// Whether any center is actively selected.
+    /// </summary>
     public static bool HasActiveSelection => activeSelectionCount > 0;
 
+    /// <summary>
+    /// Clears active selection count.
+    /// </summary>
     public static void ClearActiveSelections()
     {
         activeSelectionCount = 0;
@@ -63,6 +69,9 @@ public class CenterUI : MonoBehaviour
     [ColorUsage(true, true)]
     public Color normalColor;
 
+    /// <summary>
+    /// Persistent selected center color.
+    /// </summary>
     [ColorUsage(true, true)]
     public Color persistentSelectedColor = new(4f, 0.06f, 0.06f, 1f);
 
@@ -185,6 +194,9 @@ public class CenterUI : MonoBehaviour
         hoverListeners.Add(l);
     }
 
+    /// <summary>
+    /// Sets persistent selected state.
+    /// </summary>
     public void SetPersistentSelected(bool selected)
     {
         isPersistentSelected = selected;
@@ -196,6 +208,9 @@ public class CenterUI : MonoBehaviour
             ApplyNormalColor();
     }
 
+    /// <summary>
+    /// Refreshes persistent selected visual.
+    /// </summary>
     public void RefreshPersistentSelectedVisual()
     {
         if (isPersistentSelected)

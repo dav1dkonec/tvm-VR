@@ -8,48 +8,35 @@ using TvmVr2.Core.Abstractions;
 using TvmVr2.Core.Common;
 using TvmVr2.Api.Enums;
 using TvmVr2.Core.Methods.InflateDeflate.Cache;
-using TvmVr2.Core.Methods.InflateDeflate.Profiling;
 using TVMEditor.Editing;
 using TVMEditor.Editing.AffinityCalculation;
 using TVMEditor.Editing.CenterDeformation;
 using TVMEditor.Editing.SurfaceDeformation;
 using TVMEditor.Editing.TransformPropagation;
 using TVMEditor.Structures;
-using Stopwatch = System.Diagnostics.Stopwatch;
 
 namespace TvmVr2.Core.Methods.InflateDeflate
 {
+    /// <summary>
+    /// Adapts tvm-editing-master inflate/deflate computation to the application runtime data model.
+    /// </summary>
     public sealed class TvmEditingMasterInflateDeflateAdapter
     {
         private readonly object _contextLock = new object();
         private readonly SemaphoreSlim _operationGate = new SemaphoreSlim(1, 1);
         private CachedExecutionContext _cachedExecutionContext;
-        private bool _useStreamingAssetsCache = true;
 
-        public bool IsStreamingAssetsCacheEnabled => _useStreamingAssetsCache;
-
-        public void SetStreamingAssetsCacheEnabled(bool enabled)
-        {
-            lock (_contextLock)
-            {
-                if (_useStreamingAssetsCache == enabled)
-                    return;
-
-                _useStreamingAssetsCache = enabled;
-                _cachedExecutionContext = null;
-            }
-        }
-
+        /// <summary>
+        /// Executes inflate/deflate on runtime frames using cached data built from the original sequence.
+        /// </summary>
         public IMethodResult Execute(InflateDeflateMethodInput input)
         {
-            return ExecuteInternal(input, out _);
+            return ExecuteInternal(input);
         }
 
-        public MethodExecutionResult ExecuteProfiled(InflateDeflateMethodInput input, out InflateDeflateQuickProfile profile)
-        {
-            return ExecuteInternal(input, out profile);
-        }
-
+        /// <summary>
+        /// Recreates the execution context and hydrates it from precomputed StreamingAssets cache.
+        /// </summary>
         public bool ResetExecutionContextToDefaultCache(
             string sequenceId,
             Frame[] frames,
@@ -77,14 +64,11 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 Frames = frames,
                 FrameIndex = 0,
                 SelectedCenterIndex = -1,
-                Radius = 0f,
                 Strength = 0f,
                 Mode = InflateDeflateMode.Inflate
             };
 
             var cacheKey = BuildCacheKey(input);
-            var resetTimer = Stopwatch.StartNew();
-
             _operationGate.Wait();
             try
             {
@@ -103,30 +87,26 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 _operationGate.Release();
             }
 
-            resetTimer.Stop();
-            UnityEngine.Debug.Log(
-                $"InflateDeflateCache: execution context reset for sequence '{sequenceId}' in {resetTimer.Elapsed.TotalMilliseconds:F2} ms " +
-                $"(hydrationState={cacheHydrationState}).");
+            if (!string.Equals(cacheHydrationState, "hit", StringComparison.Ordinal))
+            {
+                UnityEngine.Debug.LogWarning(
+                    $"InflateDeflateCache: precomputed cache was not hydrated for sequence '{sequenceId}' " +
+                    $"(hydrationState={cacheHydrationState}).");
+            }
 
             return string.Equals(cacheHydrationState, "hit", StringComparison.Ordinal);
         }
 
-        private MethodExecutionResult ExecuteInternal(InflateDeflateMethodInput input, out InflateDeflateQuickProfile profile)
+        /// <summary>
+        /// Converts runtime frames to tvm-editing-master structures, resolves effectors and writes deformed data back.
+        /// </summary>
+        private MethodExecutionResult ExecuteInternal(InflateDeflateMethodInput input)
         {
-            profile = new InflateDeflateQuickProfile();
-
             var validationResult = ValidateInput(input);
             if (validationResult != null)
-            {
-                profile.Success = false;
-                profile.ErrorMessage = validationResult.ErrorMessage;
                 return validationResult;
-            }
 
-            TriangleMeshSequence sequence;
-            UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase PrepareSequence.");
-            var stageTimer = Stopwatch.StartNew();
-            sequence = new TriangleMeshSequence
+            var sequence = new TriangleMeshSequence
             {
                 Meshes = input.Frames.Select(frame => new TriangleMesh
                 {
@@ -134,10 +114,7 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                     Faces = frame.faces.Select(face => new TVMEditor.Structures.Face(face.V1, face.V2, face.V3)).ToArray()
                 }).ToArray()
             };
-            stageTimer.Stop();
-            profile.PrepareSequenceMs = stageTimer.Elapsed.TotalMilliseconds;
 
-            UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase PrepareTransforms.");
             var centers = input.Frames.Select(frame => frame.centers).ToArray();
             var cacheFrames = ResolveCacheFrames(input);
             var cacheCenters = cacheFrames.Select(frame => frame.centers).ToArray();
@@ -146,53 +123,32 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             try
             {
                 var executionContext = GetOrCreateExecutionContext(input, out var executionContextCacheHit, out var cacheHydrationState);
-                profile.ExecutionContextCacheHit = executionContextCacheHit;
-                profile.CacheHydrationState = cacheHydrationState;
                 if (!executionContextCacheHit && !string.Equals(cacheHydrationState, "hit", StringComparison.Ordinal))
-                    PrecomputeCache(executionContext, cacheFrames);
-
-                EnsureAffinityAvailable(executionContext, cacheCenters, out var affinityWasAvailableBeforeEnsure, out var affinityCalculatedDuringRun);
-                profile.AffinityWasAvailableBeforeEnsure = affinityWasAvailableBeforeEnsure;
-                profile.AffinityCalculatedDuringRun = affinityCalculatedDuringRun;
-
-                var resolvedEffectors = ResolveEffectorsFromAffinity(
-                    input,
-                    executionContext.AffinityCalculation?.GetCentersAffinity(),
-                    out var plannerDiagnostics);
-                input.SelectedCenterIndices = resolvedEffectors.Indices;
-                input.CenterTranslations = resolvedEffectors.Translations;
-                profile.AffectedCenterCount = input.SelectedCenterIndices.Length;
-                profile.MovingEffectorCount = plannerDiagnostics.MovingEffectorCount;
-                profile.FixedEffectorCount = plannerDiagnostics.FixedEffectorCount;
-                profile.CandidatePoolCount = plannerDiagnostics.CandidatePoolCount;
-                profile.DiscardedCandidateCount = plannerDiagnostics.DiscardedCandidateCount;
-                profile.PatchMinAffinity = plannerDiagnostics.PatchMinAffinity;
-                profile.PatchMaxAffinity = plannerDiagnostics.PatchMaxAffinity;
-                profile.TranslationMagnitudeMax = plannerDiagnostics.TranslationMagnitudeMax;
-                profile.TranslationMagnitudeAverage = plannerDiagnostics.TranslationMagnitudeAverage;
-
-                UnityEngine.Debug.Log(
-                    $"InflateDeflatePlanner: selectedCenter={input.SelectedCenterIndex}, mode={input.Mode}, " +
-                    $"selection=sparseAffinity, radiusIgnored=True, affectedCenters={profile.AffectedCenterCount}, " +
-                    $"movingEffectors={profile.MovingEffectorCount}, fixedEffectors={profile.FixedEffectorCount}, candidatePool={profile.CandidatePoolCount}, " +
-                    $"discardedCandidates={profile.DiscardedCandidateCount}, " +
-                    $"patchMinAffinity={profile.PatchMinAffinity:F4}, patchMaxAffinity={profile.PatchMaxAffinity:F4}, " +
-                    $"maxTranslation={profile.TranslationMagnitudeMax:F6}, avgTranslation={profile.TranslationMagnitudeAverage:F6}, " +
-                    $"cacheContextHit={profile.ExecutionContextCacheHit}, cacheHydration={profile.CacheHydrationState}, " +
-                    $"affinityCalculatedDuringRun={profile.AffinityCalculatedDuringRun}.");
-
-                if (input.SelectedCenterIndices.Length == 0)
                 {
-                    profile.Success = false;
-                    profile.ErrorMessage = "InflateDeflate affinity planner resolved no affected centers for the current request.";
                     return new MethodExecutionResult
                     {
                         Success = false,
-                        ErrorMessage = profile.ErrorMessage
+                        ErrorMessage = $"InflateDeflate precomputed cache is missing or incompatible for sequence '{input.SequenceId}'. Build cache from Tools before running the edit."
                     };
                 }
 
-                stageTimer.Restart();
+                EnsureAffinityAvailable(executionContext, cacheCenters);
+
+                var resolvedEffectors = ResolveEffectorsFromAffinity(
+                    input,
+                    executionContext.AffinityCalculation?.GetCentersAffinity());
+                input.SelectedCenterIndices = resolvedEffectors.Indices;
+                input.CenterTranslations = resolvedEffectors.Translations;
+
+                if (input.SelectedCenterIndices.Length == 0)
+                {
+                    return new MethodExecutionResult
+                    {
+                        Success = false,
+                        ErrorMessage = "InflateDeflate affinity planner resolved no affected centers for the current request."
+                    };
+                }
+
                 var transformations = Enumerable
                     .Repeat(DualQuaternion.Identity(), centers[input.FrameIndex].Length)
                     .ToArray();
@@ -202,23 +158,17 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                     var centerIndex = input.SelectedCenterIndices[i];
                     if (centerIndex < 0 || centerIndex >= transformations.Length)
                     {
-                        profile.Success = false;
-                        profile.ErrorMessage = $"InflateDeflate selected center index {centerIndex} is outside valid range 0..{transformations.Length - 1}.";
                         return new MethodExecutionResult
                         {
                             Success = false,
-                            ErrorMessage = profile.ErrorMessage
+                            ErrorMessage = $"InflateDeflate selected center index {centerIndex} is outside valid range 0..{transformations.Length - 1}."
                         };
                     }
 
                     var translation = input.CenterTranslations[i];
                     transformations[centerIndex] = DualQuaternion.Translation(new Vector3(translation.X, translation.Y, translation.Z));
                 }
-                stageTimer.Stop();
-                profile.PrepareTransformsMs = stageTimer.Elapsed.TotalMilliseconds;
 
-                UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase Deform.");
-                stageTimer.Restart();
                 executionContext.MeshEditor.Deform(
                     sequence,
                     centers,
@@ -226,64 +176,17 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                     transformations,
                     input.FrameIndex,
                     out var deformedSequence,
-                    out var deformedCenters,
-                    out var deformProfile);
-                stageTimer.Stop();
-                profile.DeformMs = stageTimer.Elapsed.TotalMilliseconds;
-                profile.DeformCloneInputsMs = deformProfile.CloneInputsMs;
-                profile.DeformResolveNewPositionsMs = deformProfile.ResolveNewPositionsMs;
-                profile.DeformAffinityMs = deformProfile.AffinityMs;
-                profile.DeformCenterDeformationMs = deformProfile.CenterDeformationMs;
-                profile.DeformEditedSurfaceMs = deformProfile.EditedSurfaceMs;
-                profile.DeformPropagateTransformsMs = deformProfile.PropagateTransformsMs;
-                profile.DeformPropagateSurfaceMs = deformProfile.PropagateSurfaceMs;
-                profile.DeformPropagateTotalMs = deformProfile.PropagateTotalMs;
-                profile.DeformPropagatedSurfaceFrames = deformProfile.PropagatedSurfaceFrames;
-                profile.DeformSurfaceEditedComputeWeightsMs = deformProfile.SurfaceEditedComputeWeightsMs;
-                profile.DeformSurfaceEditedBlendVerticesMs = deformProfile.SurfaceEditedBlendVerticesMs;
-                profile.DeformSurfaceEditedResampleMs = deformProfile.SurfaceEditedResampleMs;
-                profile.DeformSurfaceEditedUsedCachedWeights = deformProfile.SurfaceEditedUsedCachedWeights;
-                profile.DeformSurfacePropagatedComputeWeightsMs = deformProfile.SurfacePropagatedComputeWeightsMs;
-                profile.DeformSurfacePropagatedBlendVerticesMs = deformProfile.SurfacePropagatedBlendVerticesMs;
-                profile.DeformSurfacePropagatedResampleMs = deformProfile.SurfacePropagatedResampleMs;
-                profile.DeformSurfacePropagatedCacheMisses = deformProfile.SurfacePropagatedCacheMisses;
-                profile.DeformSurfacePropagatedCacheHits = deformProfile.SurfacePropagatedCacheHits;
-                profile.DeformSurfacePropagatedMinCallTotalMs = deformProfile.SurfacePropagatedMinCallTotalMs;
-                profile.DeformSurfacePropagatedMaxCallTotalMs = deformProfile.SurfacePropagatedMaxCallTotalMs;
-                profile.DeformSurfacePropagatedMaxCallFrameIndex = deformProfile.SurfacePropagatedMaxCallFrameIndex;
-                profile.DeformSurfacePropagatedAverageCallTotalMs = deformProfile.SurfacePropagatedAverageCallTotalMs;
-                profile.TotalAffectedFrames = 1 + profile.DeformPropagatedSurfaceFrames;
-
-                UnityEngine.Debug.Log(
-                    $"InflateDeflateDeform: frame={input.FrameIndex}, affectedFrames={profile.TotalAffectedFrames}, " +
-                    $"propagatedSurfaceFrames={profile.DeformPropagatedSurfaceFrames}, deformMs={profile.DeformMs:F2}, " +
-                    $"affinityMs={profile.DeformAffinityMs:F2}, centerDeformationMs={profile.DeformCenterDeformationMs:F2}, " +
-                    $"editedSurfaceMs={profile.DeformEditedSurfaceMs:F2}, propagateTransformsMs={profile.DeformPropagateTransformsMs:F2}, " +
-                    $"propagateSurfaceMs={profile.DeformPropagateSurfaceMs:F2}, writeBackPending=true.");
-
-                UnityEngine.Debug.Log("InflateDeflateQuickProfiler: running test in phase WriteBack.");
-                stageTimer.Restart();
+                    out var deformedCenters);
                 for (var i = 0; i < input.Frames.Length; i++)
                 {
                     input.Frames[i].centers = deformedCenters[i];
                     input.Frames[i].vertices = deformedSequence.Meshes[i].Vertices;
                 }
-                stageTimer.Stop();
-                profile.WriteBackMs = stageTimer.Elapsed.TotalMilliseconds;
             }
             finally
             {
                 _operationGate.Release();
             }
-
-            profile.AdapterTotalMs = profile.PrepareSequenceMs
-                + profile.PrepareTransformsMs
-                + profile.DeformMs
-                + profile.WriteBackMs;
-            profile.TotalMs = profile.AdapterTotalMs;
-            profile.Success = true;
-            UnityEngine.Debug.Log(BuildDiagnosticsLog(input, profile));
-            UnityEngine.Debug.Log("InflateDeflateQuickProfiler: adapter phases completed.");
 
             return new MethodExecutionResult
             {
@@ -292,13 +195,16 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             };
         }
 
+        /// <summary>
+        /// Validates user-controlled input before any cache or deformation work starts.
+        /// </summary>
         private static MethodExecutionResult ValidateInput(InflateDeflateMethodInput input)
         {
             if (input == null)
-                return MethodExecutionResult.NotImplemented("InflateDeflate input is missing.");
+                return MethodExecutionResult.Failed("InflateDeflate input is missing.");
 
             if (input.Frames == null || input.Frames.Length == 0)
-                return MethodExecutionResult.NotImplemented("InflateDeflate runtime data are missing.");
+                return MethodExecutionResult.Failed("InflateDeflate runtime data are missing.");
 
             if (input.FrameIndex < 0 || input.FrameIndex >= input.Frames.Length)
             {
@@ -329,35 +235,31 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             }
 
             if (input.Strength <= 0f)
-                return MethodExecutionResult.NotImplemented("InflateDeflate strength must be positive.");
+                return MethodExecutionResult.Failed("InflateDeflate strength must be positive.");
 
             return null;
         }
 
+        /// <summary>
+        /// Ensures the affinity matrix is present; cache should normally provide it.
+        /// </summary>
         private static void EnsureAffinityAvailable(
             CachedExecutionContext executionContext,
-            Vector3[][] centers,
-            out bool affinityWasAvailableBeforeEnsure,
-            out bool affinityCalculatedDuringRun)
+            Vector3[][] centers)
         {
-            affinityWasAvailableBeforeEnsure = false;
-            affinityCalculatedDuringRun = false;
-
             if (executionContext?.AffinityCalculation == null || centers == null || centers.Length == 0)
                 return;
 
-            affinityWasAvailableBeforeEnsure = executionContext.AffinityCalculation.GetCentersAffinity() != null;
             if (executionContext.AffinityCalculation.GetCentersAffinity() == null)
-            {
                 executionContext.AffinityCalculation.CalculateCentersAffinity(centers);
-                affinityCalculatedDuringRun = true;
-            }
         }
 
+        /// <summary>
+        /// Builds moving and fixed effectors from affinity to the selected reference center.
+        /// </summary>
         private static InflateDeflateResolvedEffectors ResolveEffectorsFromAffinity(
             InflateDeflateMethodInput input,
-            float[,] affinity,
-            out AffinityPlannerDiagnostics diagnostics)
+            float[,] affinity)
         {
             const int minMovingEffectorCount = 16;
             const int maxMovingEffectorCount = 256;
@@ -368,8 +270,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             const float minMovingInfluence = 0.55f;
             const float inflateTranslationScale = 1.35f;
             const float deflateTranslationScale = 0.65f;
-
-            diagnostics = default;
 
             if (input?.Frames == null ||
                 input.FrameIndex < 0 ||
@@ -437,12 +337,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
             var minAffinity = movingCandidates.Min(candidate => candidate.Affinity);
             var maxAffinity = movingCandidates.Max(candidate => candidate.Affinity);
-            diagnostics.MovingEffectorCount = movingCandidates.Count;
-            diagnostics.FixedEffectorCount = fixedCandidates.Count;
-            diagnostics.CandidatePoolCount = movingCandidates.Count + fixedCandidates.Count;
-            diagnostics.DiscardedCandidateCount = candidates.Count - movingCandidates.Count - fixedCandidates.Count;
-            diagnostics.PatchMinAffinity = minAffinity;
-            diagnostics.PatchMaxAffinity = maxAffinity;
 
             var directionSign = input.Mode == InflateDeflateMode.Inflate ? 1f : -1f;
             var translationScale = input.Mode == InflateDeflateMode.Inflate
@@ -473,8 +367,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 translations.Add(Vector3.Zero);
             }
 
-            ResolveTranslationDiagnostics(translations, out diagnostics.TranslationMagnitudeMax, out diagnostics.TranslationMagnitudeAverage);
-
             return new InflateDeflateResolvedEffectors
             {
                 Indices = indices.ToArray(),
@@ -482,6 +374,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             };
         }
 
+        /// <summary>
+        /// Converts an effector offset from the expansion origin to an inflate or deflate translation.
+        /// </summary>
         private static Vector3 ResolveRadialTranslation(
             Vector3 offset,
             float directionSign,
@@ -493,6 +388,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 : Vector3.Zero;
         }
 
+        /// <summary>
+        /// Computes the weighted expansion origin from selected center and moving candidates.
+        /// </summary>
         private static Vector3 ResolveAffinityCentroid(
             Vector3 selectedCenter,
             IReadOnlyList<AffinityCandidate> candidates)
@@ -518,6 +416,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 : selectedCenter;
         }
 
+        /// <summary>
+        /// Normalizes a value to 0..1 while handling a collapsed range.
+        /// </summary>
         private static float Normalize(float value, float min, float max)
         {
             var span = max - min;
@@ -527,12 +428,18 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return Math.Clamp((value - min) / span, 0f, 1f);
         }
 
+        /// <summary>
+        /// Smooths normalized affinity so translation influence changes gradually.
+        /// </summary>
         private static float SmoothStep(float value)
         {
             var t = Math.Clamp(value, 0f, 1f);
             return t * t * (3f - 2f * t);
         }
 
+        /// <summary>
+        /// Selects lower-affinity zero-translation effectors that stabilize the deformation boundary.
+        /// </summary>
         private static List<AffinityCandidate> SelectFixedEffectors(
             IReadOnlyList<AffinityCandidate> candidates,
             int startIndex,
@@ -566,6 +473,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return fixedCandidates;
         }
 
+        /// <summary>
+        /// Estimates local patch scale from average distance of moving effectors to the expansion origin.
+        /// </summary>
         private static float ResolveAverageDistanceFromOrigin(
             IReadOnlyList<AffinityCandidate> candidates,
             Vector3 origin)
@@ -590,6 +500,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 : 0f;
         }
 
+        /// <summary>
+        /// Creates affinity candidates for all centers except the selected reference center.
+        /// </summary>
         private static List<AffinityCandidate> BuildAffinityCandidates(
             Vector3[] centers,
             int selectedCenterIndex,
@@ -614,38 +527,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return candidates;
         }
 
-        private static void ResolveTranslationDiagnostics(
-            IReadOnlyList<Vector3> translations,
-            out float translationMagnitudeMax,
-            out float translationMagnitudeAverage)
-        {
-            var translationMagnitudeSum = 0f;
-            var translationMagnitudeCount = 0;
-            translationMagnitudeMax = 0f;
-
-            if (translations == null)
-            {
-                translationMagnitudeAverage = 0f;
-                return;
-            }
-
-            for (var i = 0; i < translations.Count; i++)
-            {
-                var translationMagnitude = translations[i].Length();
-                if (translationMagnitude <= 1e-8f)
-                    continue;
-
-                translationMagnitudeSum += translationMagnitude;
-                translationMagnitudeCount++;
-                if (translationMagnitude > translationMagnitudeMax)
-                    translationMagnitudeMax = translationMagnitude;
-            }
-
-            translationMagnitudeAverage = translationMagnitudeCount > 0
-                ? translationMagnitudeSum / translationMagnitudeCount
-                : 0f;
-        }
-
+        /// <summary>
+        /// Reuses a hydrated execution context when the sequence cache key has not changed.
+        /// </summary>
         private CachedExecutionContext GetOrCreateExecutionContext(
             InflateDeflateMethodInput input,
             out bool cacheHit,
@@ -661,13 +545,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 {
                     cacheHit = true;
                     cacheHydrationState = "context_reuse";
-                    UnityEngine.Debug.Log(
-                        $"InflateDeflateCache: execution context cache hit for sequence '{input.SequenceId}' (key={cacheKey}).");
                     return _cachedExecutionContext;
                 }
 
-                UnityEngine.Debug.Log(
-                    $"InflateDeflateCache: execution context cache miss for sequence '{input.SequenceId}' (key={cacheKey}); creating new context.");
                 _cachedExecutionContext = CreateExecutionContext(cacheKey);
                 TryHydrateExecutionContextFromStreamingAssets(input, _cachedExecutionContext, out var loadError, out cacheHydrationState);
                 if (!string.IsNullOrWhiteSpace(loadError))
@@ -677,6 +557,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             }
         }
 
+        /// <summary>
+        /// Precomputes affinity, Kabsch and surface weights and writes them to StreamingAssets.
+        /// </summary>
         public bool ExportCacheToStreamingAssets(string sequenceId, Frame[] frames, out string errorMessage)
         {
             errorMessage = string.Empty;
@@ -699,7 +582,6 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 Frames = frames,
                 FrameIndex = 0,
                 SelectedCenterIndex = -1,
-                Radius = 0f,
                 Strength = 0f,
                 Mode = InflateDeflateMode.Inflate
             };
@@ -721,6 +603,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return true;
         }
 
+        /// <summary>
+        /// Builds an in-memory cache key from sequence identity and frame dimensions.
+        /// </summary>
         private static string BuildCacheKey(InflateDeflateMethodInput input)
         {
             var builder = new StringBuilder();
@@ -748,6 +633,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return builder.ToString();
         }
 
+        /// <summary>
+        /// Creates the tvm-editing-master object graph used by inflate/deflate.
+        /// </summary>
         private static CachedExecutionContext CreateExecutionContext(string cacheKey)
         {
             var affinityCalculation = new DistanceDirectionAffinityCalculation();
@@ -770,6 +658,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             };
         }
 
+        /// <summary>
+        /// Loads precomputed cache bundle and imports it into the execution context.
+        /// </summary>
         private void TryHydrateExecutionContextFromStreamingAssets(
             InflateDeflateMethodInput input,
             CachedExecutionContext context,
@@ -779,30 +670,24 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             errorMessage = string.Empty;
             hydrationState = "not_attempted";
 
-            if (!_useStreamingAssetsCache ||
-                input?.Frames == null ||
+            if (input?.Frames == null ||
                 input.Frames.Length == 0 ||
                 context == null ||
                 string.IsNullOrWhiteSpace(input.SequenceId))
             {
                 hydrationState = "skipped";
-                UnityEngine.Debug.Log(
-                    $"InflateDeflateCache: streaming-assets cache hydrate skipped for sequence '{input?.SequenceId ?? string.Empty}' " +
-                    $"(enabled={_useStreamingAssetsCache}, hasFrames={input?.Frames != null && input.Frames.Length > 0}).");
                 return;
             }
 
             var rootPath = UnityEngine.Application.streamingAssetsPath;
-            var hydrateTimer = Stopwatch.StartNew();
             if (!InflateDeflateCacheStore.TryLoadBundle(rootPath, input.SequenceId, out var bundle, out var loadError))
             {
-                hydrateTimer.Stop();
                 if (!string.IsNullOrWhiteSpace(loadError) && !loadError.Contains("was not found"))
                     errorMessage = loadError;
                 hydrationState = "miss";
 
-                UnityEngine.Debug.Log(
-                    $"InflateDeflateCache: cache miss for sequence '{input.SequenceId}' after {hydrateTimer.Elapsed.TotalMilliseconds:F2} ms. " +
+                UnityEngine.Debug.LogWarning(
+                    $"InflateDeflateCache: precomputed cache was not found for sequence '{input.SequenceId}'. " +
                     $"{loadError}");
                 return;
             }
@@ -810,24 +695,22 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             var manifest = BuildCacheManifest(input, context);
             if (!bundle.Manifest.IsCompatibleWith(manifest))
             {
-                hydrateTimer.Stop();
                 errorMessage = $"InflateDeflate cache manifest mismatch for sequence '{input.SequenceId}'.";
                 hydrationState = "manifest_mismatch";
                 UnityEngine.Debug.LogWarning(
-                    $"InflateDeflateCache: manifest mismatch for sequence '{input.SequenceId}' after {hydrateTimer.Elapsed.TotalMilliseconds:F2} ms. " +
+                    $"InflateDeflateCache: manifest mismatch for sequence '{input.SequenceId}'. " +
                     $"expected=[schema={manifest.SchemaVersion}, frames={manifest.FrameCount}, centers={manifest.CenterCount}, vertices={manifest.VertexCount}, faces={manifest.FaceCount}, neighbors={manifest.Neighbors}, shape={manifest.Shape}, epsilon={manifest.LimitEpsilon}, split={manifest.MaxSplitIterations}] " +
                     $"actual=[schema={bundle.Manifest.SchemaVersion}, frames={bundle.Manifest.FrameCount}, centers={bundle.Manifest.CenterCount}, vertices={bundle.Manifest.VertexCount}, faces={bundle.Manifest.FaceCount}, neighbors={bundle.Manifest.Neighbors}, shape={bundle.Manifest.Shape}, epsilon={bundle.Manifest.LimitEpsilon}, split={bundle.Manifest.MaxSplitIterations}].");
                 return;
             }
 
             HydrateExecutionContext(context, bundle);
-            hydrateTimer.Stop();
             hydrationState = "hit";
-            UnityEngine.Debug.Log(
-                $"InflateDeflateCache: cache hit for sequence '{input.SequenceId}' hydrated in {hydrateTimer.Elapsed.TotalMilliseconds:F2} ms " +
-                $"(frames={bundle.Manifest.FrameCount}, centers={bundle.Manifest.CenterCount}, vertices={bundle.Manifest.VertexCount}, faces={bundle.Manifest.FaceCount}).");
         }
 
+        /// <summary>
+        /// Performs offline cache precomputation used by the editor cache builder.
+        /// </summary>
         private static void PrecomputeCache(CachedExecutionContext context, Frame[] frames)
         {
             if (context == null || frames == null || frames.Length == 0)
@@ -859,6 +742,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             }
         }
 
+        /// <summary>
+        /// Copies cached affinity, transform propagation and surface weights into runtime objects.
+        /// </summary>
         private static void HydrateExecutionContext(CachedExecutionContext context, InflateDeflateCacheBundle bundle)
         {
             if (context == null || bundle?.Manifest == null)
@@ -883,6 +769,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             }
         }
 
+        /// <summary>
+        /// Returns original frames for cache-related data, falling back to runtime frames when needed.
+        /// </summary>
         private static Frame[] ResolveCacheFrames(InflateDeflateMethodInput input)
         {
             return input?.CacheFrames != null && input.CacheFrames.Length > 0
@@ -890,6 +779,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
                 : input?.Frames ?? Array.Empty<Frame>();
         }
 
+        /// <summary>
+        /// Collects all precomputed cache data into a serializable bundle.
+        /// </summary>
         private static InflateDeflateCacheBundle BuildCacheBundle(CachedExecutionContext context, InflateDeflateMethodInput input)
         {
             var bundle = new InflateDeflateCacheBundle
@@ -918,6 +810,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate
             return bundle;
         }
 
+        /// <summary>
+        /// Builds metadata used to reject incompatible cache files.
+        /// </summary>
         private static InflateDeflateCacheManifest BuildCacheManifest(InflateDeflateMethodInput input, CachedExecutionContext context)
         {
             var frames = ResolveCacheFrames(input);
@@ -944,73 +839,54 @@ namespace TvmVr2.Core.Methods.InflateDeflate
 
         private sealed class CachedExecutionContext
         {
+            /// <summary>
+            /// Key describing the cached sequence data loaded into this context.
+            /// </summary>
             public string CacheKey { get; set; }
-            public MeshEditor MeshEditor { get; set; }
-            public DistanceDirectionAffinityCalculation AffinityCalculation { get; set; }
-            public CustomSurfaceDeformation SurfaceDeformation { get; set; }
-            public KabschTransformPropagation TransformPropagation { get; set; }
-        }
 
-        private struct AffinityPlannerDiagnostics
-        {
-            public int MovingEffectorCount;
-            public int FixedEffectorCount;
-            public int CandidatePoolCount;
-            public int DiscardedCandidateCount;
-            public float PatchMinAffinity;
-            public float PatchMaxAffinity;
-            public float TranslationMagnitudeMax;
-            public float TranslationMagnitudeAverage;
+            /// <summary>
+            /// tvm-editing-master mesh editor instance.
+            /// </summary>
+            public MeshEditor MeshEditor { get; set; }
+
+            /// <summary>
+            /// Affinity calculator holding the cached center affinity matrix.
+            /// </summary>
+            public DistanceDirectionAffinityCalculation AffinityCalculation { get; set; }
+
+            /// <summary>
+            /// Surface deformer holding cached vertex weights.
+            /// </summary>
+            public CustomSurfaceDeformation SurfaceDeformation { get; set; }
+
+            /// <summary>
+            /// Transform propagator holding cached Kabsch neighbor weights.
+            /// </summary>
+            public KabschTransformPropagation TransformPropagation { get; set; }
         }
 
         private struct AffinityCandidate
         {
+            /// <summary>
+            /// Center index in the edited frame.
+            /// </summary>
             public int Index;
+
+            /// <summary>
+            /// Center position in the edited frame.
+            /// </summary>
             public Vector3 Position;
+
+            /// <summary>
+            /// Affinity to the selected reference center.
+            /// </summary>
             public float Affinity;
+
+            /// <summary>
+            /// Euclidean distance from the selected reference center.
+            /// </summary>
             public float Distance;
         }
 
-        private static string BuildDiagnosticsLog(InflateDeflateMethodInput input, InflateDeflateQuickProfile profile)
-        {
-            var builder = new StringBuilder();
-            builder.AppendLine("InflateDeflate Diagnostics");
-            builder.AppendLine($"Sequence: {input.SequenceId}");
-            builder.AppendLine($"Frame: {input.FrameIndex}");
-            builder.AppendLine($"SelectedCenter: {input.SelectedCenterIndex}");
-            builder.AppendLine($"Mode: {input.Mode}");
-            builder.AppendLine($"Radius: {input.Radius:F4}");
-            builder.AppendLine($"Strength: {input.Strength:F4}");
-            builder.AppendLine($"Cache.ContextHit: {profile.ExecutionContextCacheHit}");
-            builder.AppendLine($"Cache.HydrationState: {profile.CacheHydrationState}");
-            builder.AppendLine($"Cache.AffinityAvailableBeforeEnsure: {profile.AffinityWasAvailableBeforeEnsure}");
-            builder.AppendLine($"Cache.AffinityCalculatedDuringRun: {profile.AffinityCalculatedDuringRun}");
-            builder.AppendLine($"Planner.AffectedCenters: {profile.AffectedCenterCount}");
-            builder.AppendLine("Planner.Selection: sparseAffinity");
-            builder.AppendLine("Planner.RadiusIgnored: True");
-            builder.AppendLine($"Planner.MovingEffectors: {profile.MovingEffectorCount}");
-            builder.AppendLine($"Planner.FixedEffectors: {profile.FixedEffectorCount}");
-            builder.AppendLine($"Planner.CandidatePool: {profile.CandidatePoolCount}");
-            builder.AppendLine($"Planner.DiscardedCandidates: {profile.DiscardedCandidateCount}");
-            builder.AppendLine($"Planner.PatchMinAffinity: {profile.PatchMinAffinity:F4}");
-            builder.AppendLine($"Planner.PatchMaxAffinity: {profile.PatchMaxAffinity:F4}");
-            builder.AppendLine($"Planner.TranslationMagnitudeMax: {profile.TranslationMagnitudeMax:F6}");
-            builder.AppendLine($"Planner.TranslationMagnitudeAverage: {profile.TranslationMagnitudeAverage:F6}");
-            builder.AppendLine($"Frames.PropagatedSurface: {profile.DeformPropagatedSurfaceFrames}");
-            builder.AppendLine($"Frames.TotalAffected: {profile.TotalAffectedFrames}");
-            builder.AppendLine($"Timing.ResolveEffectors: {profile.ResolveEffectorsMs:F2} ms");
-            builder.AppendLine($"Timing.PrepareSequence: {profile.PrepareSequenceMs:F2} ms");
-            builder.AppendLine($"Timing.PrepareTransforms: {profile.PrepareTransformsMs:F2} ms");
-            builder.AppendLine($"Timing.Deform: {profile.DeformMs:F2} ms");
-            builder.AppendLine($"Timing.Deform.Affinity: {profile.DeformAffinityMs:F2} ms");
-            builder.AppendLine($"Timing.Deform.CenterDeformation: {profile.DeformCenterDeformationMs:F2} ms");
-            builder.AppendLine($"Timing.Deform.EditedSurface: {profile.DeformEditedSurfaceMs:F2} ms");
-            builder.AppendLine($"Timing.Deform.PropagateTransforms: {profile.DeformPropagateTransformsMs:F2} ms");
-            builder.AppendLine($"Timing.Deform.PropagateSurface: {profile.DeformPropagateSurfaceMs:F2} ms");
-            builder.AppendLine($"Timing.WriteBack: {profile.WriteBackMs:F2} ms");
-            builder.AppendLine($"Timing.AdapterTotal: {profile.AdapterTotalMs:F2} ms");
-            builder.AppendLine($"Timing.Total: {profile.TotalMs:F2} ms");
-            return builder.ToString();
-        }
     }
 }

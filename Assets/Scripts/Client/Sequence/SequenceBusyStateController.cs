@@ -2,6 +2,9 @@ using UnityEngine;
 
 namespace TvmVr2.Client.Sequence
 {
+    /// <summary>
+    /// Controls UI state during sequence editing.
+    /// </summary>
     public sealed class SequenceBusyStateController
     {
         private static void SetPinnedMenuBusy(GameObject handObject, bool busy)
@@ -16,6 +19,9 @@ namespace TvmVr2.Client.Sequence
                 controller.ResumeAfterBusy();
         }
 
+        /// <summary>
+        /// Enters busy editing state.
+        /// </summary>
         public void Enter(GameObject leftHand, GameObject rightHand, GameObject waitCanvas)
         {
             SetPinnedMenuBusy(leftHand, true);
@@ -27,6 +33,9 @@ namespace TvmVr2.Client.Sequence
             global::Sequence.editing = true;
         }
 
+        /// <summary>
+        /// Exits busy editing state.
+        /// </summary>
         public void Exit(GameObject leftHand, GameObject rightHand, GameObject waitCanvas)
         {
             SetPinnedMenuBusy(leftHand, false);

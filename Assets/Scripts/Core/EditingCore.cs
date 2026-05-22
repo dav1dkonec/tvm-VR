@@ -10,11 +10,18 @@ using TvmVr2.Core.Methods.InflateDeflate;
 
 namespace TvmVr2.Core
 {
+    /// <summary>
+    /// Central editing facade used by the client layer.
+    /// </summary>
     public sealed class EditingCore
     {
         private readonly EditingMethodDispatcher _dispatcher;
         private readonly BasicTranslatePipeline _basicTranslatePipeline;
         private readonly TvmEditingMasterInflateDeflateAdapter _inflateDeflateAdapter;
+
+        /// <summary>
+        /// Creates editing core with default method handlers.
+        /// </summary>
         public EditingCore(
             BasicTranslatePipeline basicTranslatePipeline = null,
             TvmEditingMasterInflateDeflateAdapter inflateDeflateAdapter = null)
@@ -28,6 +35,9 @@ namespace TvmVr2.Core
             });
         }
 
+        /// <summary>
+        /// Validates an edit request.
+        /// </summary>
         public ValidationResult Validate(EditOperationRequest request)
         {
             if (request == null)
@@ -63,6 +73,9 @@ namespace TvmVr2.Core
             return ValidationResult.Valid();
         }
 
+        /// <summary>
+        /// Executes an edit request against runtime context.
+        /// </summary>
         public EditOperationResult Execute(EditOperationRequest request, SequenceRuntimeContext runtimeContext)
         {
             var validation = Validate(request);
@@ -100,11 +113,17 @@ namespace TvmVr2.Core
             };
         }
 
+        /// <summary>
+        /// Rebuilds cached basic translate surface data.
+        /// </summary>
         public bool RebuildBasicTranslateSurface(Frame[] frames, int surfaceNeighborCount)
         {
             return _basicTranslatePipeline.RebuildSurface(frames, surfaceNeighborCount);
         }
 
+        /// <summary>
+        /// Maps an API request to a method input.
+        /// </summary>
         public IMethodInput MapRequest(EditOperationRequest request, SequenceRuntimeContext runtimeContext)
         {
             return request.MethodKind switch
@@ -129,7 +148,6 @@ namespace TvmVr2.Core
                     CacheFrames = runtimeContext?.CacheFrames,
                     FrameIndex = request.FrameIndex,
                     SelectedCenterIndex = ((InflateDeflateRequest)request).SelectedCenterIndex,
-                    Radius = ((InflateDeflateRequest)request).Radius,
                     Strength = ((InflateDeflateRequest)request).Strength,
                     Mode = ((InflateDeflateRequest)request).Mode
                 },

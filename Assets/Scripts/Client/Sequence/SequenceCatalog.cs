@@ -3,8 +3,14 @@ using System.IO;
 
 namespace TvmVr2.Client.Sequence
 {
+    /// <summary>
+    /// Provides available sequence metadata.
+    /// </summary>
     public sealed class SequenceCatalog
     {
+        /// <summary>
+        /// Loads settings or creates a default file.
+        /// </summary>
         public Settings LoadOrCreateSettings(string settingsPath)
         {
             var dataPath = Directory.GetCurrentDirectory();
@@ -18,6 +24,9 @@ namespace TvmVr2.Client.Sequence
             return settings;
         }
 
+        /// <summary>
+        /// Gets available sequence directories.
+        /// </summary>
         public string[] GetSequenceDirectories(Settings settings)
         {
             if (settings == null || string.IsNullOrWhiteSpace(settings.dataPath) || !Directory.Exists(settings.dataPath))
@@ -28,6 +37,9 @@ namespace TvmVr2.Client.Sequence
             return directories;
         }
 
+        /// <summary>
+        /// Resolves sequence path and name by index.
+        /// </summary>
         public bool TryResolveSequenceByIndex(Settings settings, int index, out string sequencePath, out string sequenceName)
         {
             sequencePath = null;

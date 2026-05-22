@@ -1,18 +1,25 @@
 using System.IO;
 using System.Threading.Tasks;
-using System.Diagnostics;
-using UnityEngine;
 using TvmVr2.Api.Sequence;
 
 namespace TvmVr2.Client.Sequence
 {
+    /// <summary>
+    /// Loads sequence data from disk.
+    /// </summary>
     public sealed class SequenceLoader
     {
+        /// <summary>
+        /// Loads sequence data asynchronously.
+        /// </summary>
         public async Task<SequenceLoadResult> LoadAsync(SequenceLoadRequest request)
         {
             return await Task.Run(() => Load(request));
         }
 
+        /// <summary>
+        /// Loads sequence data.
+        /// </summary>
         public SequenceLoadResult Load(SequenceLoadRequest request)
         {
             if (request == null)
@@ -24,7 +31,6 @@ namespace TvmVr2.Client.Sequence
                 };
             }
 
-            var totalTimer = Stopwatch.StartNew();
             var centersPath = Path.Combine(request.SequencePath, "centers");
             var meshesPath = Path.Combine(request.SequencePath, "meshes");
             var settingsPath = Path.Combine(request.SequencePath, "settings.xml");
@@ -60,7 +66,6 @@ namespace TvmVr2.Client.Sequence
                 MeshIO.LoadMesh(meshes[i], out loadedFrames[i].vertices, out loadedFrames[i].faces);
                 MeshIO.LoadMesh(meshes[i], out loadedFrames[i].verticesUnedited, out loadedFrames[i].faces);
                 loadedFrames[i].FindNearest(request.NearestCenterCount);
-                UnityEngine.Debug.Log($"SequenceLoader: loaded frame {i + 1}/{loadedFrames.Length}");
             }
 
             var settings = settingsExist
@@ -75,11 +80,6 @@ namespace TvmVr2.Client.Sequence
                 Topology = SequenceTopology.FromFrames(loadedFrames),
                 OriginalFrames = loadedFrames
             };
-
-            totalTimer.Stop();
-            UnityEngine.Debug.Log(
-                $"SequenceLoader: completed load for '{request.SequenceName}' in {totalTimer.Elapsed.TotalMilliseconds:F2} ms " +
-                $"(frames={loadedFrames.Length}, centersPathExists={centersExist}, meshesPathExists={meshesExist}, settingsPathExists={settingsExist}).");
 
             return new SequenceLoadResult
             {

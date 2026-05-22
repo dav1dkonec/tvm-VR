@@ -2,10 +2,19 @@ using TvmVr2.Api.Enums;
 
 namespace TvmVr2.Api.Sequence
 {
+    /// <summary>
+    /// Runtime configuration for inflate/deflate.
+    /// </summary>
     public sealed class InflateDeflateRuntimeConfiguration
     {
-        public float Radius { get; set; } = 0.08f;
+        /// <summary>
+        /// Deformation strength.
+        /// </summary>
         public float Strength { get; set; } = 0.02f;
+
+        /// <summary>
+        /// Selected deformation mode.
+        /// </summary>
         public InflateDeflateMode Mode { get; set; } = InflateDeflateMode.Inflate;
     }
 }

@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 using TvmVr2.Core.Methods.InflateDeflate.Cache;
 using TVMEditor.Editing.AffinityCalculation;
 using TVMEditor.Structures;
-using Stopwatch = System.Diagnostics.Stopwatch;
 
 namespace TVMEditor.Editing.SurfaceDeformation
 {
@@ -22,21 +21,12 @@ namespace TVMEditor.Editing.SurfaceDeformation
         public float Shape { get; set; } = 2f;
         public bool ResampleMesh { get; set; } = false;
         public IAffinityCalculation AffinityCalculation { get; set; }
-        public List<CustomSurfaceDeformationCallProfile> CallProfiles { get; } = new List<CustomSurfaceDeformationCallProfile>();
 
         private readonly ConcurrentDictionary<int, FrameWeightCache> frameWeightCaches = new ConcurrentDictionary<int, FrameWeightCache>();
 
         public CustomSurfaceDeformation(IAffinityCalculation affinityCalculation)
         {
             AffinityCalculation = affinityCalculation;
-        }
-
-        public void ResetProfiling()
-        {
-            lock (CallProfiles)
-            {
-                CallProfiles.Clear();
-            }
         }
 
         public void ClearFrameWeightCaches()
@@ -82,20 +72,8 @@ namespace TVMEditor.Editing.SurfaceDeformation
 
         public TriangleMesh DeformSurface(Vector3[] vertices, TVMEditor.Structures.Face[] faces, Vector3[] oldCenters, Vector3[] newCenters, int frameIndex, DualQuaternion[] transformations)
         {
-            var profile = new CustomSurfaceDeformationCallProfile
-            {
-                FrameIndex = frameIndex,
-                UsedCachedWeights = frameWeightCaches.ContainsKey(frameIndex)
-            };
-            var totalTimer = Stopwatch.StartNew();
-            var stageTimer = Stopwatch.StartNew();
-
-            if (!profile.UsedCachedWeights)
-            {
+            if (!frameWeightCaches.ContainsKey(frameIndex))
                 ComputeWeights(vertices, oldCenters, frameIndex, parallelizeVertices: true, CancellationToken.None);
-            }
-            stageTimer.Stop();
-            profile.ComputeWeightsMs = stageTimer.Elapsed.TotalMilliseconds;
 
             if (!frameWeightCaches.TryGetValue(frameIndex, out var frameCache))
             {
@@ -121,15 +99,9 @@ namespace TVMEditor.Editing.SurfaceDeformation
                 verticesList.Add(weightedTransformation.Normalize().Transform(vertices[v]));
                 vertexTransformations[v] = weightedTransformation.Normalize();
             }
-            stageTimer.Stop();
-            profile.BlendVerticesMs = stageTimer.Elapsed.TotalMilliseconds;
 
             if (!ResampleMesh)
             {
-                totalTimer.Stop();
-                profile.TotalMs = totalTimer.Elapsed.TotalMilliseconds;
-                RecordProfile(profile);
-
                 return new TriangleMesh
                 {
                     Vertices = verticesList.ToArray(),
@@ -137,7 +109,6 @@ namespace TVMEditor.Editing.SurfaceDeformation
                 };
             }
 
-            stageTimer.Restart();
             var kdTree = new KdTree<float, int>(3, new FloatMath());
             for (var c = 0; c < oldCenters.Length; c++)
             {
@@ -225,12 +196,6 @@ namespace TVMEditor.Editing.SurfaceDeformation
                     oppositeVertices.Remove(edgeToSplit);
                 }
             }
-
-            stageTimer.Stop();
-            profile.ResampleMs = stageTimer.Elapsed.TotalMilliseconds;
-            totalTimer.Stop();
-            profile.TotalMs = totalTimer.Elapsed.TotalMilliseconds;
-            RecordProfile(profile);
 
             return new TriangleMesh { Vertices = verticesList.ToArray(), Faces = newFaces.ToArray() };
         }
@@ -409,14 +374,6 @@ namespace TVMEditor.Editing.SurfaceDeformation
             }
 
             return (mostAffineCenters, weights1);
-        }
-
-        private void RecordProfile(CustomSurfaceDeformationCallProfile profile)
-        {
-            lock (CallProfiles)
-            {
-                CallProfiles.Add(profile);
-            }
         }
 
         private sealed class FrameWeightCache

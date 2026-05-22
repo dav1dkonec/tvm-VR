@@ -2,15 +2,27 @@ using System.Numerics;
 
 namespace TvmVr2.Core.Methods.BasicTranslate
 {
+    /// <summary>
+    /// Applies a distance-based Gaussian falloff to centers around the edited center.
+    /// </summary>
     public sealed class GaussianCenterDeformer
     {
+        /// <summary>
+        /// Falloff sharpness used by the Gaussian influence function.
+        /// </summary>
         public float Sigma { get; }
 
+        /// <summary>
+        /// Creates a Gaussian center deformer.
+        /// </summary>
         public GaussianCenterDeformer(float sigma = 1f)
         {
             Sigma = sigma;
         }
 
+        /// <summary>
+        /// Translates all centers by the edited center translation scaled by Gaussian falloff.
+        /// </summary>
         public Vector3[] DeformCenters(int centerIndex, Vector3 translation, Vector3[] centers)
         {
             var deformedCenters = new Vector3[centers.Length];

@@ -5,10 +5,24 @@ using System;
 /// </summary>
 public sealed class RuntimeState
 {
+    /// <summary>
+    /// Source sequence data.
+    /// </summary>
     public SequenceData SequenceData { get; private set; }
+
+    /// <summary>
+    /// Source sequence topology.
+    /// </summary>
     public SequenceTopology Topology => SequenceData?.Topology;
+
+    /// <summary>
+    /// Mutable runtime frames.
+    /// </summary>
     public Frame[] Frames { get; private set; } = Array.Empty<Frame>();
 
+    /// <summary>
+    /// Creates runtime state from sequence data.
+    /// </summary>
     public static RuntimeState From(SequenceData data)
     {
         var state = new RuntimeState();
@@ -16,12 +30,18 @@ public sealed class RuntimeState
         return state;
     }
 
+    /// <summary>
+    /// Resets runtime state from sequence data.
+    /// </summary>
     public void ResetFrom(SequenceData data)
     {
         SequenceData = data;
         Frames = CloneRuntimeFrames(data?.OriginalFrames, data?.Topology);
     }
 
+    /// <summary>
+    /// Replaces runtime frames.
+    /// </summary>
     public void SetFrames(Frame[] frames)
     {
         Frames = frames ?? Array.Empty<Frame>();

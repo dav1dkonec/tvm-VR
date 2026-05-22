@@ -4,14 +4,32 @@ using TvmVr2.Client.Sequence;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Inflate/deflate mode selector.
+/// </summary>
 public class InflateDeflateModeUI : MonoBehaviour
 {
     private static readonly Color SelectedTextColor = new(0.49019608f, 1f, 0.8784314f, 1f);
     private static readonly Color UnselectedTextColor = new(1f, 1f, 1f, 0.95f);
 
+    /// <summary>
+    /// Inflate/deflate panel controller.
+    /// </summary>
     public InflateDeflateUI controller;
+
+    /// <summary>
+    /// Runtime editing settings.
+    /// </summary>
     public EditingMethodRuntimeSettings target;
+
+    /// <summary>
+    /// Inflate mode button.
+    /// </summary>
     public Button inflateButton;
+
+    /// <summary>
+    /// Deflate mode button.
+    /// </summary>
     public Button deflateButton;
 
     private TMP_Text inflateText;
@@ -46,6 +64,9 @@ public class InflateDeflateModeUI : MonoBehaviour
         UpdateVisualState();
     }
 
+    /// <summary>
+    /// Selects inflate mode.
+    /// </summary>
     public void SetInflateMode()
     {
         if (target == null)
@@ -56,6 +77,9 @@ public class InflateDeflateModeUI : MonoBehaviour
         controller?.RefreshSelectionPreview();
     }
 
+    /// <summary>
+    /// Selects deflate mode.
+    /// </summary>
     public void SetDeflateMode()
     {
         if (target == null)

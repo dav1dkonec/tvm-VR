@@ -8,8 +8,14 @@ using UnityEngine;
 
 namespace TvmVr2.Core.Methods.InflateDeflate.Cache.Editor
 {
+    /// <summary>
+    /// Editor utility for building inflate/deflate caches.
+    /// </summary>
     public sealed class InflateDeflateCacheBuilder
     {
+        /// <summary>
+        /// Builds cache files for configured sequences.
+        /// </summary>
         [MenuItem("Tools/TVM VR/Build InflateDeflate Cache")]
         public static void BuildCache()
         {

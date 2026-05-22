@@ -11,7 +11,6 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class CenterPool : MonoBehaviour, ICenterHoverListener
 {
     private const float InflateStrengthPreviewReference = 0.5f;
-    private const float InflateDeflatePreviewRadius = 0.10f;
     private const float PreviewEmissionMultiplier = 1f;
 
     /// <summary>
@@ -85,6 +84,9 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
         }
     }
 
+    /// <summary>
+    /// Prepares center pool for a loaded sequence.
+    /// </summary>
     public void PrepareForSequence(int count)
     {
         ClearPreview();
@@ -133,6 +135,9 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
         }
     }
 
+    /// <summary>
+    /// Receives center hover notification.
+    /// </summary>
     public void Notify(CenterUI center, bool hovering)
     {
         if (methodSettings == null)
@@ -188,11 +193,17 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
         DynamicGI.UpdateEnvironment();
     }
 
+    /// <summary>
+    /// Previews inflate/deflate reference center.
+    /// </summary>
     public void PreviewInflateDeflate(Vector3 referencePoint)
     {
         PreviewInflateDeflate(referencePoint, -1);
     }
 
+    /// <summary>
+    /// Previews inflate/deflate active center.
+    /// </summary>
     public void PreviewInflateDeflate(Vector3 referencePoint, int activeCenterIndex)
     {
         if (centers == null || centers.Length == 0)
@@ -201,9 +212,8 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
         if (methodSettings == null)
             methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
 
-        var radius = InflateDeflatePreviewRadius;
         var strength = methodSettings != null ? methodSettings.InflateStrength : 0.02f;
-        if (radius <= 0f || strength <= 0f)
+        if (strength <= 0f)
         {
             ClearPreview();
             return;
@@ -221,25 +231,19 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
 
             if (targetCenter.centerIndex == activeCenterIndex)
                 activeCenter = targetCenter;
-
-            var distance = Vector3.Distance(referencePoint, targetCenter.transform.position);
-            if (distance > radius)
-            {
+            else
                 ApplyPreviewIntensity(targetCenter, 0f);
-                continue;
-            }
-
-            var falloff = Mathf.Pow(1f - (distance / radius), 0.65f);
-            var visibleIntensity = falloff * strengthFactor;
-            ApplyPreviewIntensity(targetCenter, visibleIntensity);
         }
 
         if (activeCenter != null)
-            ApplyPreviewIntensity(activeCenter, 1f);
+            ApplyPreviewIntensity(activeCenter, Mathf.Max(0.35f, strengthFactor));
 
         DynamicGI.UpdateEnvironment();
     }
 
+    /// <summary>
+    /// Clears center preview colors.
+    /// </summary>
     public void ClearPreview()
     {
         if (centers == null)
@@ -257,6 +261,9 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
         DynamicGI.UpdateEnvironment();
     }
 
+    /// <summary>
+    /// Enables or disables center interaction.
+    /// </summary>
     public void SetInteractionEnabled(bool enabled)
     {
         if (centers == null)

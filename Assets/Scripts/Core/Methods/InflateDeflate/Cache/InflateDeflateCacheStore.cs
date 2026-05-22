@@ -6,26 +6,94 @@ using System.Text;
 
 namespace TvmVr2.Core.Methods.InflateDeflate.Cache
 {
+    /// <summary>
+    /// Metadata describing one inflate/deflate cache.
+    /// </summary>
     public sealed class InflateDeflateCacheManifest
     {
+        /// <summary>
+        /// Current cache schema version.
+        /// </summary>
         public const int CurrentSchemaVersion = 1;
 
+        /// <summary>
+        /// Cache schema version.
+        /// </summary>
         public int SchemaVersion { get; set; } = CurrentSchemaVersion;
+
+        /// <summary>
+        /// Cached sequence identifier.
+        /// </summary>
         public string SequenceId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Cached frame count.
+        /// </summary>
         public int FrameCount { get; set; }
+
+        /// <summary>
+        /// Cached center count.
+        /// </summary>
         public int CenterCount { get; set; }
+
+        /// <summary>
+        /// Cached vertex count.
+        /// </summary>
         public int VertexCount { get; set; }
+
+        /// <summary>
+        /// Cached face count.
+        /// </summary>
         public int FaceCount { get; set; }
+
+        /// <summary>
+        /// Surface neighbor count.
+        /// </summary>
         public int Neighbors { get; set; }
+
+        /// <summary>
+        /// Surface deformation shape parameter.
+        /// </summary>
         public float Shape { get; set; }
+
+        /// <summary>
+        /// Surface deformation limit epsilon.
+        /// </summary>
         public float LimitEpsilon { get; set; }
+
+        /// <summary>
+        /// Maximum surface split iterations.
+        /// </summary>
         public int MaxSplitIterations { get; set; }
+
+        /// <summary>
+        /// Affinity distance shape parameter.
+        /// </summary>
         public float AffinityShapeDistance { get; set; }
+
+        /// <summary>
+        /// Affinity direction shape parameter.
+        /// </summary>
         public float AffinityShapeDirection { get; set; }
+
+        /// <summary>
+        /// Affinity power parameter.
+        /// </summary>
         public int AffinityPower { get; set; }
+
+        /// <summary>
+        /// Hash of source sequence data.
+        /// </summary>
         public string SourceHash { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Cache creation time in UTC ticks.
+        /// </summary>
         public long GeneratedAtUtcTicks { get; set; }
 
+        /// <summary>
+        /// Checks cache compatibility.
+        /// </summary>
         public bool IsCompatibleWith(InflateDeflateCacheManifest other)
         {
             if (other == null)
@@ -48,29 +116,82 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Cache
         }
     }
 
+    /// <summary>
+    /// Cached surface deformation data for one frame.
+    /// </summary>
     public sealed class InflateDeflateSurfaceFrameCache
     {
+        /// <summary>
+        /// Cached frame index.
+        /// </summary>
         public int FrameIndex { get; set; }
+
+        /// <summary>
+        /// Nearest centers for vertices.
+        /// </summary>
         public int[][] Centers { get; set; } = Array.Empty<int[]>();
+
+        /// <summary>
+        /// Surface deformation weights.
+        /// </summary>
         public float[][] Weights { get; set; } = Array.Empty<float[]>();
     }
 
+    /// <summary>
+    /// Cached Kabsch propagation data for one frame.
+    /// </summary>
     public sealed class InflateDeflateKabschFrameCache
     {
+        /// <summary>
+        /// Cached frame index.
+        /// </summary>
         public int FrameIndex { get; set; }
+
+        /// <summary>
+        /// Neighbor weights matrix.
+        /// </summary>
         public float[,] NeighborWeights { get; set; }
+
+        /// <summary>
+        /// Sums of neighbor weights.
+        /// </summary>
         public float[] NeighborWeightsSums { get; set; } = Array.Empty<float>();
     }
 
+    /// <summary>
+    /// Loaded inflate/deflate cache bundle.
+    /// </summary>
     public sealed class InflateDeflateCacheBundle
     {
+        /// <summary>
+        /// Cache manifest.
+        /// </summary>
         public InflateDeflateCacheManifest Manifest { get; set; } = new InflateDeflateCacheManifest();
+
+        /// <summary>
+        /// Cached center affinity matrix.
+        /// </summary>
         public float[,] Affinity { get; set; }
+
+        /// <summary>
+        /// Cached structural neighbor indices.
+        /// </summary>
         public int[,] NeighborIndices { get; set; }
+
+        /// <summary>
+        /// Cached surface data by frame.
+        /// </summary>
         public Dictionary<int, InflateDeflateSurfaceFrameCache> SurfaceFrameCaches { get; } = new Dictionary<int, InflateDeflateSurfaceFrameCache>();
+
+        /// <summary>
+        /// Cached Kabsch data by frame.
+        /// </summary>
         public Dictionary<int, InflateDeflateKabschFrameCache> KabschFrameCaches { get; } = new Dictionary<int, InflateDeflateKabschFrameCache>();
     }
 
+    /// <summary>
+    /// Reads and writes inflate/deflate cache files.
+    /// </summary>
     public static class InflateDeflateCacheStore
     {
         private const string ManifestFileName = "manifest.bin";
@@ -79,16 +200,25 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Cache
         private const string SurfaceDirectoryName = "surface";
         private const string KabschDirectoryName = "kabsch";
 
+        /// <summary>
+        /// Gets cache directory path for a sequence.
+        /// </summary>
         public static string GetSequenceDirectoryPath(string rootPath, string sequenceId)
         {
             return Path.Combine(rootPath ?? string.Empty, NormalizeSegment(sequenceId));
         }
 
+        /// <summary>
+        /// Gets manifest file path for a sequence.
+        /// </summary>
         public static string GetManifestPath(string rootPath, string sequenceId)
         {
             return Path.Combine(GetSequenceDirectoryPath(rootPath, sequenceId), ManifestFileName);
         }
 
+        /// <summary>
+        /// Tries to load a cache bundle.
+        /// </summary>
         public static bool TryLoadBundle(string rootPath, string sequenceId, out InflateDeflateCacheBundle bundle, out string errorMessage)
         {
             bundle = null;
@@ -191,6 +321,9 @@ namespace TvmVr2.Core.Methods.InflateDeflate.Cache
             }
         }
 
+        /// <summary>
+        /// Tries to save a cache bundle.
+        /// </summary>
         public static bool TrySaveBundle(string rootPath, InflateDeflateCacheBundle bundle, out string errorMessage)
         {
             errorMessage = string.Empty;

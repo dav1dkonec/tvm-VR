@@ -5,14 +5,23 @@ using TvmVr2.Api.Sequence;
 
 namespace TvmVr2.Client.Sequence
 {
+    /// <summary>
+    /// Saves edited sequence data to disk.
+    /// </summary>
     public sealed class SequenceSaver
     {
+        /// <summary>
+        /// Builds output directory path.
+        /// </summary>
         public string BuildOutputDirectoryPath(string baseDirectoryPath, string sequenceName, DateTime timestamp)
         {
             var dirname = sequenceName + "_" + timestamp.ToString("yyyyMMddHHmmssfff");
             return Path.Combine(baseDirectoryPath, dirname);
         }
 
+        /// <summary>
+        /// Saves sequence data asynchronously.
+        /// </summary>
         public async Task<SequenceSaveResult> SaveAsync(SequenceSaveRequest request)
         {
             if (request == null)

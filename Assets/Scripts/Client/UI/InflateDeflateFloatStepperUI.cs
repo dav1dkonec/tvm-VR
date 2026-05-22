@@ -3,33 +3,60 @@ using TvmVr2.Client.Sequence;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Float stepper for inflate/deflate parameters.
+/// </summary>
 public class InflateDeflateFloatStepperUI : MonoBehaviour
 {
-    public enum ParameterKind
-    {
-        Radius,
-        Strength
-    }
-
+    /// <summary>
+    /// Inflate/deflate panel controller.
+    /// </summary>
     public InflateDeflateUI controller;
+
+    /// <summary>
+    /// Runtime editing settings.
+    /// </summary>
     public EditingMethodRuntimeSettings target;
-    public ParameterKind parameterKind;
+
+    /// <summary>
+    /// Step size.
+    /// </summary>
     public float step = 0.01f;
+
+    /// <summary>
+    /// Value label.
+    /// </summary>
     public TMP_Text text;
+
+    /// <summary>
+    /// Decrease button.
+    /// </summary>
     public Button minus;
+
+    /// <summary>
+    /// Increase button.
+    /// </summary>
     public Button plus;
+
+    /// <summary>
+    /// Value slider.
+    /// </summary>
     public Slider slider;
+
+    /// <summary>
+    /// Minimum strength value.
+    /// </summary>
     public float strengthMinValue = 0.01f;
+
+    /// <summary>
+    /// Maximum strength value.
+    /// </summary>
     public float strengthMaxValue = 0.40f;
 
     private bool suppressSliderCallback;
-    private bool IsLegacyRadiusControl => parameterKind == ParameterKind.Radius;
 
     private void Awake()
     {
-        if (DisableLegacyRadiusControl())
-            return;
-
         if (controller == null)
             controller = FindFirstObjectByType<InflateDeflateUI>();
 
@@ -51,25 +78,25 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
 
     private void Start()
     {
-        if (DisableLegacyRadiusControl())
-            return;
-
         SyncVisuals();
     }
 
     private void OnEnable()
     {
-        if (DisableLegacyRadiusControl())
-            return;
-
         SyncVisuals();
     }
 
+    /// <summary>
+    /// Decreases the value.
+    /// </summary>
     public void Decrease()
     {
         ChangeValue(-step);
     }
 
+    /// <summary>
+    /// Increases the value.
+    /// </summary>
     public void Increase()
     {
         ChangeValue(step);
@@ -77,9 +104,6 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
 
     private void ChangeValue(float delta)
     {
-        if (IsLegacyRadiusControl)
-            return;
-
         if (target == null)
             return;
 
@@ -88,9 +112,6 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
 
     private void HandleSliderValueChanged(float value)
     {
-        if (IsLegacyRadiusControl)
-            return;
-
         if (suppressSliderCallback)
             return;
 
@@ -99,9 +120,6 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
 
     private void SetValue(float value)
     {
-        if (IsLegacyRadiusControl)
-            return;
-
         if (target == null)
             return;
 
@@ -150,17 +168,6 @@ public class InflateDeflateFloatStepperUI : MonoBehaviour
     {
         minValue = strengthMinValue;
         maxValue = strengthMaxValue;
-    }
-
-    private bool DisableLegacyRadiusControl()
-    {
-        if (!IsLegacyRadiusControl)
-            return false;
-
-        if (gameObject.activeSelf)
-            gameObject.SetActive(false);
-
-        return true;
     }
 
 }

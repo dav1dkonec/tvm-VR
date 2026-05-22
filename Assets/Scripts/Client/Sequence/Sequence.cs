@@ -15,16 +15,12 @@ using TvmVr2.Client.Sequence;
 using TvmVr2.Core;
 using TvmVr2.Core.Methods.BasicTranslate;
 using TvmVr2.Core.Methods.InflateDeflate;
-using TvmVr2.Core.Methods.InflateDeflate.Profiling;
-using Stopwatch = System.Diagnostics.Stopwatch;
 
 /// <summary>
 /// Manages the loading, playback, editing and saving of the sequence
 /// </summary>
 public class Sequence : MonoBehaviour, ICenterSelectionListener
 {
-    private const float IgnoredInflateDeflateRadius = 0f;
-
     private TvmEditingMasterInflateDeflateAdapter inflateDeflateAdapter;
     private SequenceLoader sequenceLoader;
     private SequenceSaver sequenceSaver;
@@ -37,8 +33,14 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     private InflateDeflateUI inflateDeflateUi;
     private SequenceData sequenceData;
     private RuntimeState runtimeState;
+    /// <summary>
+    /// Runtime editing method settings.
+    /// </summary>
     public EditingMethodRuntimeSettings methodSettings;
 
+    /// <summary>
+    /// Surface neighbors UI control.
+    /// </summary>
     public SurfaceNeighborsUI ui;
 
     /// <summary>
@@ -118,7 +120,15 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
     /// Name of most recently loaded sequence
     /// </summary>
     public string loadedName;
+
+    /// <summary>
+    /// Whether there are pending edits.
+    /// </summary>
     public bool HasPendingEdits { get; private set; }
+
+    /// <summary>
+    /// Pending edits state changed event.
+    /// </summary>
     public event Action<bool> PendingEditsChanged;
 
     /// <summary>
@@ -219,8 +229,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         var pl = playing;
         Pause();
 
-        var loadTimer = Stopwatch.StartNew();
-        Debug.Log($"Sequence: starting load for '{sequenceName}' from '{sequencePath}'.");
         busyStateController.Enter(leftHand, rightHand, waitCanvas);
         var loadResult = await sequenceLoader.LoadAsync(new SequenceLoadRequest
         {
@@ -238,8 +246,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             if (pl) Play();
             return;
         }
-        loadTimer.Stop();
-
         sequenceData = loadResult.SequenceData ?? new SequenceData
         {
             SequenceId = sequenceName,
@@ -260,9 +266,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         loadedName = sequenceName;
         saveButton.interactable = true;
         SetPendingEdits(false);
-        Debug.Log(
-            $"Sequence: loaded '{sequenceName}' in {loadTimer.Elapsed.TotalMilliseconds:F2} ms " +
-            $"(frames={frames?.Length ?? 0}, topologyFrames={sequenceData?.Topology?.FrameCount ?? 0}).");
         if (pl) Play();
     }
 
@@ -303,6 +306,9 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             Debug.LogError(saveResult.ErrorMessage);
     }
 
+    /// <summary>
+    /// Restores runtime frames from the immutable loaded sequence data and refreshes inflate/deflate cache state.
+    /// </summary>
     public void ReloadLoadedSequence()
     {
         if (InflateDeflateUI.BlockIfPickActive())
@@ -316,26 +322,21 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
 
         var pl = playing;
         Pause();
-        var reloadTimer = Stopwatch.StartNew();
 
         if (runtimeState == null)
             runtimeState = sequenceData.CreateRuntimeState();
         runtimeState.ResetFrom(sequenceData);
         BindRuntimeState(runtimeState);
 
-        var cacheResetTimer = Stopwatch.StartNew();
-        var cacheHydrationState = "not_attempted";
         var cacheResetError = string.Empty;
-        var cacheRehydrated = false;
         if (inflateDeflateAdapter != null)
         {
-            cacheRehydrated = inflateDeflateAdapter.ResetExecutionContextToDefaultCache(
+            inflateDeflateAdapter.ResetExecutionContextToDefaultCache(
                 loadedName ?? string.Empty,
                 frames,
-                out cacheHydrationState,
+                out _,
                 out cacheResetError);
         }
-        cacheResetTimer.Stop();
         if (!string.IsNullOrWhiteSpace(cacheResetError))
             Debug.LogWarning($"Sequence: inflate/deflate cache reload reported: {cacheResetError}");
 
@@ -345,78 +346,8 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         RedrawMesh();
         saveButton.interactable = true;
         SetPendingEdits(false);
-        reloadTimer.Stop();
-        Debug.Log(
-            $"Sequence: runtime state reloaded from SequenceData for '{loadedName ?? string.Empty}' in {reloadTimer.Elapsed.TotalMilliseconds:F2} ms " +
-            $"(frames={frames?.Length ?? 0}, cacheRehydrated={cacheRehydrated}, cacheHydrationState={cacheHydrationState}, cacheResetMs={cacheResetTimer.Elapsed.TotalMilliseconds:F2}).");
 
         if (pl) Play();
-    }
-
-    public void SetInflateDeflateStreamingCacheEnabled(bool enabled)
-    {
-        inflateDeflateAdapter?.SetStreamingAssetsCacheEnabled(enabled);
-    }
-
-    public async void ExportInflateDeflateCacheToStreamingAssets()
-    {
-        if (frames == null || frames.Length == 0)
-        {
-            Debug.LogWarning("Sequence: No loaded sequence is available for inflate/deflate cache export.");
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(loadedName))
-        {
-            Debug.LogWarning("Sequence: Loaded sequence name is missing for inflate/deflate cache export.");
-            return;
-        }
-
-        if (inflateDeflateAdapter == null)
-        {
-            Debug.LogWarning("Sequence: Inflate/deflate adapter is not available for cache export.");
-            return;
-        }
-
-        var pl = playing;
-        Pause();
-        busyStateController.Enter(leftHand, rightHand, waitCanvas);
-
-        var waitText = waitCanvas != null ? waitCanvas.GetComponentInChildren<TMP_Text>() : null;
-        var previousWaitText = waitText != null ? waitText.text : string.Empty;
-        if (waitText != null)
-            waitText.text = "exporting inflate/deflate cache...";
-
-        var snapshot = FrameSnapshot.Clone(sequenceData?.OriginalFrames ?? frames);
-
-        try
-        {
-            var execution = await Task.Run(() =>
-            {
-                var result = inflateDeflateAdapter.ExportCacheToStreamingAssets(loadedName, snapshot, out var localErrorMessage);
-                return (result, localErrorMessage);
-            });
-
-            if (!execution.Item1)
-            {
-                Debug.LogError($"Sequence: Inflate/deflate cache export failed: {execution.Item2}");
-                return;
-            }
-
-            Debug.Log($"Sequence: Inflate/deflate cache exported to {Path.Combine(UnityEngine.Application.streamingAssetsPath, "InflateDeflateCache", loadedName)}");
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"Sequence: Inflate/deflate cache export failed with exception: {ex}");
-        }
-        finally
-        {
-            if (waitText != null)
-                waitText.text = previousWaitText;
-
-            busyStateController.Exit(leftHand, rightHand, waitCanvas);
-            if (pl) Play();
-        }
     }
 
     private void SetPendingEdits(bool value)
@@ -541,7 +472,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         }
 
         var pl = playing;
-        var beforeVertices = CloneVertices(frames[currentFrame]?.vertices);
         Pause();
         busyStateController.Enter(leftHand, rightHand, waitCanvas);
 
@@ -567,8 +497,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             return;
         }
 
-        LogSurfaceDelta(beforeVertices, frames[currentFrame]?.vertices);
-
         centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
         RedrawMesh();
 
@@ -576,99 +504,9 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         if (pl) Play();
     }
 
-    private static System.Numerics.Vector3[] CloneVertices(System.Numerics.Vector3[] source)
-    {
-        if (source == null)
-            return null;
-
-        var clone = new System.Numerics.Vector3[source.Length];
-        Array.Copy(source, clone, source.Length);
-        return clone;
-    }
-
-    private static void LogSurfaceDelta(System.Numerics.Vector3[] before, System.Numerics.Vector3[] after)
-    {
-        if (before == null || after == null)
-        {
-            Debug.Log("Sequence: Deform diagnostics skipped because vertex data are missing.");
-            return;
-        }
-
-        if (before.Length != after.Length)
-        {
-            Debug.Log($"Sequence: Deform changed vertex count from {before.Length} to {after.Length}.");
-            return;
-        }
-
-        float maxDistance = 0f;
-        double totalDistance = 0d;
-        int changedCount = 0;
-
-        for (var i = 0; i < before.Length; i++)
-        {
-            var distance = System.Numerics.Vector3.Distance(before[i], after[i]);
-            if (distance > 1e-6f)
-                changedCount++;
-
-            if (distance > maxDistance)
-                maxDistance = distance;
-
-            totalDistance += distance;
-        }
-
-        var averageDistance = before.Length > 0 ? totalDistance / before.Length : 0d;
-        Debug.Log(
-            $"Sequence: Deform diagnostics | changedVertices={changedCount}/{before.Length}, " +
-            $"maxShift={maxDistance:F6}, avgShift={averageDistance:F6}");
-    }
-
-    private static int[] CollectChangedFrames(Frame[] beforeFrames, Frame[] afterFrames)
-    {
-        if (beforeFrames == null || afterFrames == null)
-            return Array.Empty<int>();
-
-        var changedFrames = new System.Collections.Generic.List<int>();
-        var frameCount = Math.Min(beforeFrames.Length, afterFrames.Length);
-        for (var i = 0; i < frameCount; i++)
-        {
-            if (FrameChanged(beforeFrames[i], afterFrames[i]))
-                changedFrames.Add(i);
-        }
-
-        return changedFrames.ToArray();
-    }
-
-    private static bool FrameChanged(Frame before, Frame after)
-    {
-        if (before == null || after == null)
-            return before != after;
-
-        if (!VectorArraysEqual(before.centers, after.centers))
-            return true;
-
-        if (!VectorArraysEqual(before.vertices, after.vertices))
-            return true;
-
-        return false;
-    }
-
-    private static bool VectorArraysEqual(System.Numerics.Vector3[] left, System.Numerics.Vector3[] right)
-    {
-        if (ReferenceEquals(left, right))
-            return true;
-
-        if (left == null || right == null || left.Length != right.Length)
-            return false;
-
-        for (var i = 0; i < left.Length; i++)
-        {
-            if (System.Numerics.Vector3.Distance(left[i], right[i]) > 1e-6f)
-                return false;
-        }
-
-        return true;
-    }
-
+    /// <summary>
+    /// Executes inflate/deflate for the selected reference center using the current mode and strength.
+    /// </summary>
     public async void CommitInflateDeflate(int selectedCenterIndex)
     {
         if (frames == null || frames.Length == 0)
@@ -684,10 +522,8 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         }
 
         var pl = playing;
-        var beforeFrames = FrameSnapshot.Clone(frames);
         Pause();
         busyStateController.Enter(leftHand, rightHand, waitCanvas);
-        var commitTimer = Stopwatch.StartNew();
 
         try
         {
@@ -706,7 +542,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
                         SequenceId = loadedName ?? string.Empty,
                         FrameIndex = currentFrame,
                         SelectedCenterIndex = selectedCenterIndex,
-                        Radius = IgnoredInflateDeflateRadius,
                         Strength = methodSettings != null ? methodSettings.InflateStrength : 0.02f,
                         Mode = methodSettings != null ? methodSettings.InflateMode : InflateDeflateMode.Inflate
                     },
@@ -721,15 +556,9 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             if (!succeeded)
                 return;
 
-            commitTimer.Stop();
             centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
             RedrawMesh();
-            var changedFrames = CollectChangedFrames(beforeFrames, frames);
-            LogInflateDeflateFrameChangeDiagnostics("commit", currentFrame, changedFrames, frames?.Length ?? 0);
             SetPendingEdits(true);
-            Debug.Log(
-                $"Sequence: inflate/deflate commit completed in {commitTimer.Elapsed.TotalMilliseconds:F2} ms " +
-                $"(frame={currentFrame}, changedFrames={changedFrames.Length}, cacheEnabled={inflateDeflateAdapter?.IsStreamingAssetsCacheEnabled ?? false}, cacheSource=OriginalFrames).");
         }
         catch (Exception ex)
         {
@@ -742,262 +571,24 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         }
     }
 
-    public async void ApplyInflateDeflateDebug(
-        int frameIndex,
-        int centerIndex,
-        float radius,
-        float strength,
-        InflateDeflateMode mode)
-    {
-        if (frames == null || frames.Length == 0)
-        {
-            Debug.LogWarning("Sequence: No sequence is loaded.");
-            return;
-        }
-
-        if (frameIndex < 0 || frameIndex >= frames.Length || frames[frameIndex] == null)
-        {
-            Debug.LogWarning($"Sequence: Debug apply frame index {frameIndex} is out of range.");
-            return;
-        }
-
-        if (frames[frameIndex].centers == null || centerIndex < 0 || centerIndex >= frames[frameIndex].centers.Length)
-        {
-            Debug.LogWarning($"Sequence: Debug apply center index {centerIndex} is out of range.");
-            return;
-        }
-
-        if (strength <= 0f)
-        {
-            Debug.LogWarning("Sequence: Debug apply requires positive strength.");
-            return;
-        }
-
-        var pl = playing;
-        var beforeFrames = FrameSnapshot.Clone(frames);
-        Pause();
-        busyStateController.Enter(leftHand, rightHand, waitCanvas);
-        var debugApplyTimer = Stopwatch.StartNew();
-
-        var waitText = waitCanvas != null ? waitCanvas.GetComponentInChildren<TMP_Text>() : null;
-        var previousWaitText = waitText != null ? waitText.text : string.Empty;
-        if (waitText != null)
-            waitText.text = "applying inflate/deflate debug edit...";
-
-        try
-        {
-            Debug.Log(
-                $"InflateDeflateDebugApply: frame={frameIndex}, center={centerIndex}, " +
-                $"radius={radius:F2}, strength={strength:F2}, mode={mode}.");
-
-            var succeeded = await Task.Run(() =>
-            {
-                if (editingCore == null)
-                    return false;
-
-                var result = editingCore.Execute(
-                    new InflateDeflateRequest
-                    {
-                        SequenceId = loadedName ?? string.Empty,
-                        FrameIndex = frameIndex,
-                        SelectedCenterIndex = centerIndex,
-                        Radius = radius,
-                        Strength = strength,
-                        Mode = mode
-                    },
-                    BuildRuntimeContext(frames, frameIndex, radius, strength, mode));
-
-                if (!result.Succeeded)
-                    Debug.LogError($"Sequence: {result.ErrorMessage}");
-
-                return result.Succeeded;
-            });
-
-            if (!succeeded)
-                return;
-
-            debugApplyTimer.Stop();
-            currentFrame = frameIndex;
-            centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
-            RedrawMesh();
-            var changedFrames = CollectChangedFrames(beforeFrames, frames);
-            LogInflateDeflateFrameChangeDiagnostics("debug apply", frameIndex, changedFrames, frames?.Length ?? 0);
-            SetPendingEdits(true);
-            Debug.Log(
-                $"Sequence: inflate/deflate debug apply completed in {debugApplyTimer.Elapsed.TotalMilliseconds:F2} ms " +
-                $"(frame={frameIndex}, changedFrames={changedFrames.Length}, cacheEnabled={inflateDeflateAdapter?.IsStreamingAssetsCacheEnabled ?? false}, cacheSource=OriginalFrames).");
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"Sequence: InflateDeflate debug apply failed with exception: {ex}");
-        }
-        finally
-        {
-            if (waitText != null)
-                waitText.text = previousWaitText;
-
-            busyStateController.Exit(leftHand, rightHand, waitCanvas);
-            if (pl) Play();
-        }
-    }
-
-    public async void RunInflateDeflateQuickProfile(
-        int frameIndex,
-        int centerIndex,
-        float radius,
-        float strength,
-        InflateDeflateMode mode,
-        int iterations = 1,
-        bool restoreOriginalStateAfterRun = true)
-    {
-        if (frames == null || frames.Length == 0)
-        {
-            Debug.LogWarning("Sequence: No sequence is loaded.");
-            return;
-        }
-
-        if (frameIndex < 0 || frameIndex >= frames.Length || frames[frameIndex] == null)
-        {
-            Debug.LogWarning($"Sequence: Quick profile frame index {frameIndex} is out of range.");
-            return;
-        }
-
-        if (frames[frameIndex].centers == null || centerIndex < 0 || centerIndex >= frames[frameIndex].centers.Length)
-        {
-            Debug.LogWarning($"Sequence: Quick profile center index {centerIndex} is out of range.");
-            return;
-        }
-
-        if (strength <= 0f)
-        {
-            Debug.LogWarning("Sequence: Quick profile requires positive strength.");
-            return;
-        }
-
-        iterations = Mathf.Max(1, iterations);
-
-        var pl = playing;
-        var originalCurrentFrame = currentFrame;
-        Pause();
-        busyStateController.Enter(leftHand, rightHand, waitCanvas);
-
-        var waitText = waitCanvas != null ? waitCanvas.GetComponentInChildren<TMP_Text>() : null;
-        var previousWaitText = waitText != null ? waitText.text : string.Empty;
-        if (waitText != null)
-            waitText.text = "profiling inflate/deflate...";
-
-        var originalFrames = FrameSnapshot.Clone(frames);
-        var profiles = new System.Collections.Generic.List<InflateDeflateQuickProfile>(iterations);
-        var adapter = inflateDeflateAdapter ?? new TvmEditingMasterInflateDeflateAdapter();
-
-        try
-        {
-            for (var iteration = 0; iteration < iterations; iteration++)
-            {
-                var iterationFrames = FrameSnapshot.Clone(originalFrames);
-                Debug.Log($"InflateDeflateQuickProfiler: starting iteration {iteration + 1}/{iterations}.");
-                var request = new InflateDeflateRequest
-                {
-                    SequenceId = loadedName ?? string.Empty,
-                    FrameIndex = frameIndex,
-                    SelectedCenterIndex = centerIndex,
-                    Radius = radius,
-                    Strength = strength,
-                    Mode = mode
-                };
-
-                var runtimeContext = BuildRuntimeContext(iterationFrames, frameIndex, radius, strength, mode);
-                Debug.Log("InflateDeflateQuickProfiler: running test in phase ResolveEffectors.");
-                var mapTimer = Stopwatch.StartNew();
-                var input = (InflateDeflateMethodInput)editingCore.MapRequest(request, runtimeContext);
-                mapTimer.Stop();
-
-                Debug.Log("InflateDeflateQuickProfiler: running test in phase AdapterExecute.");
-                var execution = await Task.Run(() =>
-                {
-                    var result = adapter.ExecuteProfiled(input, out var profile);
-                    return (result, profile);
-                });
-
-                var profile = execution.profile ?? new InflateDeflateQuickProfile();
-                profile.Iteration = iteration + 1;
-                profile.FrameIndex = frameIndex;
-                profile.CenterIndex = centerIndex;
-                profile.ResolveEffectorsMs = mapTimer.Elapsed.TotalMilliseconds;
-                profile.CoreTotalMs = profile.ResolveEffectorsMs + profile.AdapterTotalMs;
-                profile.Success = execution.result != null && execution.result.Success;
-                profile.ErrorMessage = execution.result?.ErrorMessage ?? profile.ErrorMessage;
-
-                if (!profile.Success)
-                {
-                    profiles.Add(profile);
-                    Debug.LogError(profile.ToLogString("InflateDeflate Quick Profile Failed"));
-                    if (restoreOriginalStateAfterRun)
-                    {
-                        frames = originalFrames;
-                        currentFrame = frameIndex;
-                        centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
-                        RedrawMesh();
-                    }
-                    return;
-                }
-
-                Debug.Log("InflateDeflateQuickProfiler: running test in phase UnityApply.");
-                var unityApplyTimer = Stopwatch.StartNew();
-                frames = iterationFrames;
-                currentFrame = frameIndex;
-                centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
-                RedrawMesh();
-                unityApplyTimer.Stop();
-
-                profile.UnityApplyMs = unityApplyTimer.Elapsed.TotalMilliseconds;
-                profile.TotalMs = profile.CoreTotalMs + profile.UnityApplyMs;
-                profiles.Add(profile);
-
-                Debug.Log(profile.ToLogString("InflateDeflate Quick Profile"));
-                Debug.Log($"InflateDeflateQuickProfiler: iteration {iteration + 1}/{iterations} completed.");
-            }
-
-            var average = InflateDeflateQuickProfile.Average(profiles);
-            Debug.Log("InflateDeflateQuickProfiler: all iterations completed. Printing average profile.");
-            Debug.Log(average.ToLogString("InflateDeflate Quick Profile Average"));
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"Sequence: InflateDeflate quick profile failed with exception: {ex}");
-        }
-        finally
-        {
-            if (restoreOriginalStateAfterRun)
-            {
-                frames = originalFrames;
-                currentFrame = Mathf.Clamp(originalCurrentFrame, 0, frames.Length - 1);
-                centerPresenter.SyncPositions(centerPool, frames[currentFrame].centers);
-                RedrawMesh();
-            }
-
-            if (waitText != null)
-                waitText.text = previousWaitText;
-
-            busyStateController.Exit(leftHand, rightHand, waitCanvas);
-            if (pl) Play();
-        }
-    }
-
+    /// <summary>
+    /// Builds a runtime context from the currently loaded sequence and UI settings.
+    /// </summary>
     private SequenceRuntimeContext BuildRuntimeContext()
     {
         return BuildRuntimeContext(
             frames,
             currentFrame,
-            IgnoredInflateDeflateRadius,
             methodSettings != null ? methodSettings.InflateStrength : 0.02f,
             methodSettings != null ? methodSettings.InflateMode : InflateDeflateMode.Inflate);
     }
 
+    /// <summary>
+    /// Creates the context passed into the core so methods can edit runtime frames while reading original cache frames.
+    /// </summary>
     private SequenceRuntimeContext BuildRuntimeContext(
         Frame[] runtimeFrames,
         int runtimeFrameIndex,
-        float inflateRadius,
         float inflateStrength,
         InflateDeflateMode inflateMode)
     {
@@ -1020,7 +611,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
             },
             InflateDeflate = new InflateDeflateRuntimeConfiguration
             {
-                Radius = inflateRadius,
                 Strength = inflateStrength,
                 Mode = inflateMode
             }
@@ -1032,24 +622,6 @@ public class Sequence : MonoBehaviour, ICenterSelectionListener
         runtimeState = state;
         frames = runtimeState?.Frames ?? Array.Empty<Frame>();
         settings = sequenceData?.Settings ?? new SequenceSettings();
-    }
-
-    private static void LogInflateDeflateFrameChangeDiagnostics(string operation, int frameIndex, int[] changedFrames, int totalFrameCount)
-    {
-        var changedCount = changedFrames != null ? changedFrames.Length : 0;
-        var fullInvalidation = totalFrameCount > 0 && changedCount == totalFrameCount;
-
-        Debug.Log(
-            $"Sequence: inflate/deflate {operation} frame change diagnostics | " +
-            $"editedFrame={frameIndex}, changedFrames={changedCount}/{totalFrameCount}, " +
-            $"fullInvalidation={fullInvalidation}, changedFrameIndices=[{string.Join(", ", changedFrames ?? Array.Empty<int>())}].");
-
-        if (fullInvalidation)
-        {
-            Debug.LogWarning(
-                $"Sequence: inflate/deflate {operation} touched the entire runtime state. " +
-                "This is only expected when the deformation propagates to every frame.");
-        }
     }
 
     #region PLAYBACK CONTROLS

@@ -79,6 +79,10 @@ public class Frame
         return facesU;
     }
 
+    /// <summary>
+    /// Finds nearest centers for each mesh vertex.
+    /// </summary>
+    /// <param name="n">Number of nearest centers.</param>
     public void FindNearest(int n)
     {
         nearestCentersDist = new float[vertices.Length][];

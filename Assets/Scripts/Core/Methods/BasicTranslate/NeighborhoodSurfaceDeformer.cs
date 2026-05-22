@@ -2,17 +2,33 @@ using System.Numerics;
 
 namespace TvmVr2.Core.Methods.BasicTranslate
 {
+    /// <summary>
+    /// Reconstructs mesh vertices from nearby center displacement vectors.
+    /// </summary>
     public sealed class NeighborhoodSurfaceDeformer
     {
+        /// <summary>
+        /// Number of nearest centers stored per vertex.
+        /// </summary>
         public int Neighbors { get; }
+
+        /// <summary>
+        /// Minimum usable weight sum before falling back to uniform weights.
+        /// </summary>
         public float Epsilon { get; }
 
+        /// <summary>
+        /// Creates a neighborhood surface deformer.
+        /// </summary>
         public NeighborhoodSurfaceDeformer(int neighbors = 6, float epsilon = 0.0001f)
         {
             Neighbors = neighbors;
             Epsilon = epsilon;
         }
 
+        /// <summary>
+        /// Applies weighted center shifts to the original vertices of a frame.
+        /// </summary>
         public Vector3[] DeformSurface(Frame frame)
         {
             var deformedVertices = new Vector3[frame.vertices.Length];

@@ -5,6 +5,9 @@ using TvmVr2.Client.Sequence;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Editing method selection UI.
+/// </summary>
 public class MethodSelectionUI : MonoBehaviour
 {
     private const string MethodLabelName = "MethodHeaderLabel";
@@ -47,6 +50,9 @@ public class MethodSelectionUI : MonoBehaviour
         ApplyMethodVisibility();
     }
 
+    /// <summary>
+    /// Toggles method dropdown visibility.
+    /// </summary>
     public void ToggleMethodDropdown()
     {
         if (inflateDeflateUi != null && !inflateDeflateUi.CanChangeMethod())
@@ -57,6 +63,9 @@ public class MethodSelectionUI : MonoBehaviour
             dropdownRoot.SetActive(dropdownVisible);
     }
 
+    /// <summary>
+    /// Selects basic translate method.
+    /// </summary>
     public void SelectBasicTranslate()
     {
         if (target == null)
@@ -70,6 +79,9 @@ public class MethodSelectionUI : MonoBehaviour
         ApplyMethodVisibility();
     }
 
+    /// <summary>
+    /// Selects inflate/deflate method.
+    /// </summary>
     public void SelectInflateDeflate()
     {
         if (target == null)

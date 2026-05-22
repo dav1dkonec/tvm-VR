@@ -2,8 +2,14 @@ using UnityEngine;
 
 namespace TvmVr2.Core.Methods.BasicTranslate
 {
+    /// <summary>
+    /// Coordinates center, temporal and surface deformation for Basic Translate.
+    /// </summary>
     public sealed class BasicTranslatePipeline
     {
+        /// <summary>
+        /// Creates a Basic Translate pipeline.
+        /// </summary>
         public BasicTranslatePipeline(
             GaussianCenterDeformer centerDeformer = null,
             KabschSequenceDeformer sequenceDeformer = null,
@@ -11,6 +17,9 @@ namespace TvmVr2.Core.Methods.BasicTranslate
         {
         }
 
+        /// <summary>
+        /// Moves one center in the edited frame and propagates the center deformation across the sequence.
+        /// </summary>
         public bool ApplyCenterEdit(
             Frame[] frames,
             int centerIndex,
@@ -55,6 +64,9 @@ namespace TvmVr2.Core.Methods.BasicTranslate
             return true;
         }
 
+        /// <summary>
+        /// Rebuilds mesh vertices from the current center positions.
+        /// </summary>
         public bool RebuildSurface(Frame[] frames, int surfaceNeighborCount = 6)
         {
             if (frames == null)

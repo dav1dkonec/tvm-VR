@@ -3,12 +3,34 @@ using TvmVr2.Client.Sequence;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Reload button for pending sequence edits.
+/// </summary>
 public class SequenceReloadButtonUI : MonoBehaviour
 {
+    /// <summary>
+    /// Target sequence.
+    /// </summary>
     public Sequence sequence;
+
+    /// <summary>
+    /// Reload button.
+    /// </summary>
     public Button button;
+
+    /// <summary>
+    /// Button label.
+    /// </summary>
     public TMP_Text label;
+
+    /// <summary>
+    /// Button label text.
+    /// </summary>
     public string labelText = "Reset";
+
+    /// <summary>
+    /// Whether existing button listeners should be replaced.
+    /// </summary>
     public bool replaceExistingListeners = true;
 
     private Color labelEnabledColor;
@@ -58,6 +80,9 @@ public class SequenceReloadButtonUI : MonoBehaviour
             sequence.PendingEditsChanged -= HandlePendingEditsChanged;
     }
 
+    /// <summary>
+    /// Reloads the loaded sequence.
+    /// </summary>
     public void OnClicked()
     {
         if (sequence != null)

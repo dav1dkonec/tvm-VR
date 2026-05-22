@@ -332,7 +332,7 @@ namespace TVMEditor.Editing.TransformPropagation
                     return System.Math.Max(1 - (tDist / TimeAttenuationShape), 0);
             }
 
-            throw new NotImplementedException($"Attenuation {fun} not implemented.");
+            throw new InvalidOperationException($"Unsupported time attenuation function: {fun}.");
         }
 
         private static float[,] CloneMatrix(float[,] source)

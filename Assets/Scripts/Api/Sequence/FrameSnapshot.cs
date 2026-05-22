@@ -1,8 +1,14 @@
 using System;
 using System.Numerics;
 
+/// <summary>
+/// Creates deep copies of frame data.
+/// </summary>
 public static class FrameSnapshot
 {
+    /// <summary>
+    /// Clones a frame array.
+    /// </summary>
     public static Frame[] Clone(Frame[] source)
     {
         if (source == null)

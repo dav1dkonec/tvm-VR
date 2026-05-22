@@ -4,17 +4,33 @@ using System.Numerics;
 
 namespace TvmVr2.Core.Methods.BasicTranslate
 {
+    /// <summary>
+    /// Propagates a center translation through neighboring frames using local Kabsch alignment.
+    /// </summary>
     public sealed class KabschSequenceDeformer
     {
+        /// <summary>
+        /// Number of centers used to estimate local frame-to-frame rotation.
+        /// </summary>
         public int Neighbors { get; }
+
+        /// <summary>
+        /// Initial search distance for collecting Kabsch neighborhood centers.
+        /// </summary>
         public float InitialMaxSearchDistance { get; }
 
+        /// <summary>
+        /// Creates a temporal center deformer.
+        /// </summary>
         public KabschSequenceDeformer(int neighbors = 4, float initialMaxSearchDistance = 0.1f)
         {
             Neighbors = neighbors;
             InitialMaxSearchDistance = initialMaxSearchDistance;
         }
 
+        /// <summary>
+        /// Deforms the edited frame and recursively carries the translated direction to previous and next frames.
+        /// </summary>
         public Vector3[][] DeformSequence(
             int centerIndex,
             int frameIndex,
@@ -69,6 +85,9 @@ namespace TvmVr2.Core.Methods.BasicTranslate
             deformedFrames[nextFrameIndex] = centerDeformer.DeformCenters(centerIndex, rotatedTranslation, allCenters[nextFrameIndex]);
         }
 
+        /// <summary>
+        /// Finds centers around the edited center used as the local Kabsch reference neighborhood.
+        /// </summary>
         private int[] GetNearestNeighbors(Vector3 point, Vector3[] centersBefore)
         {
             var kdTree = new KDTree(centersBefore);

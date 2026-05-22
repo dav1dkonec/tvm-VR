@@ -6,6 +6,9 @@ using UnityEngine;
 /// </summary>
 public class PinnedHandMenuController : MonoBehaviour
 {
+    /// <summary>
+    /// Hand that owns the pinned menu.
+    /// </summary>
     public enum MenuHand
     {
         Left,
@@ -19,36 +22,137 @@ public class PinnedHandMenuController : MonoBehaviour
         DraggingPinned
     }
 
+    /// <summary>
+    /// Scene references required for menu pinning and orientation.
+    /// </summary>
     [System.Serializable]
     public struct HandMenuBindings
     {
+        /// <summary>
+        /// Root object of the menu.
+        /// </summary>
         public GameObject menuRoot;
+
+        /// <summary>
+        /// Canvas used as the readable face of the menu.
+        /// </summary>
         public Canvas visualCanvas;
+
+        /// <summary>
+        /// Transform of the controller hand.
+        /// </summary>
         public Transform handTransform;
+
+        /// <summary>
+        /// User rig transform used as yaw reference.
+        /// </summary>
         public Transform userRoot;
+
+        /// <summary>
+        /// Head transform used as placement and facing reference.
+        /// </summary>
         public Transform headTransform;
+
+        /// <summary>
+        /// Inflate/deflate panel controlled by this hand menu.
+        /// </summary>
         public InflateDeflateUI inflateDeflateUi;
     }
 
     [SerializeField] private HandMenuBindings bindings;
+    /// <summary>
+    /// Hand used for controller input and side-specific facing.
+    /// </summary>
     public MenuHand hand;
+
+    /// <summary>
+    /// Analog grip threshold treated as pressed.
+    /// </summary>
     public float pressThreshold = 0.5f;
+
+    /// <summary>
+    /// Maximum press duration accepted as a tap.
+    /// </summary>
     public float tapMaxDuration = 0.4f;
+
+    /// <summary>
+    /// Time window in which two taps pin or unpin the menu.
+    /// </summary>
     public float doubleClickWindow = 0.6f;
+
+    /// <summary>
+    /// Hold duration after which a pinned menu starts dragging.
+    /// </summary>
     public float dragStartHoldTime = 0.15f;
+
+    /// <summary>
+    /// Distance of the pinned menu from the user's head.
+    /// </summary>
     public float orbitRadius = 0.55f;
+
+    /// <summary>
+    /// Horizontal drag sensitivity expressed as orbit degrees per meter.
+    /// </summary>
     public float dragDegreesPerMeter = 80f;
+
+    /// <summary>
+    /// Vertical drag sensitivity for menu height.
+    /// </summary>
     public float dragVerticalSensitivity = 1f;
+
+    /// <summary>
+    /// Lowest allowed pinned height relative to the head.
+    /// </summary>
     public float minHeightOffset = -0.33f;
+
+    /// <summary>
+    /// Highest allowed pinned height relative to the head.
+    /// </summary>
     public float maxHeightOffset = 0.15f;
+
+    /// <summary>
+    /// Initial pinned height relative to the head.
+    /// </summary>
     public float defaultPinnedHeightOffset = 0f;
+
+    /// <summary>
+    /// Manual pitch offset for pinned menu orientation.
+    /// </summary>
     public float pinnedPitchDegrees = 0f;
+
+    /// <summary>
+    /// Side-dependent yaw offset for pinned menu orientation.
+    /// </summary>
     public float pinnedYawDegrees = 6f;
+
+    /// <summary>
+    /// Scales automatic pitch toward the user's head.
+    /// </summary>
     public float verticalFacingSensitivity = 1.35f;
+
+    /// <summary>
+    /// Maximum automatic upward pitch.
+    /// </summary>
     public float maxUpwardAutoPitchDegrees = 14f;
+
+    /// <summary>
+    /// Maximum automatic downward pitch.
+    /// </summary>
     public float maxDownwardAutoPitchDegrees = 18f;
+
+    /// <summary>
+    /// Whether the canvas readable side faces opposite to its forward direction.
+    /// </summary>
     public bool invertCanvasFacing = true;
+
+    /// <summary>
+    /// Extra rotation applied after facing the menu toward the user.
+    /// </summary>
     public Vector3 pinnedAdditionalRotationEuler;
+
+    /// <summary>
+    /// Whether this component polls XR controller grip input directly.
+    /// </summary>
     public bool pollDirectControllerInput = true;
 
     private Transform HandTransform => bindings.handTransform != null ? bindings.handTransform : transform;
@@ -76,6 +180,9 @@ public class PinnedHandMenuController : MonoBehaviour
 
     private static bool rightGrabReserved;
 
+    /// <summary>
+    /// Whether right-hand grab-to-move should ignore input currently consumed by menu pinning.
+    /// </summary>
     public static bool SuppressRightGrabToMove => rightGrabReserved;
 
     private void Awake()
@@ -169,6 +276,9 @@ public class PinnedHandMenuController : MonoBehaviour
             rightGrabReserved = false;
     }
 
+    /// <summary>
+    /// Starts dragging a pinned menu and stores the initial hand/menu relationship.
+    /// </summary>
     private void BeginPinnedDrag()
     {
         state = MenuState.DraggingPinned;
@@ -181,6 +291,9 @@ public class PinnedHandMenuController : MonoBehaviour
         dragStartHeightOffset = heightOffset;
     }
 
+    /// <summary>
+    /// Pins the hand-attached menu in world space or restores it to the hand.
+    /// </summary>
     private void SetPinned(bool pinned)
     {
         GameObject menuRoot = bindings.menuRoot;
@@ -211,6 +324,9 @@ public class PinnedHandMenuController : MonoBehaviour
         state = MenuState.HandAttached;
     }
 
+    /// <summary>
+    /// Resolves current grab state while center selection has priority over menu pinning.
+    /// </summary>
     private bool IsGrabPressed()
     {
         if (CenterUI.HasActiveSelection)
@@ -222,6 +338,9 @@ public class PinnedHandMenuController : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// Reads grip button or analog grip value from the configured XR controller.
+    /// </summary>
     private bool TryGetDirectControllerGrabState(out bool isPressed)
     {
         isPressed = false;
@@ -249,6 +368,9 @@ public class PinnedHandMenuController : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// Stores the hand-attached transform so unpinning can restore the menu exactly.
+    /// </summary>
     private void CacheOriginalMenuTransform()
     {
         GameObject menuRoot = bindings.menuRoot;
@@ -261,6 +383,9 @@ public class PinnedHandMenuController : MonoBehaviour
         originalActive = menuRoot.activeSelf;
     }
 
+    /// <summary>
+    /// Caches canvases and canvas groups that must stay visible while pinned.
+    /// </summary>
     private void CacheVisibilityComponents()
     {
         GameObject menuRoot = bindings.menuRoot;
@@ -271,6 +396,9 @@ public class PinnedHandMenuController : MonoBehaviour
         visibilityCanvasGroups = menuRoot.GetComponentsInChildren<CanvasGroup>(true);
     }
 
+    /// <summary>
+    /// Converts controller drag movement into orbit angle and vertical offset changes.
+    /// </summary>
     private void UpdatePinnedPlacementFromDrag()
     {
         Transform handTransform = HandTransform;
@@ -286,6 +414,9 @@ public class PinnedHandMenuController : MonoBehaviour
             maxHeightOffset);
     }
 
+    /// <summary>
+    /// Initializes orbit angle and height from the menu's current world position.
+    /// </summary>
     private void CaptureOrbitFromWorldPosition(Vector3 worldPosition)
     {
         Transform headTransform = bindings.headTransform;
@@ -297,6 +428,9 @@ public class PinnedHandMenuController : MonoBehaviour
         heightOffset = Mathf.Clamp(worldPosition.y - headTransform.position.y, minHeightOffset, maxHeightOffset);
     }
 
+    /// <summary>
+    /// Places the pinned menu at the current orbit angle and height relative to the head.
+    /// </summary>
     private void UpdatePinnedTransform()
     {
         GameObject menuRoot = bindings.menuRoot;
@@ -313,6 +447,9 @@ public class PinnedHandMenuController : MonoBehaviour
         RotatePinnedMenuTowardHead();
     }
 
+    /// <summary>
+    /// Rotates the pinned menu so its visual canvas stays readable from the head position.
+    /// </summary>
     private void RotatePinnedMenuTowardHead()
     {
         GameObject menuRoot = bindings.menuRoot;
@@ -355,6 +492,9 @@ public class PinnedHandMenuController : MonoBehaviour
         menuRoot.transform.rotation = faceRotation * visualTilt * Quaternion.Euler(pinnedAdditionalRotationEuler);
     }
 
+    /// <summary>
+    /// Re-enables menu canvases after other UI actions hide or disable them.
+    /// </summary>
     private void EnsurePinnedMenuVisible()
     {
         GameObject menuRoot = bindings.menuRoot;
@@ -384,6 +524,9 @@ public class PinnedHandMenuController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Hides a pinned menu while the application is busy.
+    /// </summary>
     public void SuspendForBusy()
     {
         if (state == MenuState.HandAttached || bindings.menuRoot == null)
@@ -392,6 +535,9 @@ public class PinnedHandMenuController : MonoBehaviour
         bindings.menuRoot.SetActive(false);
     }
 
+    /// <summary>
+    /// Restores a pinned menu after the busy state ends.
+    /// </summary>
     public void ResumeAfterBusy()
     {
         if (state == MenuState.HandAttached || bindings.menuRoot == null)

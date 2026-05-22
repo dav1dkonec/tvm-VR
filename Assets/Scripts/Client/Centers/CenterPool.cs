@@ -11,6 +11,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class CenterPool : MonoBehaviour, ICenterHoverListener
 {
     private const float InflateStrengthPreviewReference = 0.5f;
+    private const float InflateDeflatePreviewRadius = 0.10f;
     private const float PreviewEmissionMultiplier = 1f;
 
     /// <summary>
@@ -212,8 +213,9 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
         if (methodSettings == null)
             methodSettings = FindFirstObjectByType<EditingMethodRuntimeSettings>();
 
+        var radius = InflateDeflatePreviewRadius;
         var strength = methodSettings != null ? methodSettings.InflateStrength : 0.02f;
-        if (strength <= 0f)
+        if (radius <= 0f || strength <= 0f)
         {
             ClearPreview();
             return;
@@ -231,12 +233,21 @@ public class CenterPool : MonoBehaviour, ICenterHoverListener
 
             if (targetCenter.centerIndex == activeCenterIndex)
                 activeCenter = targetCenter;
-            else
+
+            var distance = Vector3.Distance(referencePoint, targetCenter.transform.position);
+            if (distance > radius)
+            {
                 ApplyPreviewIntensity(targetCenter, 0f);
+                continue;
+            }
+
+            var falloff = Mathf.Pow(1f - (distance / radius), 0.65f);
+            var visibleIntensity = falloff * strengthFactor;
+            ApplyPreviewIntensity(targetCenter, visibleIntensity);
         }
 
         if (activeCenter != null)
-            ApplyPreviewIntensity(activeCenter, Mathf.Max(0.35f, strengthFactor));
+            ApplyPreviewIntensity(activeCenter, 1f);
 
         DynamicGI.UpdateEnvironment();
     }

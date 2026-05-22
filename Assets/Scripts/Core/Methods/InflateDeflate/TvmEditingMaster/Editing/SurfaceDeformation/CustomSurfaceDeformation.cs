@@ -85,7 +85,6 @@ namespace TVMEditor.Editing.SurfaceDeformation
             var verticesList = new List<Vector3>();
             var vertexTransformations = new Dictionary<int, DualQuaternion>();
 
-            stageTimer.Restart();
             for (var v = 0; v < vertices.Length; v++)
             {
                 var weightedTransformation = DualQuaternion.Zero();

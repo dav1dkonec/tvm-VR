@@ -15,14 +15,6 @@ namespace TvmVr2.Client.Sequence
         /// </summary>
         public async Task<SequenceLoadResult> LoadAsync(SequenceLoadRequest request)
         {
-            return await Task.Run(() => Load(request));
-        }
-
-        /// <summary>
-        /// Loads sequence data.
-        /// </summary>
-        public SequenceLoadResult Load(SequenceLoadRequest request)
-        {
             if (request == null)
             {
                 return new SequenceLoadResult
@@ -53,23 +45,28 @@ namespace TvmVr2.Client.Sequence
                 };
             }
 
-            var loadedCenters = CentersIO.LoadCentersFiles(centers);
-            var loadedCentersUnedited = CentersIO.LoadCentersFiles(centers);
-
-            var loadedFrames = new Frame[centers.Length];
-            for (var i = 0; i < loadedFrames.Length; i++)
+            var loadedFrames = await Task.Run(() =>
             {
-                loadedFrames[i] = new Frame
-                {
-                    centers = loadedCenters[i],
-                    centersUnedited = loadedCentersUnedited[i]
-                };
+                var loadedCenters = CentersIO.LoadCentersFiles(centers);
+                var loadedCentersUnedited = CentersIO.LoadCentersFiles(centers);
 
-                MeshIO.LoadMesh(meshes[i], out loadedFrames[i].vertices, out loadedFrames[i].faces);
-                loadedFrames[i].verticesUnedited = (System.Numerics.Vector3[])loadedFrames[i].vertices.Clone();
-                loadedFrames[i].FindNearest(request.NearestCenterCount);
-                UnityEngine.Debug.Log($"SequenceLoader: loaded frame {i + 1}/{loadedFrames.Length}");
-            }
+                var frames = new Frame[centers.Length];
+                for (var i = 0; i < frames.Length; i++)
+                {
+                    frames[i] = new Frame
+                    {
+                        centers = loadedCenters[i],
+                        centersUnedited = loadedCentersUnedited[i]
+                    };
+
+                    MeshIO.LoadMesh(meshes[i], out frames[i].vertices, out frames[i].faces);
+                    frames[i].verticesUnedited = (System.Numerics.Vector3[])frames[i].vertices.Clone();
+                    frames[i].FindNearest(request.NearestCenterCount);
+                    UnityEngine.Debug.Log($"SequenceLoader: loaded frame {i + 1}/{frames.Length}");
+                }
+
+                return frames;
+            });
 
             var settings = settingsExist
                 ? Serialization.Deserialize<SequenceSettings>(settingsPath)
@@ -96,6 +93,14 @@ namespace TvmVr2.Client.Sequence
                 Settings = settings,
                 SequenceData = sequenceData
             };
+        }
+
+        /// <summary>
+        /// Loads sequence data.
+        /// </summary>
+        public SequenceLoadResult Load(SequenceLoadRequest request)
+        {
+            return LoadAsync(request).GetAwaiter().GetResult();
         }
     }
 }
